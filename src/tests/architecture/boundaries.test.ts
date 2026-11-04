@@ -325,9 +325,154 @@ describe('Clean Architecture boundaries and Antislop R-02 copy hygiene', () => {
     ).toHaveLength(1);
   });
 
-  it('contains zero forbidden em dashes or en dashes across src/ and index.html (R-02)', () => {
+  it('keeps src/app/di.ts free of src/data re-exports and isolates src/data/local/seed.ts', () => {
+    const diPath = path.join(srcRoot, 'app', 'di.ts');
+    expect(fs.existsSync(diPath)).toBe(true);
+
+    const diSource = stripComments(fs.readFileSync(diPath, 'utf8'));
+    const exportFromPattern = /\bexport\s+(?:type\s+)?[\s\S]*?\s+from\s+['"]([^'"]+)['"]/g;
+    const diReExports: string[] = [];
+    let match: RegExpExecArray | null = exportFromPattern.exec(diSource);
+    while (match !== null) {
+      if (match[1]) {
+        diReExports.push(match[1]);
+      }
+      match = exportFromPattern.exec(diSource);
+    }
+
+    const dataReExports = diReExports.filter((specifier) => {
+      if (!specifier.startsWith('.')) {
+        return specifier === 'dexie' || specifier.startsWith('@supabase/');
+      }
+      const resolved = path
+        .resolve(path.dirname(diPath), specifier)
+        .replace(/\\/g, '/');
+      return isWithinDir(resolved, `${srcRoot}/data`);
+    });
+    expect(dataReExports).toEqual([]);
+
+    const seedNormalized = `${srcRoot}/data/local/seed`;
+    const nonTestSrcFiles = collectFiles(srcRoot, ['.ts', '.tsx']).filter(
+      (file) => !isWithinDir(file.replace(/\\/g, '/'), `${srcRoot}/tests`),
+    );
+
+    const illegalSeedImporters: string[] = [];
+    for (const file of nonTestSrcFiles) {
+      const normalizedFile = file.replace(/\\/g, '/');
+      if (
+        normalizedFile === `${srcRoot}/app/di.ts` ||
+        normalizedFile === `${seedNormalized}.ts`
+      ) {
+        continue;
+      }
+      const specifiers = extractModuleSpecifiers(
+        stripComments(fs.readFileSync(file, 'utf8')),
+      );
+      for (const specifier of specifiers) {
+        if (!specifier.startsWith('.')) {
+          continue;
+        }
+        const resolved = path
+          .resolve(path.dirname(normalizedFile), specifier)
+          .replace(/\\/g, '/')
+          .replace(/\.(ts|tsx|js|jsx)$/, '');
+        if (resolved === seedNormalized) {
+          illegalSeedImporters.push(
+            path.relative(repoRoot, normalizedFile).replace(/\\/g, '/'),
+          );
+        }
+      }
+    }
+
+    expect(illegalSeedImporters).toEqual([]);
+  });
+
+  it('verifies all 9 local-first repositories exist and Supabase migration enables RLS on all 9 tables', () => {
+    const expectedRepos = [
+      'HybridAuthRepository.ts',
+      'HybridClassRepository.ts',
+      'HybridCourseRepository.ts',
+      'HybridWeekRepository.ts',
+      'HybridMaterialRepository.ts',
+      'HybridDeadlineRepository.ts',
+      'HybridAnnouncementRepository.ts',
+      'DexieNoteRepository.ts',
+      'DexieSyncQueueRepository.ts',
+    ];
+
+    for (const repoFile of expectedRepos) {
+      const fullPath = path.join(srcRoot, 'data', 'repositories', repoFile);
+      expect(fs.existsSync(fullPath)).toBe(true);
+      const source = fs.readFileSync(fullPath, 'utf8');
+      expect(source).toContain('this.db.');
+    }
+
+    const sqlPath = path.join(
+      repoRoot,
+      'supabase',
+      'migrations',
+      '001_initial_schema.sql',
+    );
+    expect(fs.existsSync(sqlPath)).toBe(true);
+    const sql = fs.readFileSync(sqlPath, 'utf8').toLowerCase();
+
+    const rlsTables = [
+      'classes',
+      'profiles',
+      'courses',
+      'course_follows',
+      'weeks',
+      'materials',
+      'deadlines',
+      'announcements',
+      'notes',
+    ];
+    for (const table of rlsTables) {
+      expect(sql).toContain(`alter table public.${table} enable row level security;`);
+    }
+    expect(sql).toContain('5242880');
+    expect(sql).toContain('application/pdf');
+  });
+
+  it('wires createAppContainer in local fallback or online mode and blocks seed loading online', async () => {
+    const { createAppContainer } = await import('../../app/di');
+    const { sanitizeStorageFileName } = await import(
+      '../../data/remote/SupabaseRemoteDataSource'
+    );
+
+    const localContainer = createAppContainer({
+      databaseName: 'litelearn_test_local',
+      supabaseUrl: '',
+      supabaseAnonKey: '',
+    });
+    expect(localContainer.isLocalFallbackMode).toBe(true);
+    expect(Object.keys(localContainer.usecases)).toHaveLength(23);
+
+    const onlineContainer = createAppContainer({
+      databaseName: 'litelearn_test_online',
+      supabaseUrl: 'https://example.supabase.co',
+      supabaseAnonKey: 'public-anon-key-placeholder',
+    });
+    expect(onlineContainer.isLocalFallbackMode).toBe(false);
+    await expect(
+      onlineContainer.loadSampleSeedData('user-1'),
+    ).rejects.toMatchObject({
+      code: 'FORBIDDEN_ROLE',
+    });
+
+    expect(sanitizeStorageFileName('../../secret/notes..pdf')).toBe(
+      'notes_pdf.pdf',
+    );
+    expect(sanitizeStorageFileName('crs101-week1-outline.pdf')).toBe(
+      'crs101-week1-outline.pdf',
+    );
+  });
+
+  it('contains zero forbidden em dashes or en dashes across src/, index.html, .env.example, and SQL migrations (R-02)', () => {
     const files = [
       path.join(repoRoot, 'index.html'),
+      path.join(repoRoot, '.env.example'),
+      ...collectFiles(path.join(repoRoot, 'supabase'), ['.sql']),
       ...collectFiles(srcRoot, ['.ts', '.tsx', '.css', '.html']),
     ];
     const dashViolations: string[] = [];
