@@ -28,6 +28,15 @@ function parseRepEntityType(raw: string | null): RepEntityType {
   return 'course';
 }
 
+function formatWeekOptionLabel(weekNumber: number, title: string): string {
+  const trimmed = title.trim();
+  const prefix = `Week ${weekNumber}`;
+  if (trimmed.toLowerCase().startsWith(prefix.toLowerCase())) {
+    return trimmed;
+  }
+  return `${prefix}: ${trimmed}`;
+}
+
 export function RepFormPage(): React.ReactElement {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -54,7 +63,7 @@ export function RepFormPage(): React.ReactElement {
     saveAnnouncement,
   } = useRepForms();
 
-  const [isLoadingData, setIsLoadingData] = useState<boolean>(false);
+  const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [courses, setCourses] = useState<CourseListItemDto[]>([]);
   const [weeks, setWeeks] = useState<WeekWithContentDto[]>([]);
@@ -769,7 +778,10 @@ export function RepFormPage(): React.ReactElement {
                       >
                         {weeks.map((weekItem) => (
                           <option key={weekItem.id} value={weekItem.id}>
-                            {`Week ${weekItem.weekNumber}: ${weekItem.title}`}
+                            {formatWeekOptionLabel(
+                              weekItem.weekNumber,
+                              weekItem.title,
+                            )}
                           </option>
                         ))}
                       </select>
@@ -894,7 +906,10 @@ export function RepFormPage(): React.ReactElement {
                         </option>
                         {weeks.map((weekItem) => (
                           <option key={weekItem.id} value={weekItem.id}>
-                            {`Week ${weekItem.weekNumber}: ${weekItem.title}`}
+                            {formatWeekOptionLabel(
+                              weekItem.weekNumber,
+                              weekItem.title,
+                            )}
                           </option>
                         ))}
                       </select>
