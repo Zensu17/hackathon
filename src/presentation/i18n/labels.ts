@@ -95,6 +95,8 @@ export const labels = {
       missingClassName: 'Enter a class name before creating a class.',
       duplicateJoinCode:
         'That join code is already used by another class. Pick a different code or leave it blank.',
+      invalidCustomJoinCode:
+        'Custom join code must be 3 to 16 letters, digits, or internal hyphens.',
       seedUnavailable: 'Sample seed data is only available in local fallback mode.',
       unexpected: 'Could not update class membership. Try again.',
     },
@@ -255,6 +257,8 @@ export const labels = {
       saveDeadline: 'Save deadline',
       postAnnouncement: 'Post announcement',
     },
+    loadingForm: 'Loading class courses and form values from local storage...',
+    loadErrorTitle: 'Could not load form data from local storage',
     errors: {
       validation: 'Complete all required fields before saving.',
       invalidUrl: 'External URL must start with http:// or https://.',

@@ -5,7 +5,7 @@ import type {
 import type { CreateClassInput } from '../../dto/AuthDto';
 import { AppError, isAppError } from '../../errors/AppError';
 
-const JOIN_CODE_PATTERN = /^[A-Z0-9]{3,16}$/;
+const JOIN_CODE_PATTERN = /^[A-Z0-9][A-Z0-9-]{1,14}[A-Z0-9]$/;
 const GENERATED_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const GENERATED_CODE_LENGTH = 6;
 
@@ -45,7 +45,7 @@ export class CreateClass {
       if (!JOIN_CODE_PATTERN.test(joinCode)) {
         throw new AppError(
           'VALIDATION_ERROR',
-          'Join code must be 3 to 16 uppercase letters or digits.',
+          'Join code must be 3 to 16 uppercase letters, digits, or internal hyphens.',
         );
       }
     }

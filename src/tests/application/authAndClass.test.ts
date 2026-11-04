@@ -197,7 +197,7 @@ describe('Auth and class onboarding use cases', () => {
     const createdClass = await createClass.execute({
       userId: rep.id,
       name: 'Class A',
-      joinCode: 'if2026',
+      joinCode: 'if-2026',
     });
 
     const student = await signUp.execute({
@@ -218,11 +218,11 @@ describe('Auth and class onboarding use cases', () => {
 
     const joined = await joinClass.execute({
       userId: student.id,
-      joinCode: '  if2026 ',
+      joinCode: '  if-2026 ',
     });
 
     expect(joined.user.role).toBe('student');
     expect(joined.user.classId).toBe(createdClass.currentClass.id);
-    expect(joined.currentClass.joinCode).toBe('IF2026');
+    expect(joined.currentClass.joinCode).toBe('IF-2026');
   });
 });

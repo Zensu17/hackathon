@@ -2,7 +2,9 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import '../presentation/styles/tokens.css';
 import '../presentation/styles/base.css';
-import { labels } from '../presentation/i18n/labels';
+import '../presentation/styles/pages.css';
+import { AppContainerProvider } from './di';
+import { AppRouter } from './router';
 
 const rootElement = document.getElementById('root');
 
@@ -12,8 +14,8 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <React.StrictMode>
-    <main id="main-content">
-      <h1>{labels.app.name}</h1>
-    </main>
+    <AppContainerProvider>
+      <AppRouter />
+    </AppContainerProvider>
   </React.StrictMode>,
 );
