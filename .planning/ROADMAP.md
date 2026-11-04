@@ -8,7 +8,7 @@ LiteLearn ships across three milestone-aligned phases over roughly three weeks. 
 
 ## Phases
 
-- [ ] **Phase 1: Foundation and Core Screens (Milestone 1, Week 1)** - Clean Architecture scaffolding, domain entities/rules + unit tests, Dexie local DB + fake seed, Supabase schema/RLS/Auth, and core student + online rep screens.
+- [x] **Phase 1: Foundation and Core Screens (Milestone 1, Week 1)** - Clean Architecture scaffolding, domain entities/rules + unit tests, Dexie local DB + fake seed, Supabase schema/RLS/Auth, and core student + online rep screens. (Completed: 2026-11-04)
 - [ ] **Phase 2: Offline PWA and Delta Sync (Milestone 2, Week 2)** - Workbox app-shell caching, outbox + delta pull/push sync, real-probe network indicator, on-demand PDF download, private notes, Data Saver toggle, and offline rep forms.
 - [ ] **Phase 3: Trial Readiness and Polish (Milestone 3, Week 3)** - 360 px / 200% zoom polish, gzipped bundle measurement (< 200 KB), full Section 12 manual acceptance verification, deployment README, and trial readiness package.
 
@@ -28,9 +28,9 @@ LiteLearn ships across three milestone-aligned phases over roughly three weeks. 
 **Plans**: 3 plans
 
 Plans:
-- [ ] `01-01-PLAN.md` - Vite + React + TS strict + Vitest scaffolding, `DESIGN.md` CSS tokens, `labels.ts`, complete `domain/` layer, domain unit tests, and Clean Architecture boundary checks
-- [ ] `01-02-PLAN.md` - All 23 Phase 1 `application/` use cases + fake-repo tests, `LiteLearnDb` Dexie schema + mappers + isolated fake `seed.ts`, Supabase SQL/RLS migration, local-first repositories, and `src/app/di.ts`
-- [ ] `01-03-PLAN.md` - Route-split `presentation/` shell and all 8 Phase 1 pages, WCAG contrast + gzipped bundle (< 200 KB) checks, real browser click-through verification, and Milestone 1 Antislop Delivery Gate report
+- [x] `01-01-PLAN.md` - Vite + React + TS strict + Vitest scaffolding, `DESIGN.md` CSS tokens, `labels.ts`, complete `domain/` layer, domain unit tests, and Clean Architecture boundary checks
+- [x] `01-02-PLAN.md` - All 23 Phase 1 `application/` use cases + fake-repo tests, `LiteLearnDb` Dexie schema + mappers + isolated fake `seed.ts`, Supabase SQL/RLS migration, local-first repositories, and `src/app/di.ts`
+- [x] `01-03-PLAN.md` - Route-split `presentation/` shell and all 8 Phase 1 pages, WCAG contrast + gzipped bundle (< 200 KB) checks, real browser click-through verification, and Milestone 1 Antislop Delivery Gate report
 
 ### Phase 2: Offline PWA and Delta Sync
 **Goal**: After one sign-in and initial sync, the entire app shell and followed-course content open offline, material PDFs download only on demand into IndexedDB, private notes and rep edits queue offline and sync automatically with resilience against weak dorm Wi-Fi, and network/sync status is accurately reported.
@@ -65,6 +65,6 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |---|---|---|---|
-| 1. Foundation and Core Screens | 0/3 | Not started | - |
+| 1. Foundation and Core Screens | 3/3 | Complete | 2026-11-04 |
 | 2. Offline PWA and Delta Sync | 0/3 | Not started | - |
 | 3. Trial Readiness and Polish | 0/2 | Not started | - |
