@@ -1,0 +1,85 @@
+/* DESIGN.md palette, typography, spacing, radius, and touch-target custom properties. */
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  /* Core palette (Light mode) */
+  --bg-page: #F7F6F2;
+  --bg-card: #FFFFFF;
+  --bg-subtle: #EFECE6;
+  --ink-primary: #142033;
+  --ink-secondary: #46546B;
+  --border-subtle: #748299;
+  --color-primary: #1B3A6B;
+  --color-primary-hover: #132A4F;
+  --ink-on-primary: #FFFFFF;
+  --color-accent-rust: #9E331D;
+  --bg-accent-rust: #FDF2EE;
+  --ink-accent-rust: #8C2D19;
+
+  /* Typography */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+  --text-h1: clamp(1.25rem, 1.1rem + 0.75vw, 1.625rem);
+  --text-h2: clamp(1.0625rem, 1rem + 0.3vw, 1.25rem);
+  --text-h3: 1rem;
+  --text-body: 1rem;
+  --text-meta: 0.875rem;
+
+  /* Radius hierarchy */
+  --radius-card: 6px;
+  --radius-control: 4px;
+  --radius-chip: 2px;
+
+  /* Elevation reserved for sticky chrome or dialogs */
+  --shadow-chrome: 0 2px 6px rgba(0, 0, 0, 0.12);
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* Touch targets and layout */
+  --tap-target-min: 44px;
+  --tap-gap-min: 8px;
+  --mobile-nav-height: 56px;
+  --content-max-width: 760px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg-page: #0F1724;
+    --bg-card: #172235;
+    --bg-subtle: #1E2C44;
+    --ink-primary: #EDF1F7;
+    --ink-secondary: #A8B5C9;
+    --border-subtle: #687894;
+    --color-primary: #8AB4F8;
+    --color-primary-hover: #AECBFA;
+    --ink-on-primary: #0F1724;
+    --color-accent-rust: #F59E8B;
+    --bg-accent-rust: #3B1812;
+    --ink-accent-rust: #FFDAD2;
+  }
+}
+
+:root[data-theme="dark"],
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-page: #0F1724;
+  --bg-card: #172235;
+  --bg-subtle: #1E2C44;
+  --ink-primary: #EDF1F7;
+  --ink-secondary: #A8B5C9;
+  --border-subtle: #687894;
+  --color-primary: #8AB4F8;
+  --color-primary-hover: #AECBFA;
+  --ink-on-primary: #0F1724;
+  --color-accent-rust: #F59E8B;
+  --bg-accent-rust: #3B1812;
+  --ink-accent-rust: #FFDAD2;
+}
