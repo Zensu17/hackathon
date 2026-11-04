@@ -184,7 +184,6 @@
   margin-top: var(--space-2);
 }
 
-/* Forms */
 .form-stack {
   display: flex;
   flex-direction: column;
@@ -261,7 +260,6 @@
   line-height: 1.45;
 }
 
-/* Settings & Material metadata definition lists */
 .meta-dl {
   margin: 0;
   display: grid;
@@ -294,7 +292,6 @@
   overflow-wrap: anywhere;
 }
 
-/* Course detail weekly sections */
 .section-block {
   display: flex;
   flex-direction: column;
