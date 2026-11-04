@@ -25,10 +25,12 @@ LiteLearn ships across three milestone-aligned phases over roughly three weeks. 
   4. Students can follow/unfollow class courses and view ordered weeks, material text/links, newest-first announcements, and Home upcoming deadlines (highlighting overdue and due-within-24h items in rust accent), all read from Dexie via use cases.
   5. A `rep` user can create/update courses, weeks, materials (metadata + optional <= 5 MB PDF upload), deadlines, and announcements while online, with changes persisted to Supabase and reflected locally in Dexie.
   6. Light and Dark themes, keyboard focus indicators, >= 44 px touch targets, and Empty/Loading/Error states pass the Antislop Delivery Gate.
-**Suggested Plan Breakdown** (for `/gsd-plan-phase 1`):
-  - `01-01`: Project scaffolding (Vite + React + TS strict + Vitest + architecture boundary test), `DESIGN.md` CSS token base, `labels.ts`, and complete `domain/` entities, rules, and repository/service interfaces with unit tests.
-  - `01-02`: `application/` use cases (Auth, Class, Courses, Content, Deadlines, Announcements, Rep CRUD) + unit tests with fake repositories, `data/` Dexie database + mappers + fake seed file + Supabase SQL migration/RLS + repository implementations, and `src/app/di.ts` composition root.
-  - `01-03`: Route-split `presentation/` pages (`SignIn`, `JoinClass`, `Home`, `Courses`, `CourseDetail`, `MaterialDetail`, `RepForm`, `Settings` theme toggle), click-through verification, and Milestone 1 Delivery Gate report.
+**Plans**: 3 plans
+
+Plans:
+- [ ] `01-01-PLAN.md` - Vite + React + TS strict + Vitest scaffolding, `DESIGN.md` CSS tokens, `labels.ts`, complete `domain/` layer, domain unit tests, and Clean Architecture boundary checks
+- [ ] `01-02-PLAN.md` - All 23 Phase 1 `application/` use cases + fake-repo tests, `LiteLearnDb` Dexie schema + mappers + isolated fake `seed.ts`, Supabase SQL/RLS migration, local-first repositories, and `src/app/di.ts`
+- [ ] `01-03-PLAN.md` - Route-split `presentation/` shell and all 8 Phase 1 pages, WCAG contrast + gzipped bundle (< 200 KB) checks, real browser click-through verification, and Milestone 1 Antislop Delivery Gate report
 
 ### Phase 2: Offline PWA and Delta Sync
 **Goal**: After one sign-in and initial sync, the entire app shell and followed-course content open offline, material PDFs download only on demand into IndexedDB, private notes and rep edits queue offline and sync automatically with resilience against weak dorm Wi-Fi, and network/sync status is accurately reported.
