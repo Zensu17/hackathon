@@ -2,13 +2,15 @@ import type { Class, User } from '../../domain/entities';
 import type { ClassOnboardingResult } from '../../domain/repositories';
 
 export interface SignUpInput {
-  email: string;
-  password: string;
+  nim: string;
   displayName: string;
+  password: string;
+  confirmPassword?: string;
+  classCode: string;
 }
 
 export interface SignInInput {
-  email: string;
+  nim: string;
   password: string;
 }
 

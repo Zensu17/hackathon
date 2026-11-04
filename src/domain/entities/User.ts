@@ -2,7 +2,7 @@ export type UserRole = 'student' | 'rep';
 
 export interface User {
   id: string;
-  email: string;
+  nim: string;
   displayName: string;
   classId: string | null;
   role: UserRole | null;

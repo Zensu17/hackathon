@@ -24,29 +24,52 @@ export interface UseAuthSessionResult {
   refreshSession: () => Promise<AuthSessionDto | null>;
   signIn: (input: SignInInput) => Promise<AuthSessionDto>;
   signUp: (input: SignUpInput) => Promise<AuthSessionDto>;
-  signOut: () => Promise<void>;
+  signOut: (options?: { clearLocalData?: boolean }) => Promise<void>;
   joinClass: (joinCode: string) => Promise<AuthSessionDto>;
   createClass: (name: string, joinCode?: string) => Promise<AuthSessionDto>;
   loadSampleSeed: () => Promise<AuthSessionDto>;
 }
 
-export function mapAuthError(error: unknown): string {
+export function mapAuthError(
+  error: unknown,
+  context: 'signin' | 'signup' = 'signin',
+): string {
   if (isAppError(error)) {
-    if (error.code === 'INVALID_EMAIL_DOMAIN') {
-      return labels.auth.errors.invalidEmailDomain;
+    if (error.code === 'INVALID_NIM_FORMAT') {
+      return labels.auth.errors.invalidNim;
+    }
+    if (error.code === 'DUPLICATE_NIM') {
+      return labels.auth.errors.duplicateNim;
+    }
+    if (error.code === 'PASSWORD_MISMATCH') {
+      return labels.auth.errors.passwordMismatch;
     }
     if (error.code === 'AUTH_ERROR') {
+      if (context === 'signup') {
+        return error.message && error.message !== 'AUTH_ERROR'
+          ? error.message
+          : labels.auth.errors.unexpected;
+      }
       return labels.auth.errors.authFailed;
+    }
+    if (error.code === 'NOT_FOUND') {
+      return labels.joinClass.errors.classNotFound;
     }
     if (error.code === 'VALIDATION_ERROR') {
       const msg = error.message.toLowerCase();
-      if (msg.includes('full name')) {
+      if (msg.includes('display name') || msg.includes('full name')) {
         return labels.auth.errors.missingDisplayName;
       }
       if (msg.includes('8 characters')) {
         return labels.auth.errors.shortPassword;
       }
-      if (msg.includes('email') || msg.includes('password')) {
+      if (msg.includes('class code')) {
+        return labels.auth.errors.missingClassCode;
+      }
+      if (msg.includes('nim')) {
+        return labels.auth.errors.invalidNim;
+      }
+      if (msg.includes('password')) {
         return labels.auth.errors.missingFields;
       }
       return labels.auth.errors.unexpected;
@@ -136,7 +159,7 @@ function useAuthSessionState(): UseAuthSessionResult {
         }
         return current;
       } catch (err) {
-        const message = mapAuthError(err);
+        const message = mapAuthError(err, 'signin');
         setError(message);
         throw new Error(message);
       }
@@ -155,7 +178,7 @@ function useAuthSessionState(): UseAuthSessionResult {
         }
         return current;
       } catch (err) {
-        const message = mapAuthError(err);
+        const message = mapAuthError(err, 'signup');
         setError(message);
         throw new Error(message);
       }
@@ -163,11 +186,14 @@ function useAuthSessionState(): UseAuthSessionResult {
     [container, refreshSession],
   );
 
-  const signOut = useCallback(async (): Promise<void> => {
-    setError(null);
-    await container.usecases.signOut.execute();
-    setSession(null);
-  }, [container]);
+  const signOut = useCallback(
+    async (options?: { clearLocalData?: boolean }): Promise<void> => {
+      setError(null);
+      await container.usecases.signOut.execute(options);
+      setSession(null);
+    },
+    [container],
+  );
 
   const joinClass = useCallback(
     async (joinCode: string): Promise<AuthSessionDto> => {

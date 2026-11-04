@@ -11,9 +11,12 @@ export function SignInPage(): React.ReactElement {
   const { signIn, signUp, clearError, isLocalFallbackMode } = useAuthSession();
 
   const [mode, setMode] = useState<AuthMode>('signin');
+  const [nim, setNim] = useState<string>('');
   const [displayName, setDisplayName] = useState<string>('');
-  const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
+  const [classCode, setClassCode] = useState<string>('');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
@@ -37,33 +40,57 @@ export function SignInPage(): React.ReactElement {
     setFormError(null);
     clearError();
 
-    const trimmedEmail = email.trim();
+    const trimmedNim = nim.trim().toUpperCase();
     const trimmedName = displayName.trim();
+    const trimmedClassCode = classCode.trim().toUpperCase();
 
-    if (mode === 'signup' && trimmedName.length === 0) {
-      setFormError(labels.auth.errors.missingDisplayName);
-      return;
-    }
-
-    if (trimmedEmail.length === 0 || password.length === 0) {
+    if (trimmedNim.length === 0 || password.length === 0) {
       setFormError(labels.auth.errors.missingFields);
       return;
     }
 
-    if (mode === 'signup' && password.length < 8) {
-      setFormError(labels.auth.errors.shortPassword);
-      return;
+    if (mode === 'signup') {
+      if (
+        typeof navigator !== 'undefined' &&
+        !navigator.onLine &&
+        !isLocalFallbackMode
+      ) {
+        setFormError(labels.auth.errors.offlineSignUp);
+        return;
+      }
+
+      if (trimmedName.length === 0) {
+        setFormError(labels.auth.errors.missingDisplayName);
+        return;
+      }
+
+      if (password.length < 8) {
+        setFormError(labels.auth.errors.shortPassword);
+        return;
+      }
+
+      if (confirmPassword !== password) {
+        setFormError(labels.auth.errors.passwordMismatch);
+        return;
+      }
+
+      if (trimmedClassCode.length === 0) {
+        setFormError(labels.auth.errors.missingClassCode);
+        return;
+      }
     }
 
     setIsSubmitting(true);
     try {
       const nextSession =
         mode === 'signin'
-          ? await signIn({ email: trimmedEmail, password })
+          ? await signIn({ nim: trimmedNim, password })
           : await signUp({
+              nim: trimmedNim,
               displayName: trimmedName,
-              email: trimmedEmail,
               password,
+              confirmPassword,
+              classCode: trimmedClassCode,
             });
 
       if (nextSession.user.classId && nextSession.currentClass) {
@@ -85,7 +112,7 @@ export function SignInPage(): React.ReactElement {
       <div className="page-stack">
         <header className="page-header">
           <h1>{heading}</h1>
-          <p className="page-lead">{labels.auth.intro}</p>
+          <p className="page-lead">{labels.auth.tagline}</p>
         </header>
 
         <section className="index-card">
@@ -96,7 +123,11 @@ export function SignInPage(): React.ReactElement {
           </div>
 
           <div className="form-stack">
-            <div className="mode-toggle" role="group" aria-label={labels.auth.modeSignInTab}>
+            <div
+              className="mode-toggle"
+              role="group"
+              aria-label={labels.auth.modeSignInTab}
+            >
               <button
                 type="button"
                 className="btn btn-secondary btn-toggle"
@@ -115,7 +146,33 @@ export function SignInPage(): React.ReactElement {
               </button>
             </div>
 
-            <form className="form-stack" noValidate onSubmit={(e) => void handleSubmit(e)}>
+            <form
+              className="form-stack"
+              noValidate
+              onSubmit={(e) => void handleSubmit(e)}
+            >
+              <div className="field-group">
+                <label htmlFor="auth-nim" className="field-label">
+                  {labels.auth.nimLabel}
+                </label>
+                <input
+                  id="auth-nim"
+                  name="nim"
+                  type="text"
+                  autoCapitalize="characters"
+                  autoComplete="username"
+                  className="field-input mono-input"
+                  placeholder={labels.auth.nimPlaceholder}
+                  aria-describedby="auth-nim-hint"
+                  value={nim}
+                  onChange={(event) => setNim(event.target.value)}
+                  disabled={isSubmitting}
+                />
+                <p id="auth-nim-hint" className="field-hint">
+                  {labels.auth.nimHint}
+                </p>
+              </div>
+
               {mode === 'signup' ? (
                 <div className="field-group">
                   <label htmlFor="auth-display-name" className="field-label">
@@ -136,34 +193,35 @@ export function SignInPage(): React.ReactElement {
               ) : null}
 
               <div className="field-group">
-                <label htmlFor="auth-email" className="field-label">
-                  {labels.auth.emailLabel}
-                </label>
-                <input
-                  id="auth-email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  className="field-input"
-                  placeholder={labels.auth.emailPlaceholder}
-                  aria-describedby="auth-email-hint"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  disabled={isSubmitting}
-                />
-                <p id="auth-email-hint" className="field-hint">
-                  {labels.auth.emailDomainHint}
-                </p>
-              </div>
-
-              <div className="field-group">
-                <label htmlFor="auth-password" className="field-label">
-                  {labels.auth.passwordLabel}
-                </label>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: 'var(--space-1)',
+                  }}
+                >
+                  <label htmlFor="auth-password" className="field-label" style={{ margin: 0 }}>
+                    {labels.auth.passwordLabel}
+                  </label>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-compact"
+                    style={{ minHeight: '32px', padding: '2px 8px', fontSize: 'var(--text-meta)' }}
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    aria-label={
+                      showPassword
+                        ? labels.auth.hidePasswordAria
+                        : labels.auth.showPasswordAria
+                    }
+                  >
+                    {showPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
                 <input
                   id="auth-password"
                   name="password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   autoComplete={
                     mode === 'signin' ? 'current-password' : 'new-password'
                   }
@@ -174,6 +232,53 @@ export function SignInPage(): React.ReactElement {
                   disabled={isSubmitting}
                 />
               </div>
+
+              {mode === 'signup' ? (
+                <>
+                  <div className="field-group">
+                    <label
+                      htmlFor="auth-confirm-password"
+                      className="field-label"
+                    >
+                      {labels.auth.confirmPasswordLabel}
+                    </label>
+                    <input
+                      id="auth-confirm-password"
+                      name="confirmPassword"
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      className="field-input"
+                      placeholder={labels.auth.confirmPasswordPlaceholder}
+                      value={confirmPassword}
+                      onChange={(event) =>
+                        setConfirmPassword(event.target.value)
+                      }
+                      disabled={isSubmitting}
+                    />
+                  </div>
+
+                  <div className="field-group">
+                    <label htmlFor="auth-class-code" className="field-label">
+                      {labels.auth.classCodeLabel}
+                    </label>
+                    <input
+                      id="auth-class-code"
+                      name="classCode"
+                      type="text"
+                      autoCapitalize="characters"
+                      className="field-input mono-input"
+                      placeholder={labels.auth.classCodePlaceholder}
+                      aria-describedby="auth-class-code-hint"
+                      value={classCode}
+                      onChange={(event) => setClassCode(event.target.value)}
+                      disabled={isSubmitting}
+                    />
+                    <p id="auth-class-code-hint" className="field-hint">
+                      {labels.auth.classCodeHint}
+                    </p>
+                  </div>
+                </>
+              ) : null}
 
               {formError ? (
                 <div className="field-error" role="alert">

@@ -26,7 +26,10 @@ import {
   UpdateWeek,
 } from '../application/usecases';
 import { LiteLearnDb } from '../data/local/LiteLearnDb';
-import { seedSampleClassData } from '../data/local/seed';
+import {
+  seedInitialLocalDemo,
+  seedSampleClassData,
+} from '../data/local/seed';
 import { SupabaseRemoteDataSource } from '../data/remote/SupabaseRemoteDataSource';
 import { createSupabaseClientFromEnv } from '../data/remote/supabaseClient';
 import { DexieNoteRepository } from '../data/repositories/DexieNoteRepository';
@@ -38,7 +41,6 @@ import { HybridCourseRepository } from '../data/repositories/HybridCourseReposit
 import { HybridDeadlineRepository } from '../data/repositories/HybridDeadlineRepository';
 import { HybridMaterialRepository } from '../data/repositories/HybridMaterialRepository';
 import { HybridWeekRepository } from '../data/repositories/HybridWeekRepository';
-import { parseAllowedEmailDomains } from '../domain/rules';
 
 const THEME_META_KEY = 'theme_preference';
 
@@ -84,7 +86,6 @@ export interface CreateAppContainerOptions {
   databaseName?: string;
   supabaseUrl?: string;
   supabaseAnonKey?: string;
-  allowedEmailDomainsRaw?: string;
 }
 
 function applyDocumentTheme(theme: ThemePreference): void {
@@ -106,10 +107,6 @@ export function createAppContainer(
     : null;
   const isLocalFallbackMode = remote === null;
 
-  const allowedDomains = parseAllowedEmailDomains(
-    options.allowedEmailDomainsRaw ?? import.meta.env.VITE_ALLOWED_EMAIL_DOMAINS,
-  );
-
   const authRepository = new HybridAuthRepository(db, remote);
   const classRepository = new HybridClassRepository(db, remote);
   const courseRepository = new HybridCourseRepository(db, remote);
@@ -121,17 +118,46 @@ export function createAppContainer(
   void new DexieNoteRepository(db);
   void new DexieSyncQueueRepository(db);
 
+  const initPromise =
+    isLocalFallbackMode &&
+    (!options.databaseName || options.databaseName === 'litelearn_db')
+      ? seedInitialLocalDemo(db)
+      : Promise.resolve();
+
+  class LocalAwareListCourses extends ListCourses {
+    override async execute(input: Parameters<ListCourses['execute']>[0]) {
+      await initPromise;
+      return super.execute(input);
+    }
+  }
+
+  class LocalAwareGetUpcomingDeadlines extends GetUpcomingDeadlines {
+    override async execute(
+      input: Parameters<GetUpcomingDeadlines['execute']>[0],
+    ) {
+      await initPromise;
+      return super.execute(input);
+    }
+  }
+
+  class LocalAwareGetCourseWeeks extends GetCourseWeeks {
+    override async execute(input: Parameters<GetCourseWeeks['execute']>[0]) {
+      await initPromise;
+      return super.execute(input);
+    }
+  }
+
   const usecases: AppUseCases = {
-    signUp: new SignUp(authRepository, allowedDomains),
+    signUp: new SignUp(authRepository),
     signIn: new SignIn(authRepository),
     signOut: new SignOut(authRepository),
     getCurrentUser: new GetCurrentUser(authRepository, classRepository),
     joinClass: new JoinClass(classRepository),
     createClass: new CreateClass(classRepository),
-    listCourses: new ListCourses(courseRepository),
+    listCourses: new LocalAwareListCourses(courseRepository),
     followCourse: new FollowCourse(courseRepository),
     unfollowCourse: new UnfollowCourse(courseRepository),
-    getCourseWeeks: new GetCourseWeeks(
+    getCourseWeeks: new LocalAwareGetCourseWeeks(
       courseRepository,
       weekRepository,
       materialRepository,
@@ -142,7 +168,7 @@ export function createAppContainer(
       courseRepository,
       weekRepository,
     ),
-    getUpcomingDeadlines: new GetUpcomingDeadlines(
+    getUpcomingDeadlines: new LocalAwareGetUpcomingDeadlines(
       courseRepository,
       deadlineRepository,
     ),

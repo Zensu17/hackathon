@@ -3,7 +3,7 @@ import type { LocalUserRow } from '../local/LiteLearnDb';
 
 export interface RemoteProfileRow {
   id: string;
-  email: string;
+  nim: string;
   display_name: string;
   class_id: string | null;
   role: string | null;
@@ -22,7 +22,7 @@ function parseUserRole(raw: string | null): UserRole | null {
 export function localUserToDomain(row: LocalUserRow): User {
   return {
     id: row.id,
-    email: row.email,
+    nim: row.nim,
     displayName: row.displayName,
     classId: row.classId,
     role: row.role,
@@ -35,7 +35,7 @@ export function localUserToDomain(row: LocalUserRow): User {
 export function domainUserToLocal(user: User): LocalUserRow {
   return {
     id: user.id,
-    email: user.email,
+    nim: user.nim,
     displayName: user.displayName,
     classId: user.classId,
     role: user.role,
@@ -48,7 +48,7 @@ export function domainUserToLocal(user: User): LocalUserRow {
 export function remoteProfileToDomain(row: RemoteProfileRow): User {
   return {
     id: row.id,
-    email: row.email,
+    nim: row.nim,
     displayName: row.display_name,
     classId: row.class_id,
     role: parseUserRole(row.role),

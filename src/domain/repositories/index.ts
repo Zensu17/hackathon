@@ -6,6 +6,7 @@ export type {
 export type {
   AuthRepository,
   SignInCredentials,
+  SignOutOptions,
   SignUpCredentials,
 } from './AuthRepository';
 export type {

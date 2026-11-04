@@ -124,22 +124,43 @@ function mapRemoteError(
   return new AppError(fallbackCode, message);
 }
 
+function nimToHiddenAuthEmail(nim: string): string {
+  return `${nim.trim().toLowerCase()}@nim.litelearn.local`;
+}
+
 export class SupabaseRemoteDataSource {
   constructor(private readonly client: SupabaseClient) {}
 
   async signUp(input: SignUpCredentials): Promise<User> {
+    const normalizedNim = input.nim.trim().toUpperCase();
+    const hiddenEmail = nimToHiddenAuthEmail(normalizedNim);
     const { data, error } = await this.client.auth.signUp({
-      email: input.email,
+      email: hiddenEmail,
       password: input.password,
       options: {
         data: {
           display_name: input.displayName,
+          nim: normalizedNim,
         },
       },
     });
 
     if (error || !data.user) {
+      if (
+        error?.message?.toLowerCase().includes('already registered') ||
+        error?.message?.toLowerCase().includes('already exists')
+      ) {
+        throw new AppError(
+          'DUPLICATE_NIM',
+          'This NIM is already registered. Try signing in.',
+        );
+      }
       throw mapRemoteError(error ?? new Error('Account creation failed.'), 'AUTH_ERROR');
+    }
+
+    if (input.classCode && input.classCode.trim().length > 0) {
+      const onboarding = await this.joinClassByCode(input.classCode);
+      return onboarding.user;
     }
 
     const profile = await this.fetchProfileById(data.user.id);
@@ -150,7 +171,7 @@ export class SupabaseRemoteDataSource {
     const now = new Date().toISOString();
     return {
       id: data.user.id,
-      email: (data.user.email ?? input.email).toLowerCase(),
+      nim: normalizedNim,
       displayName: input.displayName,
       classId: null,
       role: null,
@@ -161,18 +182,20 @@ export class SupabaseRemoteDataSource {
   }
 
   async signIn(input: SignInCredentials): Promise<User> {
+    const normalizedNim = input.nim.trim().toUpperCase();
+    const hiddenEmail = nimToHiddenAuthEmail(normalizedNim);
     const { data, error } = await this.client.auth.signInWithPassword({
-      email: input.email,
+      email: hiddenEmail,
       password: input.password,
     });
 
     if (error || !data.user) {
-      throw mapRemoteError(error ?? new Error('Sign-in failed.'), 'AUTH_ERROR');
+      throw new AppError('AUTH_ERROR', 'NIM or password is incorrect.');
     }
 
     const profile = await this.fetchProfileById(data.user.id);
     if (!profile) {
-      throw new AppError('AUTH_ERROR', 'User profile could not be loaded.');
+      throw new AppError('AUTH_ERROR', 'NIM or password is incorrect.');
     }
     return profile;
   }

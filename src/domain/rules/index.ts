@@ -5,10 +5,10 @@ export {
   sortDeadlines,
 } from './deadlineRules';
 export {
-  DEFAULT_ALLOWED_CAMPUS_DOMAINS,
-  isAllowedCampusEmail,
-  parseAllowedEmailDomains,
-} from './emailRules';
+  isValidNim,
+  isValidPassword,
+  normalizeNim,
+} from './nimRules';
 export {
   MAX_MATERIAL_FILE_BYTES,
   SUB_ONE_MB_BYTES,

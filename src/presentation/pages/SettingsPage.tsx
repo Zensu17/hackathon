@@ -9,6 +9,7 @@ export function SettingsPage(): React.ReactElement {
   const { session, signOut, isLocalFallbackMode } = useAuthSession();
   const { theme, setTheme } = useTheme();
   const [isSigningOut, setIsSigningOut] = useState<boolean>(false);
+  const [isClearing, setIsClearing] = useState<boolean>(false);
 
   useEffect(() => {
     document.title = `${labels.settings.heading} | ${labels.app.name}`;
@@ -21,13 +22,18 @@ export function SettingsPage(): React.ReactElement {
   const activeThemeLabel =
     theme === 'dark' ? labels.settings.darkModeButton : labels.settings.lightModeButton;
 
-  const handleSignOut = async (): Promise<void> => {
-    setIsSigningOut(true);
+  const handleSignOut = async (clearLocalData = false): Promise<void> => {
+    if (clearLocalData) {
+      setIsClearing(true);
+    } else {
+      setIsSigningOut(true);
+    }
     try {
-      await signOut();
+      await signOut({ clearLocalData });
       navigate('/signin', { replace: true });
     } finally {
       setIsSigningOut(false);
+      setIsClearing(false);
     }
   };
 
@@ -78,8 +84,8 @@ export function SettingsPage(): React.ReactElement {
               <dd>{user.displayName}</dd>
             </div>
             <div className="meta-dl__item">
-              <dt>{labels.settings.emailLabel}</dt>
-              <dd className="mono-code">{user.email}</dd>
+              <dt>{labels.settings.nimLabel}</dt>
+              <dd className="mono-code">{user.nim}</dd>
             </div>
             <div className="meta-dl__item">
               <dt>{labels.settings.roleLabel}</dt>
@@ -125,10 +131,20 @@ export function SettingsPage(): React.ReactElement {
           <button
             type="button"
             className="btn btn-secondary"
-            onClick={() => void handleSignOut()}
-            disabled={isSigningOut}
+            onClick={() => void handleSignOut(false)}
+            disabled={isSigningOut || isClearing}
           >
             {isSigningOut ? labels.common.signingOut : labels.common.signOut}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => void handleSignOut(true)}
+            disabled={isSigningOut || isClearing}
+          >
+            {isClearing
+              ? labels.common.signingOutAndClearing
+              : labels.common.signOutAndClear}
           </button>
         </div>
       </section>

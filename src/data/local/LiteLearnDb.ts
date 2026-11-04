@@ -7,7 +7,7 @@ import type {
 
 export interface LocalUserRow {
   id: string;
-  email: string;
+  nim: string;
   displayName: string;
   classId: string | null;
   role: UserRole | null;
@@ -23,7 +23,7 @@ export interface LocalSessionRow {
 }
 
 export interface LocalCredentialRow {
-  email: string;
+  nim: string;
   userId: string;
   passwordHash: string;
   createdAt: string;
@@ -178,5 +178,30 @@ export class LiteLearnDb extends Dexie {
       syncQueue: 'id, entityType, entityId, nextRetryAt, createdAt',
       meta: 'key',
     });
+
+    this.version(2)
+      .stores({
+        users: 'id, nim, classId, updatedAt',
+        localCredentials: null,
+      })
+      .upgrade(async (tx) => {
+        await tx.table('users').clear();
+        await tx.table('sessions').clear();
+      });
+
+    this.version(3).stores({
+      localCredentials: 'nim, userId',
+    });
+  }
+
+  override open(): ReturnType<Dexie['open']> {
+    return super.open().catch(async (error: unknown) => {
+      console.warn(
+        'LiteLearnDb schema mismatch detected. Resetting database for v2...',
+        error,
+      );
+      await this.delete();
+      return super.open();
+    }) as ReturnType<Dexie['open']>;
   }
 }

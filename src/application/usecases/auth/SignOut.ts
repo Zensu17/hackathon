@@ -1,12 +1,15 @@
-import type { AuthRepository } from '../../../domain/repositories';
+import type {
+  AuthRepository,
+  SignOutOptions,
+} from '../../../domain/repositories';
 import { AppError, isAppError } from '../../errors/AppError';
 
 export class SignOut {
   constructor(private readonly authRepository: AuthRepository) {}
 
-  async execute(): Promise<void> {
+  async execute(options?: SignOutOptions): Promise<void> {
     try {
-      await this.authRepository.signOut();
+      await this.authRepository.signOut(options);
     } catch (error) {
       if (isAppError(error)) {
         throw error;

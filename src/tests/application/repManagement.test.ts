@@ -17,7 +17,7 @@ import { createFakeRepositories } from './fakes/FakeRepositories';
 
 const repClassA: User = {
   id: 'rep-1',
-  email: 'rep01@del.ac.id',
+  nim: '11S22001',
   displayName: 'Rep One',
   classId: 'class-a',
   role: 'rep',
@@ -29,14 +29,14 @@ const repClassA: User = {
 const studentClassA: User = {
   ...repClassA,
   id: 'student-1',
-  email: 'student01@students.del.ac.id',
+  nim: '11S22002',
   role: 'student',
 };
 
 const repClassB: User = {
   ...repClassA,
   id: 'rep-2',
-  email: 'rep02@del.ac.id',
+  nim: '14S22001',
   classId: 'class-b',
 };
 

@@ -47,34 +47,51 @@ interface StoredCredential {
 
 export class FakeAuthRepository implements AuthRepository {
   readonly users: Map<string, User>;
-  readonly credentialsByEmail = new Map<string, StoredCredential>();
+  readonly classes: Map<string, Class>;
+  readonly credentialsByNim = new Map<string, StoredCredential>();
   currentUserId: string | null = null;
   private nextId = 1;
 
-  constructor(sharedUsers: Map<string, User> = new Map()) {
+  constructor(
+    sharedUsers: Map<string, User> = new Map(),
+    sharedClasses: Map<string, Class> = new Map(),
+  ) {
     this.users = sharedUsers;
+    this.classes = sharedClasses;
   }
 
   async signUp(input: SignUpCredentials): Promise<User> {
-    const normalizedEmail = input.email.trim().toLowerCase();
-    if (this.credentialsByEmail.has(normalizedEmail)) {
-      throw new AppError('AUTH_ERROR', 'Account already exists for this email.');
+    const normalizedNim = input.nim.trim().toUpperCase();
+    if (this.credentialsByNim.has(normalizedNim)) {
+      throw new AppError('DUPLICATE_NIM', 'This NIM is already registered. Try signing in.');
+    }
+
+    let matchedClass: Class | null = null;
+    if (input.classCode && input.classCode.trim().length > 0) {
+      const code = input.classCode.trim().toUpperCase();
+      matchedClass =
+        Array.from(this.classes.values()).find(
+          (c) => c.deletedAt === null && c.joinCode === code,
+        ) ?? null;
+      if (!matchedClass && this.classes.size > 0) {
+        throw new AppError('NOT_FOUND', 'No class matched that class code.');
+      }
     }
 
     const now = '2026-11-04T08:00:00.000Z';
     const user: User = {
       id: `user-${this.nextId++}`,
-      email: normalizedEmail,
+      nim: normalizedNim,
       displayName: input.displayName,
-      classId: null,
-      role: null,
+      classId: matchedClass?.id ?? null,
+      role: matchedClass ? 'student' : null,
       createdAt: now,
       updatedAt: now,
       deletedAt: null,
     };
 
     this.users.set(user.id, user);
-    this.credentialsByEmail.set(normalizedEmail, {
+    this.credentialsByNim.set(normalizedNim, {
       userId: user.id,
       password: input.password,
     });
@@ -83,10 +100,10 @@ export class FakeAuthRepository implements AuthRepository {
   }
 
   async signIn(input: SignInCredentials): Promise<User> {
-    const normalizedEmail = input.email.trim().toLowerCase();
-    const record = this.credentialsByEmail.get(normalizedEmail);
+    const normalizedNim = input.nim.trim().toUpperCase();
+    const record = this.credentialsByNim.get(normalizedNim);
     if (!record || record.password !== input.password) {
-      throw new AppError('AUTH_ERROR', 'Invalid email or password.');
+      throw new AppError('AUTH_ERROR', 'NIM or password is incorrect.');
     }
 
     const user = this.users.get(record.userId);
@@ -98,8 +115,12 @@ export class FakeAuthRepository implements AuthRepository {
     return { ...user };
   }
 
-  async signOut(): Promise<void> {
+  async signOut(options?: { clearLocalData?: boolean }): Promise<void> {
     this.currentUserId = null;
+    if (options?.clearLocalData) {
+      this.credentialsByNim.clear();
+      this.users.clear();
+    }
   }
 
   async getCurrentUser(): Promise<User | null> {
@@ -669,10 +690,11 @@ export interface FakeRepositoryBundle {
 
 export function createFakeRepositories(): FakeRepositoryBundle {
   const users = new Map<string, User>();
+  const classRepo = new FakeClassRepository(users);
   return {
     users,
-    auth: new FakeAuthRepository(users),
-    classes: new FakeClassRepository(users),
+    auth: new FakeAuthRepository(users, classRepo.classes),
+    classes: classRepo,
     courses: new FakeCourseRepository(),
     weeks: new FakeWeekRepository(),
     materials: new FakeMaterialRepository(),

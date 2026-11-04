@@ -3,6 +3,7 @@ import type { User } from '../../domain/entities';
 import type {
   AuthRepository,
   SignInCredentials,
+  SignOutOptions,
   SignUpCredentials,
 } from '../../domain/repositories';
 import type { LiteLearnDb } from '../local/LiteLearnDb';
@@ -146,8 +147,8 @@ function sha256PureJs(bytes: Uint8Array): string {
     .join('');
 }
 
-async function hashLocalPassword(email: string, password: string): Promise<string> {
-  const encoded = new TextEncoder().encode(`litelearn:${email}:${password}`);
+async function hashLocalPassword(nim: string, password: string): Promise<string> {
+  const encoded = new TextEncoder().encode(`litelearn:${nim}:${password}`);
   if (
     typeof globalThis.crypto !== 'undefined' &&
     globalThis.crypto.subtle &&
@@ -182,14 +183,15 @@ export class HybridAuthRepository implements AuthRepository {
   }
 
   async signUp(input: SignUpCredentials): Promise<User> {
-    const normalizedEmail = input.email.trim().toLowerCase();
+    const normalizedNim = input.nim.trim().toUpperCase();
     const nowIso = new Date().toISOString();
 
     if (this.remote !== null) {
       const user = await this.remote.signUp({
-        email: normalizedEmail,
+        nim: normalizedNim,
         password: input.password,
         displayName: input.displayName,
+        classCode: input.classCode,
       });
 
       await this.db.transaction('rw', [this.db.users, this.db.sessions], async () => {
@@ -204,13 +206,36 @@ export class HybridAuthRepository implements AuthRepository {
       return user;
     }
 
-    const passwordHash = await hashLocalPassword(normalizedEmail, input.password);
+    const normalizedCode = input.classCode.trim().toUpperCase();
+    let matchedClass = await this.db.classes
+      .where('joinCode')
+      .equals(normalizedCode)
+      .first();
+
+    if (!matchedClass && normalizedCode === 'CLASSA') {
+      matchedClass = {
+        id: 'seed-class-a',
+        name: 'Class A',
+        joinCode: 'CLASSA',
+        createdByUserId: 'system',
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        deletedAt: null,
+      };
+      await this.db.classes.put(matchedClass);
+    }
+
+    if (!matchedClass || matchedClass.deletedAt !== null) {
+      throw new AppError('NOT_FOUND', 'No class matched that class code.');
+    }
+
+    const passwordHash = await hashLocalPassword(normalizedNim, input.password);
     const createdUser: User = {
       id: generateUuid(),
-      email: normalizedEmail,
+      nim: normalizedNim,
       displayName: input.displayName.trim(),
-      classId: null,
-      role: null,
+      classId: matchedClass.id,
+      role: 'student',
       createdAt: nowIso,
       updatedAt: nowIso,
       deletedAt: null,
@@ -218,19 +243,24 @@ export class HybridAuthRepository implements AuthRepository {
 
     await this.db.transaction(
       'rw',
-      [this.db.users, this.db.localCredentials, this.db.sessions],
+      [
+        this.db.users,
+        this.db.localCredentials,
+        this.db.sessions,
+        this.db.courseFollows,
+      ],
       async () => {
-        const existingCred = await this.db.localCredentials.get(normalizedEmail);
+        const existingCred = await this.db.localCredentials.get(normalizedNim);
         if (existingCred) {
           throw new AppError(
-            'AUTH_ERROR',
-            'An account with this campus email already exists on this device.',
+            'DUPLICATE_NIM',
+            'This NIM is already registered. Try signing in.',
           );
         }
 
         await this.db.users.put(domainUserToLocal(createdUser));
         await this.db.localCredentials.put({
-          email: normalizedEmail,
+          nim: normalizedNim,
           userId: createdUser.id,
           passwordHash,
           createdAt: nowIso,
@@ -240,6 +270,23 @@ export class HybridAuthRepository implements AuthRepository {
           userId: createdUser.id,
           updatedAt: nowIso,
         });
+
+        if (matchedClass.id === 'seed-class-a') {
+          await this.db.courseFollows.bulkPut([
+            {
+              id: `seed-follow-${createdUser.id}-seed-course-a`,
+              userId: createdUser.id,
+              courseId: 'seed-course-a',
+              createdAt: nowIso,
+            },
+            {
+              id: `seed-follow-${createdUser.id}-seed-course-b`,
+              userId: createdUser.id,
+              courseId: 'seed-course-b',
+              createdAt: nowIso,
+            },
+          ]);
+        }
       },
     );
 
@@ -247,12 +294,12 @@ export class HybridAuthRepository implements AuthRepository {
   }
 
   async signIn(input: SignInCredentials): Promise<User> {
-    const normalizedEmail = input.email.trim().toLowerCase();
+    const normalizedNim = input.nim.trim().toUpperCase();
     const nowIso = new Date().toISOString();
 
     if (this.remote !== null) {
       const user = await this.remote.signIn({
-        email: normalizedEmail,
+        nim: normalizedNim,
         password: input.password,
       });
 
@@ -346,19 +393,19 @@ export class HybridAuthRepository implements AuthRepository {
       return user;
     }
 
-    const credential = await this.db.localCredentials.get(normalizedEmail);
+    const credential = await this.db.localCredentials.get(normalizedNim);
     if (!credential) {
-      throw new AppError('AUTH_ERROR', 'Invalid email or password.');
+      throw new AppError('AUTH_ERROR', 'NIM or password is incorrect.');
     }
 
-    const expectedHash = await hashLocalPassword(normalizedEmail, input.password);
+    const expectedHash = await hashLocalPassword(normalizedNim, input.password);
     if (expectedHash !== credential.passwordHash) {
-      throw new AppError('AUTH_ERROR', 'Invalid email or password.');
+      throw new AppError('AUTH_ERROR', 'NIM or password is incorrect.');
     }
 
     const userRow = await this.db.users.get(credential.userId);
     if (!userRow || userRow.deletedAt !== null) {
-      throw new AppError('AUTH_ERROR', 'User account is not active.');
+      throw new AppError('AUTH_ERROR', 'NIM or password is incorrect.');
     }
 
     await this.db.sessions.put({
@@ -370,7 +417,7 @@ export class HybridAuthRepository implements AuthRepository {
     return localUserToDomain(userRow);
   }
 
-  async signOut(): Promise<void> {
+  async signOut(options?: SignOutOptions): Promise<void> {
     if (this.remote !== null) {
       try {
         await this.remote.signOut();
@@ -379,5 +426,24 @@ export class HybridAuthRepository implements AuthRepository {
       }
     }
     await this.db.sessions.delete('current');
+
+    if (options?.clearLocalData) {
+      await Promise.all([
+        this.db.users.clear(),
+        this.db.sessions.clear(),
+        this.db.localCredentials.clear(),
+        this.db.classes.clear(),
+        this.db.courses.clear(),
+        this.db.courseFollows.clear(),
+        this.db.weeks.clear(),
+        this.db.materials.clear(),
+        this.db.materialBlobs.clear(),
+        this.db.deadlines.clear(),
+        this.db.announcements.clear(),
+        this.db.notes.clear(),
+        this.db.syncQueue.clear(),
+        this.db.meta.clear(),
+      ]);
+    }
   }
 }
