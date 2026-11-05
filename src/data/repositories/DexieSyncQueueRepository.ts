@@ -68,6 +68,17 @@ export class DexieSyncQueueRepository implements SyncQueueRepository {
     });
   }
 
+  async clearFailureState(): Promise<void> {
+    const rows = await this.db.syncQueue.toArray();
+    await this.db.syncQueue.bulkPut(
+      rows.map((row) => ({
+        ...row,
+        lastError: null,
+        nextRetryAt: null,
+      })),
+    );
+  }
+
   async remove(id: string): Promise<void> {
     await this.db.syncQueue.delete(id);
   }

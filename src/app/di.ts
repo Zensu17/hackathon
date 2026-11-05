@@ -77,6 +77,8 @@ export interface AppContainer {
   readonly isLocalFallbackMode: boolean;
   getThemePreference(): Promise<ThemePreference | null>;
   setThemePreference(theme: ThemePreference): Promise<void>;
+  getSyncStatus(): Promise<{ pendingChanges: number; hasFailedChanges: boolean }>;
+  retrySync(): Promise<void>;
   loadSampleSeedData(
     userId: string,
   ): Promise<{ classId: string; joinCode: string }>;
@@ -221,6 +223,17 @@ export function createAppContainer(
     async setThemePreference(theme: ThemePreference): Promise<void> {
       await db.meta.put({ key: THEME_META_KEY, value: theme });
       applyDocumentTheme(theme);
+    },
+    async getSyncStatus(): Promise<{ pendingChanges: number; hasFailedChanges: boolean }> {
+      const rows = await db.syncQueue.toArray();
+      return {
+        pendingChanges: rows.length,
+        hasFailedChanges: rows.some((row) => Boolean(row.lastError)),
+      };
+    },
+    async retrySync(): Promise<void> {
+      const queue = new DexieSyncQueueRepository(db);
+      await queue.clearFailureState();
     },
     async loadSampleSeedData(
       userId: string,

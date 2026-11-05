@@ -457,7 +457,9 @@ export function RepFormPage(): React.ReactElement {
           summary: weekSummary,
           editId: isEditMode ? editId : undefined,
         });
-        navigate(`/courses/${saved.courseId}`);
+        navigate(`/courses/${saved.courseId}`, {
+          state: { toast: 'Saved on this device. Will sync later.' },
+        });
         return;
       }
 
@@ -510,7 +512,9 @@ export function RepFormPage(): React.ReactElement {
           dueAt: new Date(parsedDueMs).toISOString(),
           editId: isEditMode ? editId : undefined,
         });
-        navigate(`/courses/${saved.courseId}`);
+        navigate(`/courses/${saved.courseId}`, {
+          state: { toast: 'Saved on this device. Will sync later.' },
+        });
         return;
       }
 
@@ -529,7 +533,9 @@ export function RepFormPage(): React.ReactElement {
           body: announcementBody,
           editId: isEditMode ? editId : undefined,
         });
-        navigate(`/courses/${saved.courseId}`);
+        navigate(`/courses/${saved.courseId}`, {
+          state: { toast: 'Saved on this device. Will sync later.' },
+        });
       }
     } catch (err) {
       setFormError(

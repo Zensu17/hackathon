@@ -13,6 +13,7 @@ const SignInPage = lazy(() => import('../presentation/pages/SignInPage'));
 const JoinClassPage = lazy(() => import('../presentation/pages/JoinClassPage'));
 const HomePage = lazy(() => import('../presentation/pages/HomePage'));
 const CoursesPage = lazy(() => import('../presentation/pages/CoursesPage'));
+const DeadlinesPage = lazy(() => import('../presentation/pages/DeadlinesPage'));
 const CourseDetailPage = lazy(
   () => import('../presentation/pages/CourseDetailPage'),
 );
@@ -124,6 +125,14 @@ export function AppRoutes(): React.ReactElement {
           element={
             <LazyScreen>
               <HomePage />
+            </LazyScreen>
+          }
+        />
+        <Route
+          path="/deadlines"
+          element={
+            <LazyScreen>
+              <DeadlinesPage />
             </LazyScreen>
           }
         />

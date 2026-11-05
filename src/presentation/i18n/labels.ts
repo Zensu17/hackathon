@@ -131,6 +131,24 @@ export const labels = {
     emptyNoDeadlinesBody:
       'Your followed courses have no upcoming or past deadlines recorded on this device.',
     errorTitle: 'Could not read deadlines from local storage',
+    urgentSectionHeading: 'Priority deadlines (overdue & due within 24h)',
+    scheduledSectionHeading: 'Scheduled upcoming deadlines',
+    allScheduledNotice: 'All followed deadlines are scheduled comfortably ahead.',
+    openCourseCta: 'Open course',
+  },
+  deadlines: {
+    heading: 'Deadlines',
+    intro: 'Review work due across the courses you follow.',
+    backToHome: 'Back to home',
+    filterAriaLabel: 'Filter deadlines',
+    filterAll: 'All deadlines',
+    filterWeek: 'This week',
+    filterOverdue: 'Overdue',
+    emptyTitle: 'No deadlines match this filter',
+    emptyBody: 'No deadlines are recorded for your followed courses.',
+    emptyFilteredBody: 'Try another filter to see more deadlines.',
+    loading: 'Loading deadlines from local storage...',
+    errorTitle: 'Could not load deadlines from local storage',
   },
   courses: {
     heading: 'Class courses',
@@ -141,6 +159,12 @@ export const labels = {
     followingLabel: 'Following',
     openWeeksCta: 'Open weeks',
     editCourseCta: 'Edit',
+    filterAriaLabel: 'Filter class courses',
+    filterAll: 'All courses',
+    filterFollowing: 'Following only',
+    noFollowedFilterTitle: 'No followed courses yet',
+    noFollowedFilterBody:
+      'You are not following any courses in this class yet. Switch back to all courses to choose which to follow.',
     loading: 'Loading class courses from local storage...',
     emptyTitle: 'No courses in this class yet',
     emptyBodyStudent:
@@ -298,6 +322,8 @@ export const labels = {
     joinCodeLabel: 'Class join code:',
     joinCodeShareHint:
       'Share this code with classmates so they can join your class workspace.',
+    copyCodeButton: 'Copy code',
+    codeCopied: 'Copied to clipboard',
     environmentCardTitle: 'Storage mode',
     onlineModeDescription:
       'Connected to Supabase with local IndexedDB read caching.',

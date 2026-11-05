@@ -1,11 +1,22 @@
 import React from 'react';
-import { Link, NavLink, Outlet } from 'react-router';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router';
 import { useAuthSession } from '../hooks/useAuthSession';
+import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import { useTheme } from '../hooks/useTheme';
+import { useSyncStatus } from '../hooks/useSyncStatus';
 import { labels } from '../i18n/labels';
+import {
+  IconBook,
+  IconCalendarCheck,
+  IconHome,
+  IconLogout,
+  IconMoon,
+  IconNote,
+  IconSettings,
+  IconSun,
+} from './Icons';
+import { NetworkStatus } from './FigmaComponents';
 import './AppLayout.css';
-
-// Design Read: Offline study index for dormitory students on mobile phones, in a crisp academic index-card style, dial ENERGY 1 / RHYTHM 1 / MOTION 1.
 
 function ThemeQuickSwitch(): React.ReactElement {
   const { theme, toggleTheme } = useTheme();
@@ -24,7 +35,10 @@ function ThemeQuickSwitch(): React.ReactElement {
           : labels.nav.themeToggleAriaToDark
       }
     >
-      {isDark ? labels.nav.switchToLight : labels.nav.switchToDark}
+      <span className="theme-btn__icon" aria-hidden="true">
+        {isDark ? <IconSun size={16} /> : <IconMoon size={16} />}
+      </span>
+      <span>{isDark ? labels.nav.switchToLight : labels.nav.switchToDark}</span>
     </button>
   );
 }
@@ -41,9 +55,10 @@ export function OnboardingLayout({
   headerAction,
 }: OnboardingLayoutProps): React.ReactElement {
   const { session } = useAuthSession();
+  const networkState = useNetworkStatus();
 
   return (
-    <div className="app-shell">
+    <div className="app-shell app-shell--onboarding">
       <a href="#main-content" className="skip-link">
         {labels.app.skipToMain}
       </a>
@@ -58,6 +73,7 @@ export function OnboardingLayout({
         >
           <div className="app-header__brand-group">
             <span className="app-brand">{labels.app.name}</span>
+            <NetworkStatus state={networkState} />
           </div>
           <div className="app-header__controls">
             {headerAction}
@@ -75,7 +91,7 @@ export function OnboardingLayout({
             : 'app-main app-main--onboarding'
         }
       >
-        {children}
+        <div className="app-container">{children}</div>
       </main>
 
       <footer className="app-footer app-footer--onboarding">
@@ -98,106 +114,274 @@ export function OnboardingLayout({
 }
 
 export function AppLayout(): React.ReactElement {
-  const { session } = useAuthSession();
+  const { session, signOut } = useAuthSession();
+  const networkState = useNetworkStatus();
+  const { pendingChanges, hasFailedChanges, retry } = useSyncStatus();
+  const navigate = useNavigate();
+
   const isRep = session?.user.role === 'rep';
   const currentClass = session?.currentClass ?? null;
   const roleLabel = isRep ? labels.app.roleRep : labels.app.roleStudent;
 
+  const handleSignOut = async (): Promise<void> => {
+    await signOut();
+    navigate('/signin');
+  };
+
   return (
-    <div className="app-shell">
+    <div className="app-shell app-shell--with-sidenav">
       <a href="#main-content" className="skip-link">
         {labels.app.skipToMain}
       </a>
 
-      <header className="app-header">
-        <div className="app-header__inner">
-          <div className="app-header__brand-group">
-            <Link to="/" className="app-brand">
-              {labels.app.name}
-            </Link>
-            {currentClass ? (
-              <span className="status-chip mono-code">
-                {currentClass.joinCode}
-              </span>
+      {/* Figma Native SideNav for Laptop (1024+ px) */}
+      <aside className="figma-sidenav" aria-label={labels.nav.ariaLabel}>
+        <div className="figma-sidenav__header">
+          <Link to="/" className="figma-sidenav__brand">
+            {labels.app.name}
+          </Link>
+          {currentClass ? (
+            <span className="status-chip mono-code">
+              {currentClass.joinCode}
+            </span>
+          ) : null}
+          <div style={{ marginTop: 'var(--space-2)' }}>
+            <NetworkStatus state={networkState} />
+          </div>
+        </div>
+
+        <nav className="figma-sidenav__nav">
+          <ul className="figma-sidenav__list">
+            <li>
+              <NavLink
+                to="/"
+                end
+                className={({ isActive }) =>
+                  isActive
+                    ? 'figma-sidenav__link figma-sidenav__link--active'
+                    : 'figma-sidenav__link'
+                }
+              >
+                <IconHome size={20} />
+                <span>{labels.nav.home}</span>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink
+                to="/courses"
+                className={({ isActive }) =>
+                  isActive
+                    ? 'figma-sidenav__link figma-sidenav__link--active'
+                    : 'figma-sidenav__link'
+                }
+              >
+                <IconBook size={20} />
+                <span>{labels.nav.courses}</span>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink
+                to="/deadlines"
+                className={({ isActive }) =>
+                  isActive
+                    ? 'figma-sidenav__link figma-sidenav__link--active'
+                    : 'figma-sidenav__link'
+                }
+              >
+                <IconCalendarCheck size={20} />
+                <span>Deadlines</span>
+              </NavLink>
+            </li>
+            {isRep ? (
+              <li>
+                <NavLink
+                  to="/manage"
+                  className={({ isActive }) =>
+                    isActive
+                      ? 'figma-sidenav__link figma-sidenav__link--active'
+                      : 'figma-sidenav__link'
+                  }
+                >
+                  <IconNote size={20} />
+                  <span>{labels.nav.manage}</span>
+                </NavLink>
+              </li>
             ) : null}
+            <li>
+              <NavLink
+                to="/settings"
+                className={({ isActive }) =>
+                  isActive
+                    ? 'figma-sidenav__link figma-sidenav__link--active'
+                    : 'figma-sidenav__link'
+                }
+              >
+                <IconSettings size={20} />
+                <span>{labels.nav.settings}</span>
+              </NavLink>
+            </li>
+          </ul>
+        </nav>
+
+        <div className="figma-sidenav__footer">
+          <div className="figma-sidenav__user">
+            <span className="figma-sidenav__user-name">
+              {session?.user.displayName ?? 'Student'}
+            </span>
+            <span className="status-chip">{roleLabel}</span>
           </div>
-
-          <nav className="app-nav" aria-label={labels.nav.ariaLabel}>
-            <ul className="app-nav__list">
-              <li className="app-nav__item">
-                <NavLink
-                  to="/"
-                  end
-                  className={({ isActive }) =>
-                    isActive
-                      ? 'app-nav__link app-nav__link--active'
-                      : 'app-nav__link'
-                  }
-                >
-                  {labels.nav.home}
-                </NavLink>
-              </li>
-              <li className="app-nav__item">
-                <NavLink
-                  to="/courses"
-                  className={({ isActive }) =>
-                    isActive
-                      ? 'app-nav__link app-nav__link--active'
-                      : 'app-nav__link'
-                  }
-                >
-                  {labels.nav.courses}
-                </NavLink>
-              </li>
-              {isRep ? (
-                <li className="app-nav__item">
-                  <NavLink
-                    to="/manage"
-                    className={({ isActive }) =>
-                      isActive
-                        ? 'app-nav__link app-nav__link--active'
-                        : 'app-nav__link'
-                    }
-                  >
-                    {labels.nav.manage}
-                  </NavLink>
-                </li>
-              ) : null}
-              <li className="app-nav__item">
-                <NavLink
-                  to="/settings"
-                  className={({ isActive }) =>
-                    isActive
-                      ? 'app-nav__link app-nav__link--active'
-                      : 'app-nav__link'
-                  }
-                >
-                  {labels.nav.settings}
-                </NavLink>
-              </li>
-            </ul>
-          </nav>
-
-          <div className="app-header__controls">
+          <div className="figma-sidenav__actions">
             <ThemeQuickSwitch />
+            <button
+              type="button"
+              className="btn btn-secondary figma-sidenav__logout-btn"
+              onClick={() => void handleSignOut()}
+              title="Sign out"
+            >
+              <IconLogout size={16} />
+              <span>Sign out</span>
+            </button>
           </div>
         </div>
-      </header>
+      </aside>
 
-      <main id="main-content" tabIndex={-1} className="app-main">
-        <Outlet />
-      </main>
+      {/* Main Study Workspace Area */}
+      <div className="app-workspace">
+        {/* Mobile / Tablet Top Header */}
+        <header className="app-header">
+          <div className="app-header__inner">
+            <div className="app-header__brand-group">
+              <Link to="/" className="app-brand">
+                {labels.app.name}
+              </Link>
+              {currentClass ? (
+                <span className="status-chip mono-code">
+                  {currentClass.joinCode}
+                </span>
+              ) : null}
+              <NetworkStatus state={networkState} />
+            </div>
 
-      <footer className="app-footer">
-        <div className="app-footer__inner">
-          <p className="app-footer__meta">
-            {currentClass
-              ? `${labels.app.footerClassMemberPrefix} ${currentClass.name} (${currentClass.joinCode})`
-              : labels.app.footerUnauthenticated}
-          </p>
-          {session ? <span className="status-chip">{roleLabel}</span> : null}
-        </div>
-      </footer>
+            <div className="app-header__controls">
+              <ThemeQuickSwitch />
+            </div>
+          </div>
+        </header>
+
+        {/* Content Viewport */}
+        <main id="main-content" tabIndex={-1} className="app-main">
+          <div className="app-container">
+            {pendingChanges > 0 ? (
+              <div className="sync-banner" role="status">
+                <span>
+                  {hasFailedChanges
+                    ? 'Sync needs attention.'
+                    : `${pendingChanges} change${pendingChanges === 1 ? '' : 's'} waiting to sync.`}
+                </span>
+                <span>
+                  Saved on this device. Changes will retry when connection returns.
+                </span>
+                {hasFailedChanges ? (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-compact"
+                    onClick={() => void retry()}
+                  >
+                    Allow retry
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+            <Outlet />
+          </div>
+        </main>
+
+        {/* Mobile Bottom Navigation (360-767 px, up to 1023px) */}
+        <nav className="figma-bottom-nav" aria-label={labels.nav.ariaLabel}>
+          <ul className="figma-bottom-nav__list">
+            <li className="figma-bottom-nav__item">
+              <NavLink
+                to="/"
+                end
+                className={({ isActive }) =>
+                  isActive
+                    ? 'figma-bottom-nav__link figma-bottom-nav__link--active'
+                    : 'figma-bottom-nav__link'
+                }
+              >
+                <IconHome size={20} />
+                <span>{labels.nav.home}</span>
+              </NavLink>
+            </li>
+            <li className="figma-bottom-nav__item">
+              <NavLink
+                to="/courses"
+                className={({ isActive }) =>
+                  isActive
+                    ? 'figma-bottom-nav__link figma-bottom-nav__link--active'
+                    : 'figma-bottom-nav__link'
+                }
+              >
+                <IconBook size={20} />
+                <span>{labels.nav.courses}</span>
+              </NavLink>
+            </li>
+            <li className="figma-bottom-nav__item">
+              <NavLink
+                to="/deadlines"
+                className={({ isActive }) =>
+                  isActive
+                    ? 'figma-bottom-nav__link figma-bottom-nav__link--active'
+                    : 'figma-bottom-nav__link'
+                }
+              >
+                <IconCalendarCheck size={20} />
+                <span>Deadlines</span>
+              </NavLink>
+            </li>
+            {isRep ? (
+              <li className="figma-bottom-nav__item">
+                <NavLink
+                  to="/manage"
+                  className={({ isActive }) =>
+                    isActive
+                      ? 'figma-bottom-nav__link figma-bottom-nav__link--active'
+                      : 'figma-bottom-nav__link'
+                  }
+                >
+                  <IconNote size={20} />
+                  <span>{labels.nav.manage}</span>
+                </NavLink>
+              </li>
+            ) : null}
+            <li className="figma-bottom-nav__item">
+              <NavLink
+                to="/settings"
+                className={({ isActive }) =>
+                  isActive
+                    ? 'figma-bottom-nav__link figma-bottom-nav__link--active'
+                    : 'figma-bottom-nav__link'
+                }
+              >
+                <IconSettings size={20} />
+                <span>{labels.nav.settings}</span>
+              </NavLink>
+            </li>
+          </ul>
+        </nav>
+
+        {/* Global Footer on Mobile/Tablet */}
+        <footer className="app-footer">
+          <div className="app-footer__inner">
+            <p className="app-footer__meta">
+              {currentClass
+                ? `${labels.app.footerClassMemberPrefix} ${currentClass.name} (${currentClass.joinCode})`
+                : labels.app.footerUnauthenticated}
+            </p>
+            {session ? <span className="status-chip">{roleLabel}</span> : null}
+          </div>
+        </footer>
+      </div>
     </div>
   );
 }

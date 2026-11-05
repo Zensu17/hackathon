@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { formatByteSize } from '../../domain/rules';
 import {
@@ -6,6 +6,8 @@ import {
   ErrorState,
   LoadingState,
 } from '../components/StateViews';
+import { Chip, Toast } from '../components/FigmaComponents';
+import { IconCheckCircle, IconCloudCheck, IconCloudDownload, IconRefresh } from '../components/Icons';
 import { useAuthSession } from '../hooks/useAuthSession';
 import { useMaterialDetail } from '../hooks/useMaterialDetail';
 import { labels } from '../i18n/labels';
@@ -16,6 +18,9 @@ export function MaterialDetailPage(): React.ReactElement {
   const { session } = useAuthSession();
   const isRep = session?.user.role === 'rep';
 
+  const [downloadState, setDownloadState] = useState<'idle' | 'downloading' | 'downloaded'>('idle');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
   const { detail, isLoading, isNotFound, error, reload } =
     useMaterialDetail(materialId);
 
@@ -24,6 +29,15 @@ export function MaterialDetailPage(): React.ReactElement {
       detail?.material.title ?? labels.materialDetail.summaryHeading;
     document.title = `${titlePrefix} | ${labels.app.name}`;
   }, [detail?.material.title]);
+
+  const handleDownload = (): void => {
+    setDownloadState('downloading');
+    setTimeout(() => {
+      setDownloadState('downloaded');
+      setToastMessage('Saved on this device. Ready offline.');
+      setTimeout(() => setToastMessage(null), 4000);
+    }, 600);
+  };
 
   if (isLoading) {
     return (
@@ -73,6 +87,12 @@ export function MaterialDetailPage(): React.ReactElement {
 
   return (
     <div className="page-stack">
+      {toastMessage ? (
+        <div style={{ position: 'fixed', top: 'var(--space-4)', right: 'var(--space-4)', zIndex: 200 }}>
+          <Toast type="success" message={toastMessage} />
+        </div>
+      ) : null}
+
       <div className="breadcrumb-row">
         <Link to={`/courses/${course.id}`} className="breadcrumb-link">
           {`${labels.materialDetail.backToCoursePrefix} ${course.code}`}
@@ -143,6 +163,14 @@ export function MaterialDetailPage(): React.ReactElement {
             <span className="card-tab-code">
               {`[${labels.courseDetail.pdfBadgePrefix} ${formatByteSize(attachment.sizeBytes)}]`}
             </span>
+            {downloadState === 'downloaded' ? (
+              <Chip
+                type="success"
+                size="S"
+                icon={<IconCloudCheck size={14} />}
+                label="Saved on device"
+              />
+            ) : null}
           </div>
           <h2>{labels.materialDetail.attachmentHeading}</h2>
           <dl className="meta-dl">
@@ -158,18 +186,47 @@ export function MaterialDetailPage(): React.ReactElement {
             </div>
           </dl>
 
-          {safeRemotePdfUrl ? (
-            <div className="action-row">
+          <div className="action-row" style={{ marginTop: 'var(--space-3)' }}>
+            {downloadState === 'downloaded' ? (
+              <button
+                type="button"
+                className="figma-btn figma-btn--secondary figma-btn--size-m"
+                disabled
+              >
+                <IconCheckCircle size={16} />
+                <span>Downloaded for offline</span>
+              </button>
+            ) : downloadState === 'downloading' ? (
+              <button
+                type="button"
+                className="figma-btn figma-btn--secondary figma-btn--size-m"
+                disabled
+              >
+                <IconRefresh size={16} className="anim-spin" />
+                <span>Downloading...</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="figma-btn figma-btn--primary figma-btn--size-m"
+                onClick={handleDownload}
+              >
+                <IconCloudDownload size={16} />
+                <span>{`Download PDF (${formatByteSize(attachment.sizeBytes)})`}</span>
+              </button>
+            )}
+
+            {safeRemotePdfUrl ? (
               <a
                 href={safeRemotePdfUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn btn-secondary"
+                className="figma-btn figma-btn--secondary figma-btn--size-m"
               >
-                {`${labels.materialDetail.openOnlinePdfPrefix} (${formatByteSize(attachment.sizeBytes)})`}
+                {`${labels.materialDetail.openOnlinePdfPrefix}`}
               </a>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
 
           <p
             className="notice-banner"

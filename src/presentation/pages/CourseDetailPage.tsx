@@ -1,11 +1,12 @@
-import React, { useEffect } from 'react';
-import { Link, useParams } from 'react-router';
+import React, { useEffect, useState } from 'react';
+import { Link, useLocation, useParams } from 'react-router';
 import { formatByteSize } from '../../domain/rules';
 import {
   EmptyState,
   ErrorState,
   LoadingState,
 } from '../components/StateViews';
+import { Toast } from '../components/FigmaComponents';
 import { useAuthSession } from '../hooks/useAuthSession';
 import { useCourseDetail } from '../hooks/useCourseDetail';
 import { labels } from '../i18n/labels';
@@ -13,9 +14,21 @@ import { formatDateTime, formatWeekCode } from '../utils/formatters';
 
 export function CourseDetailPage(): React.ReactElement {
   const { courseId } = useParams<{ courseId: string }>();
+  const location = useLocation();
   const { session } = useAuthSession();
   const userId = session?.user.id ?? null;
   const isRep = session?.user.role === 'rep';
+
+  const [toastMessage, setToastMessage] = useState<string | null>(() => {
+    return (location.state as { toast?: string } | null)?.toast ?? null;
+  });
+
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => setToastMessage(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
 
   const {
     courseWeeks,
@@ -88,6 +101,12 @@ export function CourseDetailPage(): React.ReactElement {
 
   return (
     <div className="page-stack">
+      {toastMessage ? (
+        <div style={{ position: 'fixed', top: 'var(--space-4)', right: 'var(--space-4)', zIndex: 200 }}>
+          <Toast type="success" message={toastMessage} />
+        </div>
+      ) : null}
+
       <div className="breadcrumb-row">
         <Link to="/courses" className="breadcrumb-link">
           {labels.courseDetail.backToCourses}
@@ -98,7 +117,10 @@ export function CourseDetailPage(): React.ReactElement {
         <div className="card-tab-bar">
           <span className="card-tab-code">{course.code}</span>
           {isFollowed ? (
-            <span className="status-chip">{labels.courses.followingLabel}</span>
+            <span className="status-chip status-chip--active">
+              <span className="status-indicator-dot" aria-hidden="true" />
+              {labels.courses.followingLabel}
+            </span>
           ) : null}
         </div>
 
@@ -244,6 +266,16 @@ export function CourseDetailPage(): React.ReactElement {
                                   ) : null}
                                 </div>
                               </div>
+                              {material.description ? (
+                                <p
+                                  className="meta-text"
+                                  style={{ margin: 0 }}
+                                >
+                                  {material.description.length > 120
+                                    ? `${material.description.slice(0, 120)}...`
+                                    : material.description}
+                                </p>
+                              ) : null}
                               {isRep ? (
                                 <div
                                   className="action-row"
@@ -294,6 +326,14 @@ export function CourseDetailPage(): React.ReactElement {
                                         : 'status-chip'
                                     }
                                   >
+                                    <span
+                                      className={
+                                        isUrgent
+                                          ? 'status-indicator-dot'
+                                          : 'status-indicator-square'
+                                      }
+                                      aria-hidden="true"
+                                    />
                                     {statusText}
                                   </span>
                                 </div>

@@ -9,7 +9,22 @@ export interface LoadingStateProps {
 export function LoadingState({ message }: LoadingStateProps): React.ReactElement {
   return (
     <div className="index-card state-card" role="status" aria-live="polite">
-      <p className="state-card__body">{message}</p>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 'var(--space-2)',
+        }}
+      >
+        <span
+          className="status-indicator-dot"
+          style={{ backgroundColor: 'var(--color-primary)' }}
+          aria-hidden="true"
+        />
+        <p className="state-card__body" style={{ margin: 0 }}>
+          {message}
+        </p>
+      </div>
     </div>
   );
 }

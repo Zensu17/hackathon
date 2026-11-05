@@ -16,5 +16,6 @@ export interface SyncQueueRepository {
   countPending(): Promise<number>;
   enqueue(input: EnqueueSyncItemInput): Promise<SyncQueueItem>;
   markFailed(id: string, errorMessage: string, nextRetryAt: string): Promise<void>;
+  clearFailureState(): Promise<void>;
   remove(id: string): Promise<void>;
 }

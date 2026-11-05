@@ -670,6 +670,16 @@ export class FakeSyncQueueRepository implements SyncQueueRepository {
     });
   }
 
+  async clearFailureState(): Promise<void> {
+    for (const [id, item] of this.items) {
+      this.items.set(id, {
+        ...item,
+        lastError: null,
+        nextRetryAt: null,
+      });
+    }
+  }
+
   async remove(id: string): Promise<void> {
     this.items.delete(id);
   }

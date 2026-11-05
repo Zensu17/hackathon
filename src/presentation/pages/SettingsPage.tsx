@@ -10,6 +10,7 @@ export function SettingsPage(): React.ReactElement {
   const { theme, setTheme } = useTheme();
   const [isSigningOut, setIsSigningOut] = useState<boolean>(false);
   const [isClearing, setIsClearing] = useState<boolean>(false);
+  const [copied, setCopied] = useState<boolean>(false);
 
   useEffect(() => {
     document.title = `${labels.settings.heading} | ${labels.app.name}`;
@@ -21,6 +22,21 @@ export function SettingsPage(): React.ReactElement {
     user?.role === 'rep' ? labels.app.roleRep : labels.app.roleStudent;
   const activeThemeLabel =
     theme === 'dark' ? labels.settings.darkModeButton : labels.settings.lightModeButton;
+
+  const handleCopyCode = async (): Promise<void> => {
+    if (!currentClass?.joinCode) {
+      return;
+    }
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(currentClass.joinCode);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+    } catch {
+      // Ignore clipboard write failure
+    }
+  };
 
   const handleSignOut = async (clearLocalData = false): Promise<void> => {
     if (clearLocalData) {
@@ -38,7 +54,7 @@ export function SettingsPage(): React.ReactElement {
   };
 
   return (
-    <div className="page-stack">
+    <div className="page-stack settings-workspace">
       <header className="page-header">
         <h1>{labels.settings.heading}</h1>
       </header>
@@ -108,7 +124,26 @@ export function SettingsPage(): React.ReactElement {
             </div>
             <div className="meta-dl__item">
               <dt>{labels.settings.joinCodeLabel}</dt>
-              <dd className="mono-code">{currentClass.joinCode}</dd>
+              <dd
+                className="mono-code"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 'var(--space-2)',
+                }}
+              >
+                <span>{currentClass.joinCode}</span>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-compact"
+                  onClick={() => void handleCopyCode()}
+                  aria-live="polite"
+                >
+                  {copied
+                    ? labels.settings.codeCopied
+                    : labels.settings.copyCodeButton}
+                </button>
+              </dd>
             </div>
           </dl>
           <p className="field-hint" style={{ marginTop: 'var(--space-3)' }}>
