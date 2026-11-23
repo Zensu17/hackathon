@@ -33,7 +33,7 @@ export class BrowserNetworkStatusService implements NetworkStatusService {
     if (typeof navigator === 'undefined') {
       return 'online';
     }
-    if (!navigator.onLine) {
+    if (navigator.onLine === false) {
       return 'offline';
     }
     const nav = navigator as NavigatorWithConnection;
@@ -55,7 +55,7 @@ export class BrowserNetworkStatusService implements NetworkStatusService {
   }
 
   async probeNow(): Promise<ConnectionQuality> {
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       this.emit('offline');
       return 'offline';
     }
@@ -93,7 +93,7 @@ export class BrowserNetworkStatusService implements NetworkStatusService {
       return next;
     } catch {
       const next: ConnectionQuality =
-        typeof navigator !== 'undefined' && !navigator.onLine ? 'offline' : 'slow';
+        typeof navigator !== 'undefined' && navigator.onLine === false ? 'offline' : 'slow';
       this.emit(next);
       return next;
     } finally {

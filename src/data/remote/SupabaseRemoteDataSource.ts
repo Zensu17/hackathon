@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClientLoader } from './supabaseClient';
 import {
   AppError,
   isAppError,
@@ -12,6 +13,7 @@ import type {
   Deadline,
   Material,
   MaterialUploadInput,
+  Note,
   User,
   Week,
 } from '../../domain/entities';
@@ -39,10 +41,12 @@ import {
   remoteAnnouncementToDomain,
   remoteDeadlineToDomain,
   remoteMaterialToDomain,
+  remoteNoteToDomain,
   remoteWeekToDomain,
   type RemoteAnnouncementRow,
   type RemoteDeadlineRow,
   type RemoteMaterialRow,
+  type RemoteNoteRow,
   type RemoteWeekRow,
 } from '../mappers/contentMapper';
 import {
@@ -129,12 +133,21 @@ function nimToHiddenAuthEmail(nim: string): string {
 }
 
 export class SupabaseRemoteDataSource {
-  constructor(private readonly client: SupabaseClient) {}
+  constructor(
+    private readonly clientSource: SupabaseClient | SupabaseClientLoader,
+  ) {}
+
+  private async getClient(): Promise<SupabaseClient> {
+    if (typeof this.clientSource === 'function') {
+      return this.clientSource();
+    }
+    return this.clientSource;
+  }
 
   async signUp(input: SignUpCredentials): Promise<User> {
     const normalizedNim = input.nim.trim().toUpperCase();
     const hiddenEmail = nimToHiddenAuthEmail(normalizedNim);
-    const { data, error } = await this.client.auth.signUp({
+    const { data, error } = await (await this.getClient()).auth.signUp({
       email: hiddenEmail,
       password: input.password,
       options: {
@@ -184,7 +197,7 @@ export class SupabaseRemoteDataSource {
   async signIn(input: SignInCredentials): Promise<User> {
     const normalizedNim = input.nim.trim().toUpperCase();
     const hiddenEmail = nimToHiddenAuthEmail(normalizedNim);
-    const { data, error } = await this.client.auth.signInWithPassword({
+    const { data, error } = await (await this.getClient()).auth.signInWithPassword({
       email: hiddenEmail,
       password: input.password,
     });
@@ -201,14 +214,14 @@ export class SupabaseRemoteDataSource {
   }
 
   async signOut(): Promise<void> {
-    const { error } = await this.client.auth.signOut();
+    const { error } = await (await this.getClient()).auth.signOut();
     if (error) {
       throw mapRemoteError(error, 'AUTH_ERROR');
     }
   }
 
   async getSessionUserId(): Promise<string | null> {
-    const { data, error } = await this.client.auth.getSession();
+    const { data, error } = await (await this.getClient()).auth.getSession();
     if (error) {
       return null;
     }
@@ -216,7 +229,7 @@ export class SupabaseRemoteDataSource {
   }
 
   async fetchProfileById(userId: string): Promise<User | null> {
-    const { data, error } = await this.client
+    const { data, error } = await (await this.getClient())
       .from('profiles')
       .select('*')
       .eq('id', userId)
@@ -232,7 +245,7 @@ export class SupabaseRemoteDataSource {
   }
 
   async fetchClassById(classId: string): Promise<Class | null> {
-    const { data, error } = await this.client
+    const { data, error } = await (await this.getClient())
       .from('classes')
       .select('*')
       .eq('id', classId)
@@ -251,7 +264,7 @@ export class SupabaseRemoteDataSource {
     name: string,
     joinCode: string,
   ): Promise<ClassOnboardingResult> {
-    const { data, error } = await this.client.rpc('create_class_as_rep', {
+    const { data, error } = await (await this.getClient()).rpc('create_class_as_rep', {
       p_name: name,
       p_join_code: joinCode,
     });
@@ -268,7 +281,7 @@ export class SupabaseRemoteDataSource {
   }
 
   async joinClassByCode(joinCode: string): Promise<ClassOnboardingResult> {
-    const { data, error } = await this.client.rpc('join_class_by_code', {
+    const { data, error } = await (await this.getClient()).rpc('join_class_by_code', {
       p_join_code: joinCode,
     });
 
@@ -286,11 +299,15 @@ export class SupabaseRemoteDataSource {
     };
   }
 
-  async fetchCoursesByClassId(classId: string): Promise<Course[]> {
-    const { data, error } = await this.client
-      .from('courses')
-      .select('*')
-      .eq('class_id', classId);
+  async fetchCoursesByClassId(
+    classId: string,
+    sinceIso?: string | null,
+  ): Promise<Course[]> {
+    let query = (await this.getClient()).from('courses').select('*').eq('class_id', classId);
+    if (sinceIso) {
+      query = query.gt('updated_at', sinceIso);
+    }
+    const { data, error } = await query;
 
     if (error) {
       throw mapRemoteError(error);
@@ -299,7 +316,7 @@ export class SupabaseRemoteDataSource {
   }
 
   async fetchCourseFollowsByUserId(userId: string): Promise<CourseFollow[]> {
-    const { data, error } = await this.client
+    const { data, error } = await (await this.getClient())
       .from('course_follows')
       .select('*')
       .eq('user_id', userId);
@@ -316,7 +333,7 @@ export class SupabaseRemoteDataSource {
     userId: string,
     courseId: string,
   ): Promise<CourseFollow> {
-    const { data, error } = await this.client
+    const { data, error } = await (await this.getClient())
       .from('course_follows')
       .upsert(
         {
@@ -335,7 +352,7 @@ export class SupabaseRemoteDataSource {
   }
 
   async deleteCourseFollow(userId: string, courseId: string): Promise<void> {
-    const { error } = await this.client
+    const { error } = await (await this.getClient())
       .from('course_follows')
       .delete()
       .eq('user_id', userId)
@@ -347,7 +364,7 @@ export class SupabaseRemoteDataSource {
   }
 
   async createCourse(input: CreateCourseRecordInput): Promise<Course> {
-    const { data, error } = await this.client
+    const { data, error } = await (await this.getClient())
       .from('courses')
       .insert({
         class_id: input.classId,
@@ -378,7 +395,7 @@ export class SupabaseRemoteDataSource {
       patch.deleted_at = input.deletedAt;
     }
 
-    const { data, error } = await this.client
+    const { data, error } = await (await this.getClient())
       .from('courses')
       .update(patch)
       .eq('id', id)
@@ -392,7 +409,7 @@ export class SupabaseRemoteDataSource {
   }
 
   async createWeek(input: CreateWeekRecordInput): Promise<Week> {
-    const { data, error } = await this.client
+    const { data, error } = await (await this.getClient())
       .from('weeks')
       .insert({
         course_id: input.courseId,
@@ -420,7 +437,7 @@ export class SupabaseRemoteDataSource {
       patch.deleted_at = input.deletedAt;
     }
 
-    const { data, error } = await this.client
+    const { data, error } = await (await this.getClient())
       .from('weeks')
       .update(patch)
       .eq('id', id)
@@ -459,7 +476,7 @@ export class SupabaseRemoteDataSource {
     const safeFileName = sanitizeStorageFileName(params.file.name);
     const storagePath = `${safeClassId}/${safeCourseId}/${safeMaterialId}/${safeFileName}`;
 
-    const { error: uploadError } = await this.client.storage
+    const { error: uploadError } = await (await this.getClient()).storage
       .from('materials')
       .upload(storagePath, params.file.bytes, {
         contentType: 'application/pdf',
@@ -475,7 +492,7 @@ export class SupabaseRemoteDataSource {
   }
 
   async getSignedMaterialUrl(storagePath: string): Promise<string | null> {
-    const { data, error } = await this.client.storage
+    const { data, error } = await (await this.getClient()).storage
       .from('materials')
       .createSignedUrl(storagePath, 3600);
 
@@ -483,6 +500,15 @@ export class SupabaseRemoteDataSource {
       return null;
     }
     return data.signedUrl;
+  }
+
+  async deleteMaterialPdf(storagePath: string): Promise<void> {
+    const { error } = await (await this.getClient()).storage
+      .from('materials')
+      .remove([storagePath]);
+    if (error) {
+      console.warn('Could not delete superseded PDF from storage:', error.message);
+    }
   }
 
   async createMaterial(params: {
@@ -510,7 +536,7 @@ export class SupabaseRemoteDataSource {
       remoteUrl = uploaded.remoteUrl;
     }
 
-    const { data, error } = await this.client
+    const { data, error } = await (await this.getClient())
       .from('materials')
       .insert({
         id: params.id,
@@ -583,7 +609,7 @@ export class SupabaseRemoteDataSource {
       patch.deleted_at = params.input.deletedAt;
     }
 
-    const { data, error } = await this.client
+    const { data, error } = await (await this.getClient())
       .from('materials')
       .update(patch)
       .eq('id', params.id)
@@ -601,7 +627,7 @@ export class SupabaseRemoteDataSource {
   }
 
   async createDeadline(input: CreateDeadlineRecordInput): Promise<Deadline> {
-    const { data, error } = await this.client
+    const { data, error } = await (await this.getClient())
       .from('deadlines')
       .insert({
         course_id: input.courseId,
@@ -634,7 +660,7 @@ export class SupabaseRemoteDataSource {
       patch.deleted_at = input.deletedAt;
     }
 
-    const { data, error } = await this.client
+    const { data, error } = await (await this.getClient())
       .from('deadlines')
       .update(patch)
       .eq('id', id)
@@ -659,7 +685,7 @@ export class SupabaseRemoteDataSource {
       payload.posted_at = input.postedAt;
     }
 
-    const { data, error } = await this.client
+    const { data, error } = await (await this.getClient())
       .from('announcements')
       .insert(payload)
       .select('*')
@@ -689,7 +715,7 @@ export class SupabaseRemoteDataSource {
       patch.deleted_at = input.deletedAt;
     }
 
-    const { data, error } = await this.client
+    const { data, error } = await (await this.getClient())
       .from('announcements')
       .update(patch)
       .eq('id', id)
@@ -706,6 +732,7 @@ export class SupabaseRemoteDataSource {
 
   async fetchFollowedCoursesContent(
     courseIds: readonly string[],
+    sinceIso?: string | null,
   ): Promise<HydratedCoursesContent> {
     if (courseIds.length === 0) {
       return {
@@ -717,12 +744,27 @@ export class SupabaseRemoteDataSource {
     }
 
     const ids = [...courseIds];
+    let weeksQuery = (await this.getClient()).from('weeks').select('*').in('course_id', ids);
+    let materialsQuery = (await this.getClient()).from('materials').select('*').in('course_id', ids);
+    let deadlinesQuery = (await this.getClient()).from('deadlines').select('*').in('course_id', ids);
+    let announcementsQuery = (await this.getClient())
+      .from('announcements')
+      .select('*')
+      .in('course_id', ids);
+
+    if (sinceIso) {
+      weeksQuery = weeksQuery.gt('updated_at', sinceIso);
+      materialsQuery = materialsQuery.gt('updated_at', sinceIso);
+      deadlinesQuery = deadlinesQuery.gt('updated_at', sinceIso);
+      announcementsQuery = announcementsQuery.gt('updated_at', sinceIso);
+    }
+
     const [weeksRes, materialsRes, deadlinesRes, announcementsRes] =
       await Promise.all([
-        this.client.from('weeks').select('*').in('course_id', ids),
-        this.client.from('materials').select('*').in('course_id', ids),
-        this.client.from('deadlines').select('*').in('course_id', ids),
-        this.client.from('announcements').select('*').in('course_id', ids),
+        weeksQuery,
+        materialsQuery,
+        deadlinesQuery,
+        announcementsQuery,
       ]);
 
     const firstError =
@@ -734,14 +776,10 @@ export class SupabaseRemoteDataSource {
       throw mapRemoteError(firstError);
     }
 
+    // Signed URLs are minted on demand during download to avoid N+1 requests and expired cached links.
     const rawMaterials = (materialsRes.data ?? []) as RemoteMaterialRow[];
-    const materials = await Promise.all(
-      rawMaterials.map(async (row) => {
-        const remoteUrl = row.attachment_storage_path
-          ? await this.getSignedMaterialUrl(row.attachment_storage_path)
-          : null;
-        return remoteMaterialToDomain(row, { remoteUrl });
-      }),
+    const materials = rawMaterials.map((row) =>
+      remoteMaterialToDomain(row, { remoteUrl: null }),
     );
 
     return {
@@ -756,12 +794,28 @@ export class SupabaseRemoteDataSource {
     };
   }
 
+  async fetchUserNotes(
+    userId: string,
+    sinceIso?: string | null,
+  ): Promise<Note[]> {
+    let query = (await this.getClient()).from('notes').select('*').eq('user_id', userId);
+    if (sinceIso) {
+      query = query.gt('updated_at', sinceIso);
+    }
+    const { data, error } = await query;
+
+    if (error) {
+      throw mapRemoteError(error);
+    }
+    return ((data ?? []) as RemoteNoteRow[]).map(remoteNoteToDomain);
+  }
+
   async upsertNote(input: {
     userId: string;
     materialId: string;
     body: string;
   }): Promise<void> {
-    const { error } = await this.client.from('notes').upsert(
+    const { error } = await (await this.getClient()).from('notes').upsert(
       {
         user_id: input.userId,
         material_id: input.materialId,
@@ -778,7 +832,7 @@ export class SupabaseRemoteDataSource {
   }
 
   async upsertCoursePayload(payload: Record<string, unknown>): Promise<void> {
-    const { error } = await this.client.from('courses').upsert({
+    const { error } = await (await this.getClient()).from('courses').upsert({
       id: payload.id,
       class_id: payload.classId,
       code: payload.code,
@@ -793,7 +847,7 @@ export class SupabaseRemoteDataSource {
   }
 
   async upsertWeekPayload(payload: Record<string, unknown>): Promise<void> {
-    const { error } = await this.client.from('weeks').upsert({
+    const { error } = await (await this.getClient()).from('weeks').upsert({
       id: payload.id,
       course_id: payload.courseId,
       week_number: payload.weekNumber,
@@ -808,7 +862,7 @@ export class SupabaseRemoteDataSource {
   }
 
   async upsertDeadlinePayload(payload: Record<string, unknown>): Promise<void> {
-    const { error } = await this.client.from('deadlines').upsert({
+    const { error } = await (await this.getClient()).from('deadlines').upsert({
       id: payload.id,
       course_id: payload.courseId,
       week_id: payload.weekId ?? null,
@@ -826,7 +880,7 @@ export class SupabaseRemoteDataSource {
   async upsertAnnouncementPayload(
     payload: Record<string, unknown>,
   ): Promise<void> {
-    const { error } = await this.client.from('announcements').upsert({
+    const { error } = await (await this.getClient()).from('announcements').upsert({
       id: payload.id,
       course_id: payload.courseId,
       title: payload.title,
@@ -841,7 +895,7 @@ export class SupabaseRemoteDataSource {
   }
 
   async upsertMaterialPayload(payload: Record<string, unknown>): Promise<void> {
-    const { error } = await this.client.from('materials').upsert({
+    const row: Record<string, unknown> = {
       id: payload.id,
       course_id: payload.courseId,
       week_id: payload.weekId,
@@ -850,7 +904,21 @@ export class SupabaseRemoteDataSource {
       external_url: payload.externalUrl ?? null,
       updated_at: payload.updatedAt ?? new Date().toISOString(),
       deleted_at: payload.deletedAt ?? null,
-    });
+    };
+
+    if (payload.removeAttachment === true) {
+      row.attachment_name = null;
+      row.attachment_size_bytes = null;
+      row.attachment_mime_type = null;
+      row.attachment_storage_path = null;
+    } else if (payload.attachmentStoragePath) {
+      row.attachment_name = payload.attachmentName ?? null;
+      row.attachment_size_bytes = payload.attachmentSizeBytes ?? null;
+      row.attachment_mime_type = payload.attachmentMimeType ?? 'application/pdf';
+      row.attachment_storage_path = payload.attachmentStoragePath;
+    }
+
+    const { error } = await (await this.getClient()).from('materials').upsert(row);
     if (error) {
       throw mapRemoteError(error);
     }

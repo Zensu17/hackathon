@@ -196,6 +196,8 @@ export const labels = {
     addDeadlineCta: 'Add deadline',
     postAnnouncementCta: 'Post announcement',
     weeksHeading: 'Weekly index',
+    expandAllWeeks: 'Expand all',
+    collapseAllWeeks: 'Collapse all',
     weekTabPrefix: 'WEEK',
     materialsSubheading: 'Materials',
     weekDeadlinesSubheading: 'Week deadlines',
@@ -315,6 +317,17 @@ export const labels = {
       saveMaterial: 'Save material',
       saveDeadline: 'Save deadline',
       postAnnouncement: 'Post announcement',
+    },
+    delete: {
+      sectionHeading: 'Remove item',
+      sectionHint:
+        'Removing this item hides it from students right away and queues deletion when syncing.',
+      triggerCta: 'Delete item',
+      confirmPrompt:
+        'Confirm removal of this item from the class workspace?',
+      confirmCta: 'Confirm delete',
+      deleting: 'Deleting...',
+      deletedToast: 'Removed from this device. Will sync later.',
     },
     loadingForm: 'Loading class courses and form values from local storage...',
     loadErrorTitle: 'Could not load form data from local storage',

@@ -101,6 +101,7 @@ async function fileToUploadInput(file: File): Promise<MaterialUploadInput> {
 export function useRepForms() {
   const container = useAppContainer();
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const clearError = useCallback(() => {
@@ -335,8 +336,161 @@ export function useRepForms() {
     [container],
   );
 
+  const deleteCourse = useCallback(
+    async (params: {
+      actor: User;
+      courseId: string;
+      code: string;
+      name: string;
+      description: string;
+    }): Promise<Course> => {
+      setIsDeleting(true);
+      setError(null);
+      try {
+        return await container.usecases.updateCourse.execute({
+          actor: params.actor,
+          courseId: params.courseId,
+          code: params.code,
+          name: params.name,
+          description: params.description,
+          deletedAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        const message = mapRepError(err);
+        setError(message);
+        throw new Error(message);
+      } finally {
+        setIsDeleting(false);
+      }
+    },
+    [container],
+  );
+
+  const deleteWeek = useCallback(
+    async (params: {
+      actor: User;
+      weekId: string;
+      weekNumber: number;
+      title: string;
+      summary: string;
+    }): Promise<Week> => {
+      setIsDeleting(true);
+      setError(null);
+      try {
+        return await container.usecases.updateWeek.execute({
+          actor: params.actor,
+          weekId: params.weekId,
+          weekNumber: params.weekNumber,
+          title: params.title,
+          summary: params.summary,
+          deletedAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        const message = mapRepError(err);
+        setError(message);
+        throw new Error(message);
+      } finally {
+        setIsDeleting(false);
+      }
+    },
+    [container],
+  );
+
+  const deleteMaterial = useCallback(
+    async (params: {
+      actor: User;
+      materialId: string;
+      weekId: string;
+      title: string;
+      description: string;
+      externalUrl: string | null;
+    }): Promise<Material> => {
+      setIsDeleting(true);
+      setError(null);
+      try {
+        return await container.usecases.updateMaterial.execute({
+          actor: params.actor,
+          materialId: params.materialId,
+          weekId: params.weekId,
+          title: params.title,
+          description: params.description,
+          externalUrl: params.externalUrl,
+          deletedAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        const message = mapRepError(err);
+        setError(message);
+        throw new Error(message);
+      } finally {
+        setIsDeleting(false);
+      }
+    },
+    [container],
+  );
+
+  const deleteDeadline = useCallback(
+    async (params: {
+      actor: User;
+      deadlineId: string;
+      weekId: string | null;
+      title: string;
+      description: string;
+      dueAt: string;
+    }): Promise<Deadline> => {
+      setIsDeleting(true);
+      setError(null);
+      try {
+        return await container.usecases.updateDeadline.execute({
+          actor: params.actor,
+          deadlineId: params.deadlineId,
+          weekId: params.weekId,
+          title: params.title,
+          description: params.description,
+          dueAt: params.dueAt,
+          deletedAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        const message = mapRepError(err);
+        setError(message);
+        throw new Error(message);
+      } finally {
+        setIsDeleting(false);
+      }
+    },
+    [container],
+  );
+
+  const deleteAnnouncement = useCallback(
+    async (params: {
+      actor: User;
+      announcementId: string;
+      title: string;
+      body: string;
+    }): Promise<Announcement> => {
+      setIsDeleting(true);
+      setError(null);
+      try {
+        return await container.usecases.updateAnnouncement.execute({
+          actor: params.actor,
+          announcementId: params.announcementId,
+          title: params.title,
+          body: params.body,
+          deletedAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        const message = mapRepError(err);
+        setError(message);
+        throw new Error(message);
+      } finally {
+        setIsDeleting(false);
+      }
+    },
+    [container],
+  );
+
   return {
     isSaving,
+    isDeleting,
     error,
     clearError,
     setError,
@@ -349,5 +503,10 @@ export function useRepForms() {
     saveMaterial,
     saveDeadline,
     saveAnnouncement,
+    deleteCourse,
+    deleteWeek,
+    deleteMaterial,
+    deleteDeadline,
+    deleteAnnouncement,
   };
 }

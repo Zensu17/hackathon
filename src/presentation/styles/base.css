@@ -307,6 +307,32 @@ input[type="radio"]:not(:disabled),
   box-shadow: 0 1px 2px rgba(20, 33, 61, 0.04);
 }
 
+.btn-danger {
+  background-color: var(--color-danger);
+  border-color: var(--color-danger);
+  color: var(--ink-on-primary);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.14);
+}
+
+.btn-danger-outline {
+  background-color: transparent;
+  border-color: color-mix(in srgb, var(--color-danger) 55%, var(--color-border));
+  color: var(--color-danger);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn-danger:hover:not(:disabled):not([aria-disabled="true"]) {
+    filter: brightness(0.92);
+    color: var(--ink-on-primary);
+  }
+
+  .btn-danger-outline:hover:not(:disabled):not([aria-disabled="true"]) {
+    background-color: var(--bg-accent-rust);
+    border-color: var(--color-danger);
+    color: var(--ink-accent-rust);
+  }
+}
+
 .field-label {
   display: block;
   margin-bottom: 6px;

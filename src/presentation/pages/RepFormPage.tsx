@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
+import { toast } from 'sonner';
 import type { CourseListItemDto, WeekWithContentDto } from '../../application/dto';
 import type { MaterialAttachment } from '../../domain/entities';
 import { formatByteSize, validateMaterialFile } from '../../domain/rules';
@@ -12,6 +13,48 @@ import { useAuthSession } from '../hooks/useAuthSession';
 import { type RepEntityType, useRepForms } from '../hooks/useRepForms';
 import { labels } from '../i18n/labels';
 import { toDateTimeLocalValue } from '../utils/formatters';
+
+type DeleteTargetSnapshot =
+  | {
+      type: 'course';
+      id: string;
+      code: string;
+      name: string;
+      description: string;
+    }
+  | {
+      type: 'week';
+      id: string;
+      courseId: string;
+      weekNumber: number;
+      title: string;
+      summary: string;
+    }
+  | {
+      type: 'material';
+      id: string;
+      courseId: string;
+      weekId: string;
+      title: string;
+      description: string;
+      externalUrl: string | null;
+    }
+  | {
+      type: 'deadline';
+      id: string;
+      courseId: string;
+      weekId: string | null;
+      title: string;
+      description: string;
+      dueAt: string;
+    }
+  | {
+      type: 'announcement';
+      id: string;
+      courseId: string;
+      title: string;
+      body: string;
+    };
 
 const REP_ENTITY_TYPES: readonly RepEntityType[] = [
   'course',
@@ -50,6 +93,7 @@ export function RepFormPage(): React.ReactElement {
 
   const {
     isSaving,
+    isDeleting,
     error: hookError,
     clearError,
     loadCoursesForClass,
@@ -61,12 +105,21 @@ export function RepFormPage(): React.ReactElement {
     saveMaterial,
     saveDeadline,
     saveAnnouncement,
+    deleteCourse,
+    deleteWeek,
+    deleteMaterial,
+    deleteDeadline,
+    deleteAnnouncement,
   } = useRepForms();
 
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [courses, setCourses] = useState<CourseListItemDto[]>([]);
   const [weeks, setWeeks] = useState<WeekWithContentDto[]>([]);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTargetSnapshot | null>(
+    null,
+  );
+  const [confirmingDelete, setConfirmingDelete] = useState<boolean>(false);
 
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   const [selectedWeekId, setSelectedWeekId] = useState<string>('');
@@ -120,6 +173,8 @@ export function RepFormPage(): React.ReactElement {
     setFormError(null);
     setFileValidationError(null);
     setSelectedFile(null);
+    setDeleteTarget(null);
+    setConfirmingDelete(false);
     clearError();
 
     try {
@@ -138,6 +193,13 @@ export function RepFormPage(): React.ReactElement {
           setCourseCode(target.code);
           setCourseName(target.name);
           setCourseDescription(target.description);
+          setDeleteTarget({
+            type: 'course',
+            id: target.id,
+            code: target.code,
+            name: target.name,
+            description: target.description,
+          });
         } else {
           setSelectedCourseId(queryCourseId);
           setCourseCode('');
@@ -168,6 +230,15 @@ export function RepFormPage(): React.ReactElement {
         setExternalUrl(detail.material.externalUrl ?? '');
         setExistingAttachment(detail.material.attachment);
         setRemoveAttachment(false);
+        setDeleteTarget({
+          type: 'material',
+          id: detail.material.id,
+          courseId: detail.course.id,
+          weekId: detail.week.id,
+          title: detail.material.title,
+          description: detail.material.description,
+          externalUrl: detail.material.externalUrl,
+        });
         return;
       }
 
@@ -189,6 +260,14 @@ export function RepFormPage(): React.ReactElement {
               setWeekNumber(String(foundWeek.weekNumber));
               setWeekTitle(foundWeek.title);
               setWeekSummary(foundWeek.summary);
+              setDeleteTarget({
+                type: 'week',
+                id: foundWeek.id,
+                courseId: candidateId,
+                weekNumber: foundWeek.weekNumber,
+                title: foundWeek.title,
+                summary: foundWeek.summary,
+              });
               return;
             }
           }
@@ -244,6 +323,15 @@ export function RepFormPage(): React.ReactElement {
               setDeadlineTitle(foundDeadline.title);
               setDeadlineDescription(foundDeadline.description);
               setDeadlineDueAt(toDateTimeLocalValue(foundDeadline.dueAt));
+              setDeleteTarget({
+                type: 'deadline',
+                id: foundDeadline.id,
+                courseId: candidateId,
+                weekId: foundDeadline.weekId,
+                title: foundDeadline.title,
+                description: foundDeadline.description,
+                dueAt: foundDeadline.dueAt,
+              });
               return;
             }
           }
@@ -276,6 +364,13 @@ export function RepFormPage(): React.ReactElement {
               setWeeks([]);
               setAnnouncementTitle(found.title);
               setAnnouncementBody(found.body);
+              setDeleteTarget({
+                type: 'announcement',
+                id: found.id,
+                courseId: candidateId,
+                title: found.title,
+                body: found.body,
+              });
               return;
             }
           }
@@ -544,6 +639,85 @@ export function RepFormPage(): React.ReactElement {
     }
   };
 
+  const handleConfirmDelete = async (): Promise<void> => {
+    if (!actor || !deleteTarget) {
+      return;
+    }
+    setFormError(null);
+    clearError();
+
+    try {
+      if (deleteTarget.type === 'course') {
+        await deleteCourse({
+          actor,
+          courseId: deleteTarget.id,
+          code: deleteTarget.code,
+          name: deleteTarget.name,
+          description: deleteTarget.description,
+        });
+        toast.success(labels.repForm.delete.deletedToast);
+        navigate('/courses', { replace: true });
+        return;
+      }
+
+      if (deleteTarget.type === 'week') {
+        await deleteWeek({
+          actor,
+          weekId: deleteTarget.id,
+          weekNumber: deleteTarget.weekNumber,
+          title: deleteTarget.title,
+          summary: deleteTarget.summary,
+        });
+        toast.success(labels.repForm.delete.deletedToast);
+        navigate(`/courses/${deleteTarget.courseId}`, { replace: true });
+        return;
+      }
+
+      if (deleteTarget.type === 'material') {
+        await deleteMaterial({
+          actor,
+          materialId: deleteTarget.id,
+          weekId: deleteTarget.weekId,
+          title: deleteTarget.title,
+          description: deleteTarget.description,
+          externalUrl: deleteTarget.externalUrl,
+        });
+        toast.success(labels.repForm.delete.deletedToast);
+        navigate(`/courses/${deleteTarget.courseId}`, { replace: true });
+        return;
+      }
+
+      if (deleteTarget.type === 'deadline') {
+        await deleteDeadline({
+          actor,
+          deadlineId: deleteTarget.id,
+          weekId: deleteTarget.weekId,
+          title: deleteTarget.title,
+          description: deleteTarget.description,
+          dueAt: deleteTarget.dueAt,
+        });
+        toast.success(labels.repForm.delete.deletedToast);
+        navigate(`/courses/${deleteTarget.courseId}`, { replace: true });
+        return;
+      }
+
+      await deleteAnnouncement({
+        actor,
+        announcementId: deleteTarget.id,
+        title: deleteTarget.title,
+        body: deleteTarget.body,
+      });
+      toast.success(labels.repForm.delete.deletedToast);
+      navigate(`/courses/${deleteTarget.courseId}`, { replace: true });
+    } catch (err) {
+      setFormError(
+        err instanceof Error ? err.message : labels.repForm.errors.storageFailed,
+      );
+      setConfirmingDelete(false);
+    }
+  };
+
+  const isBusy = isSaving || isDeleting;
   const activeErrorMessage = formError ?? hookError;
   const cancelDestination = selectedCourseId
     ? `/courses/${selectedCourseId}`
@@ -1032,7 +1206,7 @@ export function RepFormPage(): React.ReactElement {
                   <button
                     type="submit"
                     className="btn btn-primary"
-                    disabled={isSaving}
+                    disabled={isBusy}
                   >
                     {submitLabel}
                   </button>
@@ -1043,6 +1217,55 @@ export function RepFormPage(): React.ReactElement {
               </>
             )}
           </form>
+        </section>
+      ) : null}
+
+      {!isLoadingData && !loadError && isEditMode && deleteTarget ? (
+        <section className="index-card index-card--urgent section-block">
+          <div className="card-tab-bar" style={{ marginBottom: 0 }}>
+            <span className="card-tab-code">REMOVE</span>
+          </div>
+          <h2>{labels.repForm.delete.sectionHeading}</h2>
+          <p className="meta-text">{labels.repForm.delete.sectionHint}</p>
+
+          {confirmingDelete ? (
+            <div className="section-block" role="alert">
+              <p style={{ margin: 0, fontWeight: 600 }}>
+                {labels.repForm.delete.confirmPrompt}
+              </p>
+              <div className="action-row" style={{ marginTop: 0 }}>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  disabled={isBusy}
+                  onClick={() => void handleConfirmDelete()}
+                >
+                  {isDeleting
+                    ? labels.repForm.delete.deleting
+                    : labels.repForm.delete.confirmCta}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={isBusy}
+                  onClick={() => setConfirmingDelete(false)}
+                >
+                  {labels.common.cancel}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="action-row" style={{ marginTop: 0 }}>
+              <button
+                type="button"
+                className="btn btn-danger-outline"
+                disabled={isBusy}
+                onClick={() => setConfirmingDelete(true)}
+              >
+                {labels.repForm.delete.triggerCta}
+              </button>
+            </div>
+          )}
         </section>
       ) : null}
     </div>

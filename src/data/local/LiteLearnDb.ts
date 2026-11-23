@@ -159,6 +159,9 @@ export class LiteLearnDb extends Dexie {
   declare syncQueue: Table<LocalSyncQueueRow, string>;
   declare meta: Table<LocalMetaRow, string>;
 
+  private readonly syncQueueListeners = new Set<() => void>();
+  private syncNotifyScheduled = false;
+
   constructor(databaseName = 'litelearn_db') {
     super(databaseName);
 
@@ -192,12 +195,65 @@ export class LiteLearnDb extends Dexie {
     this.version(3).stores({
       localCredentials: 'nim, userId',
     });
+
+    const notifyAfterTx = (tx?: { on?: (event: string, cb: () => void) => void }): void => {
+      if (tx && typeof tx.on === 'function') {
+        tx.on('complete', () => {
+          this.notifySyncQueueChanged();
+        });
+        return;
+      }
+      this.notifySyncQueueChanged();
+    };
+
+    this.syncQueue.hook('creating', (_primKey, _obj, trans) => {
+      notifyAfterTx(trans as unknown as { on?: (event: string, cb: () => void) => void });
+    });
+    this.syncQueue.hook('updating', (_mods, _primKey, _obj, trans) => {
+      notifyAfterTx(trans as unknown as { on?: (event: string, cb: () => void) => void });
+    });
+    this.syncQueue.hook('deleting', (_primKey, _obj, trans) => {
+      notifyAfterTx(trans as unknown as { on?: (event: string, cb: () => void) => void });
+    });
+  }
+
+  subscribeSyncQueueChanges(listener: () => void): () => void {
+    this.syncQueueListeners.add(listener);
+    return () => {
+      this.syncQueueListeners.delete(listener);
+    };
+  }
+
+  notifySyncQueueChanged(): void {
+    if (this.syncQueueListeners.size === 0 || this.syncNotifyScheduled) {
+      return;
+    }
+    this.syncNotifyScheduled = true;
+    queueMicrotask(() => {
+      this.syncNotifyScheduled = false;
+      for (const listener of this.syncQueueListeners) {
+        listener();
+      }
+    });
   }
 
   override open(): ReturnType<Dexie['open']> {
     return super.open().catch(async (error: unknown) => {
+      const errorName =
+        typeof error === 'object' && error !== null && 'name' in error
+          ? String((error as { name?: unknown }).name ?? '')
+          : '';
+      const isSchemaMismatch =
+        errorName === 'UpgradeError' ||
+        errorName === 'VersionError' ||
+        errorName === 'SchemaError';
+
+      if (!isSchemaMismatch) {
+        throw error;
+      }
+
       console.warn(
-        'LiteLearnDb schema mismatch detected. Resetting database for v2...',
+        'LiteLearnDb schema mismatch detected. Resetting local cache for schema migration...',
         error,
       );
       await this.delete();

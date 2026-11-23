@@ -21,6 +21,22 @@ import {
 import type { SupabaseRemoteDataSource } from '../remote/SupabaseRemoteDataSource';
 import { generateUuid } from './HybridAuthRepository';
 
+function isNetworkFailure(error: unknown): boolean {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return true;
+  }
+  const msg =
+    error instanceof Error
+      ? error.message.toLowerCase()
+      : String(error).toLowerCase();
+  return (
+    msg.includes('failed to fetch') ||
+    msg.includes('network') ||
+    msg.includes('timeout') ||
+    msg.includes('offline')
+  );
+}
+
 export class HybridCourseRepository implements CourseRepository {
   constructor(
     private readonly db: LiteLearnDb,
@@ -55,93 +71,167 @@ export class HybridCourseRepository implements CourseRepository {
 
   async followCourse(userId: string, courseId: string): Promise<CourseFollow> {
     if (this.remote !== null) {
-      const follow = await this.remote.insertCourseFollow(userId, courseId);
-      const content = await this.remote.fetchFollowedCoursesContent([courseId]);
+      try {
+        const follow = await this.remote.insertCourseFollow(userId, courseId);
+        const content = await this.remote.fetchFollowedCoursesContent([courseId]);
 
-      await this.db.transaction(
-        'rw',
-        [
-          this.db.courseFollows,
-          this.db.weeks,
-          this.db.materials,
-          this.db.materialBlobs,
-          this.db.deadlines,
-          this.db.announcements,
-        ],
-        async () => {
-          await this.db.courseFollows
-            .where('[userId+courseId]')
-            .equals([userId, courseId])
-            .delete();
-          await this.db.courseFollows.put(domainCourseFollowToLocal(follow));
+        await this.db.transaction(
+          'rw',
+          [
+            this.db.courseFollows,
+            this.db.weeks,
+            this.db.materials,
+            this.db.materialBlobs,
+            this.db.deadlines,
+            this.db.announcements,
+          ],
+          async () => {
+            await this.db.courseFollows
+              .where('[userId+courseId]')
+              .equals([userId, courseId])
+              .delete();
+            await this.db.courseFollows.put(domainCourseFollowToLocal(follow));
 
-          if (content.weeks.length > 0) {
-            await this.db.weeks.bulkPut(content.weeks.map(domainWeekToLocal));
-          }
+            if (content.weeks.length > 0) {
+              await this.db.weeks.bulkPut(content.weeks.map(domainWeekToLocal));
+            }
 
-          if (content.materials.length > 0) {
-            const cachedBlobIds = new Set(
-              await this.db.materialBlobs
-                .where('materialId')
-                .anyOf(content.materials.map((m) => m.id))
-                .primaryKeys(),
-            );
-            await this.db.materials.bulkPut(
-              content.materials.map((material) =>
-                domainMaterialToLocal({
-                  ...material,
-                  isAvailableOffline: cachedBlobIds.has(material.id),
-                }),
-              ),
-            );
-          }
+            if (content.materials.length > 0) {
+              const cachedBlobIds = new Set(
+                await this.db.materialBlobs
+                  .where('materialId')
+                  .anyOf(content.materials.map((m) => m.id))
+                  .primaryKeys(),
+              );
+              await this.db.materials.bulkPut(
+                content.materials.map((material) =>
+                  domainMaterialToLocal({
+                    ...material,
+                    isAvailableOffline: cachedBlobIds.has(material.id),
+                  }),
+                ),
+              );
+            }
 
-          if (content.deadlines.length > 0) {
-            await this.db.deadlines.bulkPut(
-              content.deadlines.map(domainDeadlineToLocal),
-            );
-          }
+            if (content.deadlines.length > 0) {
+              await this.db.deadlines.bulkPut(
+                content.deadlines.map(domainDeadlineToLocal),
+              );
+            }
 
-          if (content.announcements.length > 0) {
-            await this.db.announcements.bulkPut(
-              content.announcements.map(domainAnnouncementToLocal),
-            );
-          }
-        },
-      );
+            if (content.announcements.length > 0) {
+              await this.db.announcements.bulkPut(
+                content.announcements.map(domainAnnouncementToLocal),
+              );
+            }
+          },
+        );
 
-      return follow;
+        return follow;
+      } catch (err) {
+        if (!isNetworkFailure(err)) {
+          throw err;
+        }
+      }
     }
 
-    return this.db.transaction('rw', this.db.courseFollows, async () => {
-      const existing = await this.db.courseFollows
-        .where('[userId+courseId]')
-        .equals([userId, courseId])
-        .first();
-      if (existing) {
-        return localCourseFollowToDomain(existing);
-      }
+    const nowIso = new Date().toISOString();
+    return this.db.transaction(
+      'rw',
+      [this.db.courseFollows, this.db.syncQueue],
+      async () => {
+        const existing = await this.db.courseFollows
+          .where('[userId+courseId]')
+          .equals([userId, courseId])
+          .first();
+        const result: CourseFollow = existing
+          ? localCourseFollowToDomain(existing)
+          : {
+              id: generateUuid(),
+              userId,
+              courseId,
+              createdAt: nowIso,
+            };
 
-      const created: CourseFollow = {
-        id: generateUuid(),
-        userId,
-        courseId,
-        createdAt: new Date().toISOString(),
-      };
-      await this.db.courseFollows.put(domainCourseFollowToLocal(created));
-      return created;
-    });
+        if (!existing) {
+          await this.db.courseFollows.put(domainCourseFollowToLocal(result));
+        }
+
+        if (this.remote !== null) {
+          const entityId = `${userId}:${courseId}`;
+          const stale = await this.db.syncQueue
+            .where('entityId')
+            .equals(entityId)
+            .and((row) => row.entityType === 'course_follow')
+            .primaryKeys();
+          if (stale.length > 0) {
+            await this.db.syncQueue.bulkDelete(stale);
+          }
+          await this.db.syncQueue.put({
+            id: generateUuid(),
+            entityType: 'course_follow',
+            entityId,
+            operation: 'upsert',
+            payloadJson: JSON.stringify({ userId, courseId }),
+            attempts: 0,
+            lastError: null,
+            nextRetryAt: null,
+            createdAt: nowIso,
+          });
+        }
+
+        return result;
+      },
+    );
   }
 
   async unfollowCourse(userId: string, courseId: string): Promise<void> {
+    let queuedForSync = false;
     if (this.remote !== null) {
-      await this.remote.deleteCourseFollow(userId, courseId);
+      try {
+        await this.remote.deleteCourseFollow(userId, courseId);
+      } catch (err) {
+        if (!isNetworkFailure(err)) {
+          throw err;
+        }
+        queuedForSync = true;
+      }
     }
 
-    await this.db.courseFollows
-      .where('[userId+courseId]')
-      .equals([userId, courseId])
-      .delete();
+    const nowIso = new Date().toISOString();
+    await this.db.transaction(
+      'rw',
+      [this.db.courseFollows, this.db.syncQueue],
+      async () => {
+        await this.db.courseFollows
+          .where('[userId+courseId]')
+          .equals([userId, courseId])
+          .delete();
+
+        if (queuedForSync) {
+          const entityId = `${userId}:${courseId}`;
+          const stale = await this.db.syncQueue
+            .where('entityId')
+            .equals(entityId)
+            .and((row) => row.entityType === 'course_follow')
+            .primaryKeys();
+          if (stale.length > 0) {
+            await this.db.syncQueue.bulkDelete(stale);
+          }
+          await this.db.syncQueue.put({
+            id: generateUuid(),
+            entityType: 'course_follow',
+            entityId,
+            operation: 'delete',
+            payloadJson: JSON.stringify({ userId, courseId }),
+            attempts: 0,
+            lastError: null,
+            nextRetryAt: null,
+            createdAt: nowIso,
+          });
+        }
+      },
+    );
   }
 
   async create(input: CreateCourseRecordInput): Promise<Course> {
@@ -151,11 +241,7 @@ export class HybridCourseRepository implements CourseRepository {
         await this.db.courses.put(domainCourseToLocal(created));
         return created;
       } catch (err) {
-        const isOffline =
-          (typeof navigator !== 'undefined' && !navigator.onLine) ||
-          (err instanceof Error &&
-            /failed to fetch|network|timeout|offline/i.test(err.message));
-        if (!isOffline) {
+        if (!isNetworkFailure(err)) {
           throw err;
         }
       }
@@ -200,11 +286,7 @@ export class HybridCourseRepository implements CourseRepository {
         await this.db.courses.put(domainCourseToLocal(updated));
         return updated;
       } catch (err) {
-        const isOffline =
-          (typeof navigator !== 'undefined' && !navigator.onLine) ||
-          (err instanceof Error &&
-            /failed to fetch|network|timeout|offline/i.test(err.message));
-        if (!isOffline) {
+        if (!isNetworkFailure(err)) {
           throw err;
         }
       }

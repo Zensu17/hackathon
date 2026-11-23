@@ -12,6 +12,7 @@ import {
   domainAnnouncementToLocal,
   domainDeadlineToLocal,
   domainMaterialToLocal,
+  domainNoteToLocal,
   domainWeekToLocal,
 } from '../mappers/contentMapper';
 import {
@@ -303,11 +304,13 @@ export class HybridAuthRepository implements AuthRepository {
         password: input.password,
       });
 
-      const [remoteClass, remoteCourses, remoteFollows] = await Promise.all([
-        user.classId ? this.remote.fetchClassById(user.classId) : Promise.resolve(null),
-        user.classId ? this.remote.fetchCoursesByClassId(user.classId) : Promise.resolve([]),
-        this.remote.fetchCourseFollowsByUserId(user.id),
-      ]);
+      const [remoteClass, remoteCourses, remoteFollows, remoteNotes] =
+        await Promise.all([
+          user.classId ? this.remote.fetchClassById(user.classId) : Promise.resolve(null),
+          user.classId ? this.remote.fetchCoursesByClassId(user.classId) : Promise.resolve([]),
+          this.remote.fetchCourseFollowsByUserId(user.id),
+          this.remote.fetchUserNotes(user.id),
+        ]);
 
       const followedCourseIds = remoteFollows.map((follow) => follow.courseId);
       const hydratedContent =
@@ -326,6 +329,7 @@ export class HybridAuthRepository implements AuthRepository {
           this.db.materialBlobs,
           this.db.deadlines,
           this.db.announcements,
+          this.db.notes,
         ],
         async () => {
           await this.db.users.put(domainUserToLocal(user));
@@ -387,6 +391,10 @@ export class HybridAuthRepository implements AuthRepository {
               hydratedContent.announcements.map(domainAnnouncementToLocal),
             );
           }
+
+          if (remoteNotes.length > 0) {
+            await this.db.notes.bulkPut(remoteNotes.map(domainNoteToLocal));
+          }
         },
       );
 
@@ -444,6 +452,7 @@ export class HybridAuthRepository implements AuthRepository {
         this.db.syncQueue.clear(),
         this.db.meta.clear(),
       ]);
+      this.db.notifySyncQueueChanged?.();
     }
   }
 }

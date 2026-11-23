@@ -70,7 +70,10 @@ export function useSyncStatus(): SyncStatus {
 
   useEffect(() => {
     void reload();
-  }, [reload]);
+    return container.subscribeSyncChanges(() => {
+      void reload();
+    });
+  }, [container, reload]);
 
   useEffect(() => {
     if (!userId || typeof window === 'undefined') {

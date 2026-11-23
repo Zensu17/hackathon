@@ -20,7 +20,7 @@ import {
 import { generateUuid } from './HybridAuthRepository';
 
 function isNetworkFailure(error: unknown): boolean {
-  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     return true;
   }
   const msg =
@@ -159,6 +159,11 @@ export class HybridMaterialRepository implements MaterialRepository {
             title: created.title,
             description: created.description,
             externalUrl: created.externalUrl,
+            attachmentName: created.attachment?.name ?? null,
+            attachmentSizeBytes: created.attachment?.sizeBytes ?? null,
+            attachmentMimeType: created.attachment?.mimeType ?? null,
+            attachmentStoragePath: created.attachment?.storagePath ?? null,
+            hasPendingBlob: Boolean(input.file && input.file.bytes.byteLength > 0),
             updatedAt: created.updatedAt,
           }),
           attempts: 0,
@@ -257,10 +262,17 @@ export class HybridMaterialRepository implements MaterialRepository {
           payloadJson: JSON.stringify({
             id: updated.id,
             classId: courseRow.classId,
+            courseId: updated.courseId,
             weekId: updated.weekId,
             title: updated.title,
             description: updated.description,
             externalUrl: updated.externalUrl,
+            attachmentName: updated.attachment?.name ?? null,
+            attachmentSizeBytes: updated.attachment?.sizeBytes ?? null,
+            attachmentMimeType: updated.attachment?.mimeType ?? null,
+            attachmentStoragePath: updated.attachment?.storagePath ?? null,
+            previousStoragePath: existing.attachment?.storagePath ?? null,
+            hasPendingBlob: Boolean(input.file && input.file.bytes.byteLength > 0),
             removeAttachment: Boolean(input.removeAttachment),
             deletedAt: updated.deletedAt,
             updatedAt: updated.updatedAt,
@@ -286,7 +298,7 @@ export class HybridMaterialRepository implements MaterialRepository {
       );
     }
 
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       const existingBlob = await this.db.materialBlobs.get(material.id);
       if (existingBlob) {
         return {
@@ -301,12 +313,10 @@ export class HybridMaterialRepository implements MaterialRepository {
     }
 
     if (this.remote !== null) {
-      let signedUrl = material.attachment.remoteUrl;
-      if (!signedUrl && material.attachment.storagePath) {
-        signedUrl = await this.remote.getSignedMaterialUrl(
-          material.attachment.storagePath,
-        );
-      }
+      // Always mint a fresh signed URL when storagePath exists to avoid 1-hour expiry errors.
+      const signedUrl = material.attachment.storagePath
+        ? await this.remote.getSignedMaterialUrl(material.attachment.storagePath)
+        : material.attachment.remoteUrl;
       if (!signedUrl) {
         throw new AppError(
           'STORAGE_ERROR',

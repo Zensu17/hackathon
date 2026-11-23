@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router';
 import { toast } from 'sonner';
 import { formatByteSize } from '../../domain/rules';
@@ -7,7 +7,7 @@ import {
   ErrorState,
   LoadingState,
 } from '../components/StateViews';
-import { Chip } from '../components/FigmaComponents';
+import { Chip, WeekSection } from '../components/FigmaComponents';
 import { IconArrowLeft, IconCloudCheck, IconCloudDownload } from '../components/Icons';
 import { useAuthSession } from '../hooks/useAuthSession';
 import { useCourseDetail } from '../hooks/useCourseDetail';
@@ -20,6 +20,7 @@ export function CourseDetailPage(): React.ReactElement {
   const { session } = useAuthSession();
   const userId = session?.user.id ?? null;
   const isRep = session?.user.role === 'rep';
+  const [expandedWeekIds, setExpandedWeekIds] = useState<string[]>([]);
 
   const navToast = (location.state as { toast?: string } | null)?.toast ?? null;
 
@@ -39,6 +40,15 @@ export function CourseDetailPage(): React.ReactElement {
     reload,
     toggleFollow,
   } = useCourseDetail(courseId, userId);
+
+  const latestWeekId =
+    courseWeeks && courseWeeks.weeks.length > 0
+      ? courseWeeks.weeks[courseWeeks.weeks.length - 1]!.id
+      : null;
+
+  useEffect(() => {
+    setExpandedWeekIds(latestWeekId ? [latestWeekId] : []);
+  }, [courseId, latestWeekId]);
 
   useEffect(() => {
     const titlePrefix = courseWeeks?.course.name ?? labels.courseDetail.weeksHeading;
@@ -211,34 +221,75 @@ export function CourseDetailPage(): React.ReactElement {
             />
           ) : (
             <div className="card-stack">
+              <div className="section-heading-row">
+                <h2>{labels.courseDetail.weeksHeading}</h2>
+                {weeks.length > 1 ? (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-compact"
+                    onClick={() => {
+                      const allExpanded = weeks.every((w) =>
+                        expandedWeekIds.includes(w.id),
+                      );
+                      setExpandedWeekIds(
+                        allExpanded ? [] : weeks.map((w) => w.id),
+                      );
+                    }}
+                  >
+                    {weeks.every((w) => expandedWeekIds.includes(w.id))
+                      ? labels.courseDetail.collapseAllWeeks
+                      : labels.courseDetail.expandAllWeeks}
+                  </button>
+                ) : null}
+              </div>
+
               {weeks.map((week) => {
                 const hasContent =
                   week.materials.length > 0 || week.deadlines.length > 0;
-                return (
-                  <section key={week.id} className="index-card section-block">
-                    <div className="card-tab-bar" style={{ marginBottom: 0 }}>
-                      <span className="card-tab-code">
-                        {formatWeekCode(
-                          labels.courseDetail.weekTabPrefix,
-                          week.weekNumber,
-                        )}
-                      </span>
-                      {isRep ? (
-                        <Link
-                          to={`/manage?type=week&courseId=${course.id}&editId=${week.id}`}
-                          className="btn btn-secondary btn-compact"
-                        >
-                          {labels.courseDetail.editWeekCta}
-                        </Link>
-                      ) : null}
-                    </div>
+                const isExpanded = expandedWeekIds.includes(week.id);
+                const isLatestWeek = week.id === latestWeekId;
+                const matCount = week.materials.length;
+                const dlCount = week.deadlines.length;
+                const weekMeta = `${matCount} material${matCount === 1 ? '' : 's'} / ${dlCount} deadline${dlCount === 1 ? '' : 's'}`;
 
-                    <div>
-                      <h2>{week.title}</h2>
-                      {week.summary ? (
-                        <p className="meta-text">{week.summary}</p>
-                      ) : null}
-                    </div>
+                return (
+                  <WeekSection
+                    key={week.id}
+                    code={formatWeekCode(
+                      labels.courseDetail.weekTabPrefix,
+                      week.weekNumber,
+                    )}
+                    title={week.title}
+                    meta={weekMeta}
+                    thisWeek={isLatestWeek}
+                    expanded={isExpanded}
+                    onToggle={() => {
+                      setExpandedWeekIds((prev) =>
+                        prev.includes(week.id)
+                          ? prev.filter((id) => id !== week.id)
+                          : [...prev, week.id],
+                      );
+                    }}
+                  >
+                    {week.summary || isRep ? (
+                      <div className="item-row__header">
+                        {week.summary ? (
+                          <p className="meta-text" style={{ margin: 0 }}>
+                            {week.summary}
+                          </p>
+                        ) : (
+                          <span />
+                        )}
+                        {isRep ? (
+                          <Link
+                            to={`/manage?type=week&courseId=${course.id}&editId=${week.id}`}
+                            className="btn btn-secondary btn-compact"
+                          >
+                            {labels.courseDetail.editWeekCta}
+                          </Link>
+                        ) : null}
+                      </div>
+                    ) : null}
 
                     {!hasContent ? (
                       <p className="meta-text">
@@ -382,7 +433,7 @@ export function CourseDetailPage(): React.ReactElement {
                         </ul>
                       </div>
                     ) : null}
-                  </section>
+                  </WeekSection>
                 );
               })}
             </div>

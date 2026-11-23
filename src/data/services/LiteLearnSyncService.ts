@@ -1,4 +1,4 @@
-import type { SyncQueueItem } from '../../domain/entities';
+import type { Note, SyncQueueItem } from '../../domain/entities';
 import {
   calculateBackoffDelayMs,
   shouldAutoDownloadMaterial,
@@ -9,10 +9,14 @@ import {
   domainAnnouncementToLocal,
   domainDeadlineToLocal,
   domainMaterialToLocal,
+  domainNoteToLocal,
   domainWeekToLocal,
 } from '../mappers/contentMapper';
 import { domainCourseToLocal } from '../mappers/courseMapper';
-import type { SupabaseRemoteDataSource } from '../remote/SupabaseRemoteDataSource';
+import type {
+  HydratedCoursesContent,
+  SupabaseRemoteDataSource,
+} from '../remote/SupabaseRemoteDataSource';
 import type { DexieSyncQueueRepository } from '../repositories/DexieSyncQueueRepository';
 import type { HybridMaterialRepository } from '../repositories/HybridMaterialRepository';
 
@@ -72,7 +76,7 @@ export class LiteLearnSyncService implements SyncService {
       return this.getSyncState();
     }
 
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       this.lastError = 'Device is offline. Local changes remain queued safely.';
       return this.getSyncState();
     }
@@ -103,10 +107,12 @@ export class LiteLearnSyncService implements SyncService {
         return await this.getSyncState();
       }
 
+      const newlyFollowedCourseIds = new Set<string>();
+
       // Remote Supabase mode: push queued operations sequentially, removing only after confirmation.
       for (const item of pendingItems) {
         try {
-          await this.pushQueueItem(item);
+          await this.pushQueueItem(item, newlyFollowedCourseIds);
           await this.syncQueueRepository.remove(item.id);
         } catch (err) {
           const message =
@@ -122,11 +128,15 @@ export class LiteLearnSyncService implements SyncService {
         }
       }
 
-      // Delta pull for followed courses after outbox push.
+      const lastSyncRow = await this.db.meta.get(LAST_SYNC_META_KEY);
+      const sinceIso = lastSyncRow?.value ?? null;
+
+      // Delta pull for followed courses and user private notes after outbox push.
       const userRow = await this.db.users.get(userId);
       if (userRow?.classId) {
         const remoteCourses = await this.remote.fetchCoursesByClassId(
           userRow.classId,
+          sinceIso,
         );
         if (remoteCourses.length > 0) {
           await this.db.courses.bulkPut(remoteCourses.map(domainCourseToLocal));
@@ -139,51 +149,50 @@ export class LiteLearnSyncService implements SyncService {
         const followedCourseIds = follows.map((f) => f.courseId);
 
         if (followedCourseIds.length > 0) {
-          const content =
-            await this.remote.fetchFollowedCoursesContent(followedCourseIds);
-
-          await this.db.transaction(
-            'rw',
-            [
-              this.db.weeks,
-              this.db.materials,
-              this.db.materialBlobs,
-              this.db.deadlines,
-              this.db.announcements,
-            ],
-            async () => {
-              if (content.weeks.length > 0) {
-                await this.db.weeks.bulkPut(content.weeks.map(domainWeekToLocal));
-              }
-              if (content.materials.length > 0) {
-                const cachedBlobIds = new Set(
-                  await this.db.materialBlobs
-                    .where('materialId')
-                    .anyOf(content.materials.map((m) => m.id))
-                    .primaryKeys(),
-                );
-                await this.db.materials.bulkPut(
-                  content.materials.map((material) =>
-                    domainMaterialToLocal({
-                      ...material,
-                      isAvailableOffline: cachedBlobIds.has(material.id),
-                    }),
-                  ),
-                );
-              }
-              if (content.deadlines.length > 0) {
-                await this.db.deadlines.bulkPut(
-                  content.deadlines.map(domainDeadlineToLocal),
-                );
-              }
-              if (content.announcements.length > 0) {
-                await this.db.announcements.bulkPut(
-                  content.announcements.map(domainAnnouncementToLocal),
-                );
-              }
-            },
+          const freshIds = followedCourseIds.filter((id) =>
+            newlyFollowedCourseIds.has(id),
           );
+          const incrementalIds = followedCourseIds.filter(
+            (id) => !newlyFollowedCourseIds.has(id),
+          );
+
+          const [freshContent, deltaContent] = await Promise.all([
+            freshIds.length > 0
+              ? this.remote.fetchFollowedCoursesContent(freshIds, null)
+              : Promise.resolve<HydratedCoursesContent>({
+                  weeks: [],
+                  materials: [],
+                  deadlines: [],
+                  announcements: [],
+                }),
+            incrementalIds.length > 0
+              ? this.remote.fetchFollowedCoursesContent(incrementalIds, sinceIso)
+              : Promise.resolve<HydratedCoursesContent>({
+                  weeks: [],
+                  materials: [],
+                  deadlines: [],
+                  announcements: [],
+                }),
+          ]);
+
+          const mergedContent: HydratedCoursesContent = {
+            weeks: [...freshContent.weeks, ...deltaContent.weeks],
+            materials: [...freshContent.materials, ...deltaContent.materials],
+            deadlines: [...freshContent.deadlines, ...deltaContent.deadlines],
+            announcements: [
+              ...freshContent.announcements,
+              ...deltaContent.announcements,
+            ],
+          };
+
+          await this.applyHydratedContent(mergedContent);
         }
+      }
+
+      // Bidirectional private notes pull (skipping any locally pending or newer offline edits).
+      const remoteNotes = await this.remote.fetchUserNotes(userId, sinceIso);
+      if (remoteNotes.length > 0) {
+        await this.mergeRemoteNotesSafely(userId, remoteNotes);
       }
 
       const dataSaverEnabled = await this.getDataSaverEnabled();
@@ -207,7 +216,113 @@ export class LiteLearnSyncService implements SyncService {
     return this.getSyncState();
   }
 
-  private async pushQueueItem(item: SyncQueueItem): Promise<void> {
+  private async applyHydratedContent(
+    content: HydratedCoursesContent,
+  ): Promise<void> {
+    if (
+      content.weeks.length === 0 &&
+      content.materials.length === 0 &&
+      content.deadlines.length === 0 &&
+      content.announcements.length === 0
+    ) {
+      return;
+    }
+
+    await this.db.transaction(
+      'rw',
+      [
+        this.db.weeks,
+        this.db.materials,
+        this.db.materialBlobs,
+        this.db.deadlines,
+        this.db.announcements,
+      ],
+      async () => {
+        if (content.weeks.length > 0) {
+          await this.db.weeks.bulkPut(content.weeks.map(domainWeekToLocal));
+        }
+        if (content.materials.length > 0) {
+          const cachedBlobIds = new Set(
+            await this.db.materialBlobs
+              .where('materialId')
+              .anyOf(content.materials.map((m) => m.id))
+              .primaryKeys(),
+          );
+          await this.db.materials.bulkPut(
+            content.materials.map((material) =>
+              domainMaterialToLocal({
+                ...material,
+                isAvailableOffline: cachedBlobIds.has(material.id),
+              }),
+            ),
+          );
+        }
+        if (content.deadlines.length > 0) {
+          await this.db.deadlines.bulkPut(
+            content.deadlines.map(domainDeadlineToLocal),
+          );
+        }
+        if (content.announcements.length > 0) {
+          await this.db.announcements.bulkPut(
+            content.announcements.map(domainAnnouncementToLocal),
+          );
+        }
+      },
+    );
+  }
+
+  private async mergeRemoteNotesSafely(
+    userId: string,
+    remoteNotes: readonly Note[],
+  ): Promise<void> {
+    const remainingQueue = await this.db.syncQueue.toArray();
+    const pendingNoteMaterialIds = new Set<string>();
+    for (const row of remainingQueue) {
+      if (row.entityType !== 'note') {
+        continue;
+      }
+      try {
+        const parsed = JSON.parse(row.payloadJson) as { materialId?: string };
+        if (parsed.materialId) {
+          pendingNoteMaterialIds.add(parsed.materialId);
+        }
+      } catch {
+        // Ignore malformed queue payload during conflict check.
+      }
+    }
+
+    const existingLocalNotes = await this.db.notes
+      .where('userId')
+      .equals(userId)
+      .toArray();
+    const localByMaterialId = new Map(
+      existingLocalNotes.map((row) => [row.materialId, row]),
+    );
+
+    const safeToApply: Note[] = [];
+    for (const remoteNote of remoteNotes) {
+      if (pendingNoteMaterialIds.has(remoteNote.materialId)) {
+        continue;
+      }
+      const localRow = localByMaterialId.get(remoteNote.materialId);
+      if (
+        localRow &&
+        Date.parse(localRow.updatedAt) > Date.parse(remoteNote.updatedAt)
+      ) {
+        continue;
+      }
+      safeToApply.push(remoteNote);
+    }
+
+    if (safeToApply.length > 0) {
+      await this.db.notes.bulkPut(safeToApply.map(domainNoteToLocal));
+    }
+  }
+
+  private async pushQueueItem(
+    item: SyncQueueItem,
+    newlyFollowedCourseIds: Set<string>,
+  ): Promise<void> {
     if (!this.remote) {
       return;
     }
@@ -220,6 +335,18 @@ export class LiteLearnSyncService implements SyncService {
         materialId: String(payload.materialId ?? ''),
         body: String(payload.body ?? ''),
       });
+      return;
+    }
+
+    if (item.entityType === 'course_follow') {
+      const targetUserId = String(payload.userId ?? '');
+      const targetCourseId = String(payload.courseId ?? '');
+      if (item.operation === 'delete') {
+        await this.remote.deleteCourseFollow(targetUserId, targetCourseId);
+      } else {
+        await this.remote.insertCourseFollow(targetUserId, targetCourseId);
+        newlyFollowedCourseIds.add(targetCourseId);
+      }
       return;
     }
 
@@ -244,6 +371,41 @@ export class LiteLearnSyncService implements SyncService {
     }
 
     if (item.entityType === 'material') {
+      const materialId = String(payload.id ?? item.entityId);
+      const classId = String(payload.classId ?? '');
+      const courseId = String(payload.courseId ?? '');
+      const previousStoragePath =
+        typeof payload.previousStoragePath === 'string' &&
+        payload.previousStoragePath.length > 0
+          ? payload.previousStoragePath
+          : null;
+
+      if (payload.hasPendingBlob === true && classId && courseId) {
+        const blobRow = await this.db.materialBlobs.get(materialId);
+        if (blobRow && blobRow.blob.byteLength > 0) {
+          const uploaded = await this.remote.uploadMaterialPdf({
+            classId,
+            courseId,
+            materialId,
+            file: {
+              name: String(payload.attachmentName ?? 'attachment.pdf'),
+              sizeBytes: Number(
+                payload.attachmentSizeBytes ?? blobRow.blob.byteLength,
+              ),
+              mimeType: 'application/pdf',
+              bytes: blobRow.blob,
+            },
+          });
+          payload.attachmentStoragePath = uploaded.storagePath;
+          payload.attachmentMimeType = 'application/pdf';
+          payload.attachmentSizeBytes = blobRow.blob.byteLength;
+        }
+      }
+
+      if (payload.removeAttachment === true && previousStoragePath) {
+        await this.remote.deleteMaterialPdf(previousStoragePath);
+      }
+
       await this.remote.upsertMaterialPayload(payload);
     }
   }

@@ -61,7 +61,7 @@ export function SignInPage(): React.ReactElement {
     if (mode === 'signup') {
       if (
         typeof navigator !== 'undefined' &&
-        !navigator.onLine &&
+        navigator.onLine === false &&
         !isLocalFallbackMode
       ) {
         setFormError(labels.auth.errors.offlineSignUp);

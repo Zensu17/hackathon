@@ -1,8 +1,9 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router';
 import { LazyMotion, MotionConfig, domAnimation } from 'motion/react';
 import { Toaster } from 'sonner';
 import { AppLayout, OnboardingLayout } from '../presentation/components/AppLayout';
+import { AppErrorBoundary } from '../presentation/components/ErrorBoundary';
 import { LoadingState } from '../presentation/components/StateViews';
 import {
   AuthSessionProvider,
@@ -109,10 +110,13 @@ function LazyScreen({
 }: {
   children: React.ReactNode;
 }): React.ReactElement {
+  const location = useLocation();
   return (
-    <Suspense fallback={<LoadingState message={labels.common.loadingPage} />}>
-      {children}
-    </Suspense>
+    <AppErrorBoundary resetKey={location.pathname}>
+      <Suspense fallback={<LoadingState message={labels.common.loadingPage} />}>
+        {children}
+      </Suspense>
+    </AppErrorBoundary>
   );
 }
 
@@ -209,12 +213,14 @@ export function AppRouter(): React.ReactElement {
     <ThemeProvider>
       <LazyMotion features={domAnimation} strict>
         <MotionConfig reducedMotion="user">
-          <AuthSessionProvider>
-            <BrowserRouter>
-              <AppRoutes />
-            </BrowserRouter>
-            <AppToaster />
-          </AuthSessionProvider>
+          <AppErrorBoundary>
+            <AuthSessionProvider>
+              <BrowserRouter>
+                <AppRoutes />
+              </BrowserRouter>
+              <AppToaster />
+            </AuthSessionProvider>
+          </AppErrorBoundary>
         </MotionConfig>
       </LazyMotion>
     </ThemeProvider>

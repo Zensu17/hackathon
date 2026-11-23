@@ -14,7 +14,7 @@ import type { SupabaseRemoteDataSource } from '../remote/SupabaseRemoteDataSourc
 import { generateUuid } from './HybridAuthRepository';
 
 function isNetworkFailure(error: unknown): boolean {
-  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     return true;
   }
   const msg =

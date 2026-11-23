@@ -556,35 +556,58 @@ export function MaterialRow({
 /* 12. Week Section */
 export interface WeekSectionProps {
   title: string;
+  code?: string;
+  meta?: string;
   thisWeek?: boolean;
   defaultExpanded?: boolean;
+  expanded?: boolean;
+  onToggle?: () => void;
   children: React.ReactNode;
 }
 
 export function WeekSection({
   title,
+  code,
+  meta,
   thisWeek = false,
   defaultExpanded = false,
+  expanded: controlledExpanded,
+  onToggle,
   children,
 }: WeekSectionProps): React.ReactElement {
-  const [expanded, setExpanded] = useState(defaultExpanded);
+  const [uncontrolledExpanded, setUncontrolledExpanded] = useState(defaultExpanded);
+  const expanded = controlledExpanded ?? uncontrolledExpanded;
+
+  const handleToggle = (): void => {
+    if (onToggle) {
+      onToggle();
+      return;
+    }
+    setUncontrolledExpanded((prev) => !prev);
+  };
 
   return (
-    <div className="figma-week-section">
+    <section className="figma-week-section">
       <button
         type="button"
         className="figma-week-section__header"
-        onClick={() => setExpanded((prev) => !prev)}
+        onClick={handleToggle}
         aria-expanded={expanded}
       >
         <div className="figma-week-section__title-group">
-          <h3 className="figma-week-section__title">{title}</h3>
-          {thisWeek ? (
-            <Chip type="info" size="S" label="Current week" />
+          <div className="figma-week-section__top-row">
+            {code ? <span className="card-tab-code">{code}</span> : null}
+            {thisWeek ? (
+              <Chip type="info" size="S" label="Current week" />
+            ) : null}
+          </div>
+          <h2 className="figma-week-section__title">{title}</h2>
+          {meta ? (
+            <span className="figma-week-section__meta tabular-nums">{meta}</span>
           ) : null}
         </div>
         <m.span
-          style={{ display: 'inline-flex' }}
+          className="figma-week-section__chevron"
           animate={{ rotate: expanded ? 180 : 0 }}
           transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
         >
@@ -605,7 +628,7 @@ export function WeekSection({
           </m.div>
         ) : null}
       </AnimatePresence>
-    </div>
+    </section>
   );
 }
 

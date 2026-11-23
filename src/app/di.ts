@@ -45,7 +45,10 @@ import {
   seedSampleClassData,
 } from '../data/local/seed';
 import { SupabaseRemoteDataSource } from '../data/remote/SupabaseRemoteDataSource';
-import { createSupabaseClientFromEnv } from '../data/remote/supabaseClient';
+import {
+  createLazySupabaseClientLoader,
+  resolveSupabaseConfigFromEnv,
+} from '../data/remote/supabaseClient';
 import { DexieNoteRepository } from '../data/repositories/DexieNoteRepository';
 import { DexieSyncQueueRepository } from '../data/repositories/DexieSyncQueueRepository';
 import { HybridAnnouncementRepository } from '../data/repositories/HybridAnnouncementRepository';
@@ -110,6 +113,7 @@ export interface AppContainer {
   clearAllOfflineFiles(): Promise<void>;
   getSyncState(): Promise<SyncStateSummary>;
   getSyncStatus(): Promise<{ pendingChanges: number; hasFailedChanges: boolean }>;
+  subscribeSyncChanges(listener: () => void): () => void;
   retrySync(userId?: string): Promise<void>;
   loadSampleSeedData(
     userId: string,
@@ -146,12 +150,14 @@ export function createAppContainer(
   options: CreateAppContainerOptions = {},
 ): AppContainer {
   const db = new LiteLearnDb(options.databaseName ?? 'litelearn_db');
-  const supabaseClient = createSupabaseClientFromEnv(
+  const supabaseConfig = resolveSupabaseConfigFromEnv(
     options.supabaseUrl,
     options.supabaseAnonKey,
   );
-  const remote = supabaseClient
-    ? new SupabaseRemoteDataSource(supabaseClient)
+  const remote = supabaseConfig
+    ? new SupabaseRemoteDataSource(
+        createLazySupabaseClientLoader(supabaseConfig),
+      )
     : null;
   const isLocalFallbackMode = remote === null;
 
@@ -363,6 +369,9 @@ export function createAppContainer(
         pendingChanges: state.pendingCount,
         hasFailedChanges: state.hasFailedChanges,
       };
+    },
+    subscribeSyncChanges(listener: () => void): () => void {
+      return db.subscribeSyncQueueChanges(listener);
     },
     async retrySync(userId?: string): Promise<void> {
       if (userId && userId.trim().length > 0) {
