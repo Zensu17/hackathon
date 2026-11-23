@@ -117,5 +117,5 @@ Phase 3: Streamlined Home Study Hub & 2-Pane Class Rep Studio
     - Ganti `<input type="file">` standar dengan **Tactile PDF Dropzone** yang menampilkan ikon dokumen, batas `Max 5 MB (.pdf)`, nama berkas, ukuran byte presisi, serta tombol hapus lampiran yang jelas.
 
 #### Checkpoint 3 (Final UI/UX Verification)
-- `npm run typecheck`, `npm test`, `npm run build`, dan `npx impeccable detect src/presentation --no-advisory` lulus dengan 0 error.
-- Verifikasi visual menyeluruh di Chrome DevTools pada **Desktop (1280px)** dan **Mobile (360px)** untuk **Warm Paper Light** dan **Pitch-Black Obsidian Dark**.
+- [x] `npm run typecheck`, `npm test`, `npm run build`, dan `npx impeccable detect src/presentation --no-advisory` lulus dengan 0 error.
+- [x] Verifikasi visual menyeluruh di Chrome DevTools pada **Desktop (1280px)** dan **Mobile (360px)** untuk **Warm Paper Light** dan **Pitch-Black Obsidian Dark**.

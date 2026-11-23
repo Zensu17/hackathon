@@ -1,7 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { m } from 'motion/react';
 import { toast } from 'sonner';
+import { useAppContainer } from '../../app/di';
+import { formatByteSize } from '../../domain/rules';
 import {
   EmptyState,
   ErrorState,
@@ -18,14 +20,16 @@ import {
   IconCheckCircle,
   IconClock,
   IconCloudCheck,
+  IconCloudDownload,
+  IconNote,
   IconPlus,
+  IconRefresh,
   IconSearch,
 } from '../components/Icons';
 import { useAuthSession } from '../hooks/useAuthSession';
 import { useCourses } from '../hooks/useCourses';
 import { useHomeWorkspace } from '../hooks/useHomeWorkspace';
 import { useUpcomingDeadlines } from '../hooks/useUpcomingDeadlines';
-import { useWorkspaceSearch } from '../hooks/useWorkspaceSearch';
 import { labels } from '../i18n/labels';
 import { formatDateTime, formatRelativeDue } from '../utils/formatters';
 
@@ -41,6 +45,7 @@ function getTimeGreeting(): string {
 }
 
 export function HomePage(): React.ReactElement {
+  const container = useAppContainer();
   const { session } = useAuthSession();
   const userId = session?.user.id ?? null;
   const classId = session?.user.classId ?? null;
@@ -48,6 +53,7 @@ export function HomePage(): React.ReactElement {
   const isRep = session?.user.role === 'rep';
   const firstName =
     session?.user.displayName.trim().split(/\s+/)[0] || labels.app.roleStudent;
+  const [busyShelfId, setBusyShelfId] = useState<string | null>(null);
 
   const {
     result,
@@ -67,18 +73,11 @@ export function HomePage(): React.ReactElement {
   const {
     announcements,
     overview,
+    studyShelf,
     isLoading: workspaceLoading,
     error: workspaceError,
     reload: reloadWorkspace,
   } = useHomeWorkspace(userId);
-  const {
-    query: searchQuery,
-    setQuery: setSearchQuery,
-    clear: clearSearch,
-    result: searchResult,
-    isSearching,
-    error: searchError,
-  } = useWorkspaceSearch(classId, userId);
 
   useEffect(() => {
     document.title = `${labels.home.heading} | ${labels.app.name}`;
@@ -102,6 +101,14 @@ export function HomePage(): React.ReactElement {
     ? activeItems.filter((i) => i.id !== nextDeadline.id)
     : activeItems;
 
+  const openQuickSearch = (): void => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }),
+      );
+    }
+  };
+
   const handleToggleDeadline = async (
     deadlineId: string,
     title: string,
@@ -120,6 +127,59 @@ export function HomePage(): React.ReactElement {
         },
       },
     );
+  };
+
+  const handleShelfPdfAction = async (
+    materialId: string,
+    title: string,
+    isAvailableOffline: boolean,
+  ): Promise<void> => {
+    if (isAvailableOffline) {
+      try {
+        const stored = await container.usecases.getOfflineMaterialFile.execute({
+          materialId,
+        });
+        if (!stored) {
+          toast.error('Offline PDF was not found. Downloading again...');
+          await reloadWorkspace();
+          return;
+        }
+        const bytesCopy = new Uint8Array(stored.bytes.byteLength);
+        bytesCopy.set(stored.bytes);
+        const pdfBlob = new Blob([bytesCopy], {
+          type: stored.mimeType || 'application/pdf',
+        });
+        const blobUrl = URL.createObjectURL(pdfBlob);
+        const opened = window.open(blobUrl, '_blank', 'noopener,noreferrer');
+        if (!opened) {
+          const anchor = document.createElement('a');
+          anchor.href = blobUrl;
+          anchor.download = stored.fileName;
+          anchor.click();
+        }
+        window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : 'Could not open offline PDF.',
+        );
+      }
+      return;
+    }
+
+    setBusyShelfId(materialId);
+    try {
+      await container.usecases.downloadMaterialFile.execute({ materialId });
+      await reloadWorkspace();
+      toast.success(`Saved PDF offline: ${title}`);
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : 'Could not download PDF right now.',
+      );
+    } finally {
+      setBusyShelfId(null);
+    }
   };
 
   const followedCourses = courses.filter((c) => c.isFollowed);
@@ -158,7 +218,7 @@ export function HomePage(): React.ReactElement {
 
   return (
     <div className="page-stack">
-      {/* Editorial Academic Study Masthead */}
+      {/* Compact Editorial Academic Study Masthead */}
       <header className="study-masthead">
         <div className="study-masthead__top">
           <div className="study-masthead__greeting">
@@ -175,14 +235,24 @@ export function HomePage(): React.ReactElement {
             )}
           </div>
 
-          {isRep ? (
-            <div className="study-masthead__actions">
+          <div className="study-masthead__actions">
+            <button
+              type="button"
+              className="masthead-cta"
+              onClick={openQuickSearch}
+              aria-label={labels.home.searchAriaLabel}
+            >
+              <IconSearch size={15} />
+              <span>Search workspace</span>
+              <kbd className="masthead-kbd">Ctrl K</kbd>
+            </button>
+            {isRep ? (
               <Link to="/manage?type=deadline" className="masthead-cta">
                 <IconPlus size={16} />
                 <span>{labels.home.addDeadlineCta}</span>
               </Link>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
 
         {/* Real live study pulse counters from IndexedDB */}
@@ -212,129 +282,7 @@ export function HomePage(): React.ReactElement {
             </div>
           </div>
         ) : null}
-
-        {/* Embedded Offline-First Search */}
-        <div role="search" aria-label={labels.home.searchAriaLabel}>
-          <div className="search-bar">
-            <IconSearch
-              size={18}
-              style={{ color: 'var(--color-text-muted)', flexShrink: 0 }}
-            />
-            <input
-              id="workspace-search"
-              name="q"
-              type="search"
-              className="search-bar__input"
-              aria-label={labels.home.searchAriaLabel}
-              placeholder={labels.home.searchPlaceholder}
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-            />
-            {searchQuery.trim().length > 0 ? (
-              <button
-                type="button"
-                className="btn btn-secondary btn-compact"
-                onClick={clearSearch}
-              >
-                {labels.home.searchClear}
-              </button>
-            ) : null}
-          </div>
-        </div>
       </header>
-
-      {/* Instant Offline Search Results Panel */}
-      {searchQuery.trim().length > 0 ? (
-        <section
-          className="index-card"
-          aria-label="Search results"
-          style={{ marginTop: '-8px' }}
-        >
-          {isSearching ? (
-            <p className="meta-text">Searching saved local records...</p>
-          ) : searchError ? (
-            <p className="field-error" role="alert">
-              {searchError}
-            </p>
-          ) : searchResult && searchResult.totalCount === 0 ? (
-            <p className="meta-text">{labels.home.searchNoResults}</p>
-          ) : searchResult ? (
-            <div className="card-stack">
-              {searchResult.courses.length > 0 ? (
-                <div className="search-results-group">
-                  <h3>{`Courses (${searchResult.courses.length})`}</h3>
-                  {searchResult.courses.map((course) => (
-                    <Link
-                      key={course.id}
-                      to={`/courses/${course.id}`}
-                      className="search-result-row"
-                    >
-                      <strong>{`${course.code}: ${course.name}`}</strong>
-                      {course.description ? (
-                        <span className="meta-text">{course.description}</span>
-                      ) : null}
-                    </Link>
-                  ))}
-                </div>
-              ) : null}
-
-              {searchResult.materials.length > 0 ? (
-                <div className="search-results-group">
-                  <h3>{`Materials (${searchResult.materials.length})`}</h3>
-                  {searchResult.materials.map((hit) => (
-                    <Link
-                      key={hit.material.id}
-                      to={`/materials/${hit.material.id}`}
-                      className="search-result-row"
-                    >
-                      <strong>{hit.material.title}</strong>
-                      <span className="meta-text">
-                        {`${hit.courseCode}${hit.weekNumber ? ` / Week ${hit.weekNumber}` : ''}${hit.material.isAvailableOffline ? ' / Available offline' : ''}`}
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              ) : null}
-
-              {searchResult.deadlines.length > 0 ? (
-                <div className="search-results-group">
-                  <h3>{`Deadlines (${searchResult.deadlines.length})`}</h3>
-                  {searchResult.deadlines.map((hit) => (
-                    <Link
-                      key={hit.deadline.id}
-                      to={`/courses/${hit.deadline.courseId}`}
-                      className="search-result-row"
-                    >
-                      <strong>{hit.deadline.title}</strong>
-                      <span className="meta-text tabular-nums">
-                        {`${hit.courseCode} / Due: ${formatDateTime(hit.deadline.dueAt)}`}
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              ) : null}
-
-              {searchResult.announcements.length > 0 ? (
-                <div className="search-results-group">
-                  <h3>{`Announcements (${searchResult.announcements.length})`}</h3>
-                  {searchResult.announcements.map((hit) => (
-                    <Link
-                      key={hit.announcement.id}
-                      to={`/courses/${hit.announcement.courseId}`}
-                      className="search-result-row"
-                    >
-                      <strong>{hit.announcement.title}</strong>
-                      <span className="meta-text">
-                        {`${hit.courseCode} / ${hit.announcement.body}`}
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-        </section>
-      ) : null}
 
       {isLoading ? <LoadingState message={labels.home.loading} /> : null}
 
@@ -372,7 +320,7 @@ export function HomePage(): React.ReactElement {
 
       {!isLoading && !error && (allItems.length > 0 || displayCourses.length > 0) ? (
         <div className="figma-home-grid">
-          {/* Left Column: Next deadline spotlight, upcoming timeline, offline readiness meters */}
+          {/* Left Column: Next deadline spotlight, upcoming timeline, Study Shelf & Offline Readiness */}
           <div className="card-stack">
             {nextDeadline ? (
               <section className="section-block" aria-labelledby="next-deadline-heading">
@@ -535,6 +483,100 @@ export function HomePage(): React.ReactElement {
                       }
                     />
                   ))}
+                </div>
+              </section>
+            ) : null}
+
+            {/* 1-Tap Study Shelf & Offline PDFs Quick-Resume */}
+            {studyShelf.length > 0 ? (
+              <section className="section-block" aria-labelledby="study-shelf-heading">
+                <div className="section-heading-row">
+                  <h2 id="study-shelf-heading">Study shelf &amp; offline PDFs</h2>
+                  <Link to="/courses" className="section-link">
+                    Browse all
+                  </Link>
+                </div>
+                <div className="study-shelf-grid">
+                  {studyShelf.map((item) => {
+                    const isBusy = busyShelfId === item.id;
+                    return (
+                      <article key={item.id} className="study-shelf-card">
+                        <div className="study-shelf-card__top">
+                          <span className="card-tab-code">
+                            {`${item.courseCode} / W${item.weekNumber}`}
+                          </span>
+                          {item.isAvailableOffline ? (
+                            <Chip
+                              type="success"
+                              size="S"
+                              icon={<IconCloudCheck size={12} />}
+                              label="Offline"
+                            />
+                          ) : item.hasPdf ? (
+                            <span className="meta-text tabular-nums" style={{ fontSize: '11px' }}>
+                              {`PDF ${formatByteSize(item.pdfSizeBytes ?? 0)}`}
+                            </span>
+                          ) : (
+                            <span className="meta-text" style={{ fontSize: '11px' }}>
+                              Summary
+                            </span>
+                          )}
+                        </div>
+
+                        <h3 className="study-shelf-card__title">
+                          <Link
+                            to={`/materials/${item.id}`}
+                            className="card-title-link"
+                            style={{ minHeight: 0, padding: 0 }}
+                          >
+                            {item.title}
+                          </Link>
+                        </h3>
+
+                        <div className="study-shelf-card__actions">
+                          <Link
+                            to={`/materials/${item.id}`}
+                            className="btn btn-secondary btn-compact"
+                          >
+                            <IconNote size={13} />
+                            <span>Notes</span>
+                          </Link>
+                          {item.hasPdf ? (
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-compact"
+                              disabled={isBusy}
+                              onClick={() =>
+                                void handleShelfPdfAction(
+                                  item.id,
+                                  item.title,
+                                  item.isAvailableOffline,
+                                )
+                              }
+                            >
+                              {isBusy ? (
+                                <IconRefresh size={13} className="anim-spin" />
+                              ) : item.isAvailableOffline ? (
+                                <IconCloudCheck
+                                  size={13}
+                                  style={{ color: 'var(--color-success)' }}
+                                />
+                              ) : (
+                                <IconCloudDownload size={13} />
+                              )}
+                              <span>
+                                {isBusy
+                                  ? 'Saving...'
+                                  : item.isAvailableOffline
+                                    ? 'Open PDF'
+                                    : 'Save PDF'}
+                              </span>
+                            </button>
+                          ) : null}
+                        </div>
+                      </article>
+                    );
+                  })}
                 </div>
               </section>
             ) : null}
