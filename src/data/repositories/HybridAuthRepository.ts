@@ -451,8 +451,10 @@ export class HybridAuthRepository implements AuthRepository {
         this.db.notes.clear(),
         this.db.syncQueue.clear(),
         this.db.meta.clear(),
+        this.db.deadlineCompletions?.clear(),
       ]);
       this.db.notifySyncQueueChanged?.();
+      this.db.notifyDeadlineCompletionsChanged?.();
     }
   }
 }

@@ -143,6 +143,13 @@ export interface LocalMetaRow {
   value: string;
 }
 
+export interface LocalDeadlineCompletionRow {
+  id: string;
+  userId: string;
+  deadlineId: string;
+  completedAt: string;
+}
+
 export class LiteLearnDb extends Dexie {
   declare users: Table<LocalUserRow, string>;
   declare sessions: Table<LocalSessionRow, 'current'>;
@@ -158,9 +165,12 @@ export class LiteLearnDb extends Dexie {
   declare notes: Table<LocalNoteRow, string>;
   declare syncQueue: Table<LocalSyncQueueRow, string>;
   declare meta: Table<LocalMetaRow, string>;
+  declare deadlineCompletions: Table<LocalDeadlineCompletionRow, string>;
 
   private readonly syncQueueListeners = new Set<() => void>();
   private syncNotifyScheduled = false;
+  private readonly deadlineCompletionListeners = new Set<() => void>();
+  private deadlineCompletionNotifyScheduled = false;
 
   constructor(databaseName = 'litelearn_db') {
     super(databaseName);
@@ -194,6 +204,10 @@ export class LiteLearnDb extends Dexie {
 
     this.version(3).stores({
       localCredentials: 'nim, userId',
+    });
+
+    this.version(4).stores({
+      deadlineCompletions: 'id, userId, deadlineId, [userId+deadlineId]',
     });
 
     const notifyAfterTx = (tx?: { on?: (event: string, cb: () => void) => void }): void => {
@@ -232,6 +246,29 @@ export class LiteLearnDb extends Dexie {
     queueMicrotask(() => {
       this.syncNotifyScheduled = false;
       for (const listener of this.syncQueueListeners) {
+        listener();
+      }
+    });
+  }
+
+  subscribeDeadlineCompletions(listener: () => void): () => void {
+    this.deadlineCompletionListeners.add(listener);
+    return () => {
+      this.deadlineCompletionListeners.delete(listener);
+    };
+  }
+
+  notifyDeadlineCompletionsChanged(): void {
+    if (
+      this.deadlineCompletionListeners.size === 0 ||
+      this.deadlineCompletionNotifyScheduled
+    ) {
+      return;
+    }
+    this.deadlineCompletionNotifyScheduled = true;
+    queueMicrotask(() => {
+      this.deadlineCompletionNotifyScheduled = false;
+      for (const listener of this.deadlineCompletionListeners) {
         listener();
       }
     });

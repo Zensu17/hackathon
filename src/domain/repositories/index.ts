@@ -24,6 +24,7 @@ export type {
   DeadlineRepository,
   UpdateDeadlineRecordInput,
 } from './DeadlineRepository';
+export type { DeadlineCompletionRepository } from './DeadlineCompletionRepository';
 export type {
   CreateMaterialRecordInput,
   MaterialRepository,

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router';
 import { useAuthSession } from '../hooks/useAuthSession';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
@@ -14,11 +14,13 @@ import {
   IconMoon,
   IconNote,
   IconRefresh,
+  IconSearch,
   IconSettings,
   IconSun,
   IconWifiOff,
 } from './Icons';
 import { NetworkStatus } from './FigmaComponents';
+import { QuickSearchModal } from './QuickSearchModal';
 import { formatDateTime, getInitials } from '../utils/formatters';
 import './AppLayout.css';
 
@@ -141,11 +143,28 @@ export function AppLayout(): React.ReactElement {
     retry,
   } = useSyncStatus();
   const navigate = useNavigate();
+  const [isQuickSearchOpen, setIsQuickSearchOpen] = useState<boolean>(false);
 
   const isRep = session?.user.role === 'rep';
   const currentClass = session?.currentClass ?? null;
   const roleLabel = isRep ? labels.app.roleRep : labels.app.roleStudent;
   const displayName = session?.user.displayName ?? 'Student';
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (event: KeyboardEvent): void => {
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.key.toLowerCase() === 'k'
+      ) {
+        event.preventDefault();
+        setIsQuickSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+    };
+  }, []);
 
   const handleSignOut = async (): Promise<void> => {
     await signOut();
@@ -179,6 +198,19 @@ export function AppLayout(): React.ReactElement {
             )}
             <NetworkStatus state={networkState} />
           </div>
+
+          <button
+            type="button"
+            className="figma-sidenav__search-btn"
+            onClick={() => setIsQuickSearchOpen(true)}
+            aria-label="Open quick search (Ctrl+K)"
+          >
+            <span className="figma-sidenav__search-left">
+              <IconSearch size={15} />
+              <span>Quick search</span>
+            </span>
+            <kbd className="kbd-badge">Ctrl K</kbd>
+          </button>
         </div>
 
         <nav className="figma-sidenav__nav">
@@ -299,6 +331,15 @@ export function AppLayout(): React.ReactElement {
             </div>
 
             <div className="app-header__controls">
+              <button
+                type="button"
+                className="btn btn-secondary app-theme-btn"
+                onClick={() => setIsQuickSearchOpen(true)}
+                aria-label="Open quick search"
+              >
+                <IconSearch size={15} />
+                <span>Search</span>
+              </button>
               <ThemeQuickSwitch compact />
             </div>
           </div>
@@ -438,6 +479,14 @@ export function AppLayout(): React.ReactElement {
           </div>
         </footer>
       </div>
+
+      <QuickSearchModal
+        isOpen={isQuickSearchOpen}
+        onClose={() => setIsQuickSearchOpen(false)}
+        classId={session?.user.classId ?? null}
+        userId={session?.user.id ?? null}
+        isRep={Boolean(isRep)}
+      />
     </div>
   );
 }

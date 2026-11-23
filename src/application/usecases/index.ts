@@ -16,6 +16,10 @@ export { FollowCourse } from './courses/FollowCourse';
 export { ListCourses } from './courses/ListCourses';
 export { UnfollowCourse } from './courses/UnfollowCourse';
 export { GetUpcomingDeadlines } from './deadlines/GetUpcomingDeadlines';
+export {
+  ToggleDeadlineCompletion,
+  type ToggleDeadlineCompletionInput,
+} from './deadlines/ToggleDeadlineCompletion';
 export { GetMaterialNote } from './notes/GetMaterialNote';
 export { SaveMaterialNote } from './notes/SaveMaterialNote';
 export { CreateAnnouncement } from './rep/CreateAnnouncement';

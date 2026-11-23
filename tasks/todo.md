@@ -184,14 +184,14 @@ See full rationale, dependency graph, and risks in [plan.md](./plan.md).
 **Description:** Create a lightweight, zero-dependency Quick Search modal (`QuickSearchModal.tsx`) triggered by `Cmd/Ctrl + K` or a compact sidebar/header trigger button, powered by the existing offline `useWorkspaceSearch` hook, supporting arrow-key navigation, `Enter` jump, `Escape` close, and focus restoration.
 
 **Acceptance criteria:**
-- [ ] Pressing `Cmd+K` / `Ctrl+K` (or clicking the search button in SideNav) opens the search modal from any authenticated screen.
-- [ ] Typing searches courses, materials, deadlines, and announcements directly from IndexedDB with zero network calls.
-- [ ] Full keyboard navigation (`ArrowUp`, `ArrowDown`, `Enter`, `Escape`) works cleanly and traps/restores focus without violating WCAG AA.
+- [x] Pressing `Cmd+K` / `Ctrl+K` (or clicking the search button in SideNav) opens the search modal from any authenticated screen.
+- [x] Typing searches courses, materials, deadlines, and announcements directly from IndexedDB with zero network calls.
+- [x] Full keyboard navigation (`ArrowUp`, `ArrowDown`, `Enter`, `Escape`) works cleanly and traps/restores focus without violating WCAG AA.
 
 **Verification:**
-- [ ] Tests pass: `npm test`
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: Verify `Ctrl+K` navigation while browser is set to Offline in Chrome DevTools
+- [x] Tests pass: `npm test`
+- [x] Build succeeds: `npm run build`
+- [x] Manual check: Verify `Ctrl+K` navigation while browser is set to Offline in Chrome DevTools
 
 **Dependencies:** Task 5
 
@@ -209,15 +209,15 @@ See full rationale, dependency graph, and risks in [plan.md](./plan.md).
 **Description:** Add an additive Dexie v4 table (`deadlineCompletions`) and clean repository/usecase so each student can mark individual deadlines as completed locally on their device, with a visual completed state in `DeadlineItem`, a `"Completed"` filter option on `DeadlinesPage`, and updated remaining urgent count in the Home Study Masthead.
 
 **Acceptance criteria:**
-- [ ] Additive Dexie `version(4)` migration preserves all existing IndexedDB tables with zero data reset.
-- [ ] Students can toggle any deadline as Done / Not done with immediate UI update and Sonner toast (undoable).
-- [ ] Completed deadlines are reflected accurately on Home Masthead counts and `DeadlinesPage` filters.
-- [ ] Domain/application unit tests verify toggle persistence and deadline urgency exclusion when completed.
+- [x] Additive Dexie `version(4)` migration preserves all existing IndexedDB tables with zero data reset.
+- [x] Students can toggle any deadline as Done / Not done with immediate UI update and Sonner toast (undoable).
+- [x] Completed deadlines are reflected accurately on Home Masthead counts and `DeadlinesPage` filters.
+- [x] Domain/application unit tests verify toggle persistence and deadline urgency exclusion when completed.
 
 **Verification:**
-- [ ] Tests pass: `npm test`
-- [ ] Typecheck passes: `npm run typecheck`
-- [ ] Manual check: Mark a deadline done, hard-reload offline, verify state persists in IndexedDB
+- [x] Tests pass: `npm test`
+- [x] Typecheck passes: `npm run typecheck`
+- [x] Manual check: Mark a deadline done, hard-reload offline, verify state persists in IndexedDB
 
 **Dependencies:** Task 4, Task 6
 
@@ -233,8 +233,8 @@ See full rationale, dependency graph, and risks in [plan.md](./plan.md).
 ---
 
 ## Checkpoint: Complete (After Tasks 7-8)
-- [ ] `npm run typecheck` passes
-- [ ] `npm test` passes (all architecture, contrast, domain, application, and new sync/checklist tests)
-- [ ] `npm run build` produces clean PWA bundle
-- [ ] `impeccable detect src/presentation --no-advisory` returns 0 anti-patterns
-- [ ] Chrome DevTools end-to-end offline check on Desktop (1280px) & Mobile (360px) in Light & Pitch-Black Obsidian Dark
+- [x] `npm run typecheck` passes
+- [x] `npm test` passes (all architecture, contrast, domain, application, and new sync/checklist tests)
+- [x] `npm run build` produces clean PWA bundle
+- [x] `impeccable detect src/presentation --no-advisory` returns 0 anti-patterns
+- [x] Chrome DevTools end-to-end offline check on Desktop (1280px) & Mobile (360px) in Light & Pitch-Black Obsidian Dark

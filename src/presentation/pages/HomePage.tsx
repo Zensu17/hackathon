@@ -15,6 +15,7 @@ import {
 import {
   IconAlertCircle,
   IconCalendarCheck,
+  IconCheckCircle,
   IconClock,
   IconCloudCheck,
   IconPlus,
@@ -50,6 +51,8 @@ export function HomePage(): React.ReactElement {
 
   const {
     result,
+    completedIds,
+    toggleCompleted,
     isLoading: deadlinesLoading,
     error: deadlinesError,
     reload: reloadDeadlines,
@@ -88,14 +91,36 @@ export function HomePage(): React.ReactElement {
       : `${labels.home.followedSummaryPrefix} ${followedCount} ${labels.home.followedSummaryPluralSuffix}`;
 
   const allItems = result?.items ?? [];
-  const urgentItems = allItems.filter(
+  const activeItems = allItems.filter((item) => !completedIds.has(item.id));
+  const completedCount = allItems.length - activeItems.length;
+  const urgentItems = activeItems.filter(
     (item) => item.isOverdue || item.isDueSoon,
   );
 
-  const nextDeadline = urgentItems[0] ?? allItems[0] ?? null;
+  const nextDeadline = urgentItems[0] ?? activeItems[0] ?? null;
   const remainingDeadlines = nextDeadline
-    ? allItems.filter((i) => i.id !== nextDeadline.id)
-    : allItems;
+    ? activeItems.filter((i) => i.id !== nextDeadline.id)
+    : activeItems;
+
+  const handleToggleDeadline = async (
+    deadlineId: string,
+    title: string,
+  ): Promise<void> => {
+    const nowDone = await toggleCompleted(deadlineId);
+    toast(
+      nowDone
+        ? `${labels.deadlines.markedDoneToast} (${title})`
+        : `${labels.deadlines.markedUndoneToast} (${title})`,
+      {
+        action: {
+          label: labels.deadlines.undoCta,
+          onClick: () => {
+            void toggleCompleted(deadlineId, !nowDone);
+          },
+        },
+      },
+    );
+  };
 
   const followedCourses = courses.filter((c) => c.isFollowed);
   const displayCourses =
@@ -170,11 +195,13 @@ export function HomePage(): React.ReactElement {
               </span>
             </div>
             <div className="masthead-stat">
-              <span className="masthead-stat__value">{allItems.length}</span>
+              <span className="masthead-stat__value">{activeItems.length}</span>
               <span className="masthead-stat__label">
                 {urgentItems.length > 0
-                  ? `${urgentItems.length} urgent deadline${urgentItems.length === 1 ? '' : 's'}`
-                  : 'Active deadlines'}
+                  ? `${urgentItems.length} urgent${completedCount > 0 ? ` / ${completedCount} done` : ` deadline${urgentItems.length === 1 ? '' : 's'}`}`
+                  : completedCount > 0
+                    ? `Active (${completedCount} done)`
+                    : 'Active deadlines'}
               </span>
             </div>
             <div className="masthead-stat">
@@ -439,8 +466,42 @@ export function HomePage(): React.ReactElement {
                     >
                       View deadline
                     </Link>
+                    <button
+                      type="button"
+                      className="figma-btn figma-btn--secondary figma-btn--size-m"
+                      onClick={() =>
+                        void handleToggleDeadline(
+                          nextDeadline.id,
+                          nextDeadline.title,
+                        )
+                      }
+                    >
+                      <IconCheckCircle size={15} />
+                      <span>{labels.deadlines.markDoneCta}</span>
+                    </button>
                   </div>
                 </article>
+              </section>
+            ) : allItems.length > 0 ? (
+              <section className="index-card section-block">
+                <div className="card-tab-bar" style={{ marginBottom: 0 }}>
+                  <span className="card-tab-code">CHECKLIST</span>
+                  <Chip
+                    type="success"
+                    size="S"
+                    icon={<IconCheckCircle size={14} />}
+                    label={`${completedCount} completed`}
+                  />
+                </div>
+                <h2>All followed deadlines completed</h2>
+                <p className="meta-text">
+                  Every deadline across your followed courses is marked done on this device. Open Deadlines to review or undo completed items.
+                </p>
+                <div className="action-row" style={{ marginTop: 0 }}>
+                  <Link to="/deadlines" className="btn btn-secondary btn-compact">
+                    Review completed deadlines
+                  </Link>
+                </div>
               </section>
             ) : null}
 
@@ -468,6 +529,10 @@ export function HomePage(): React.ReactElement {
                             : 'normal'
                       }
                       courseId={item.courseId}
+                      completed={completedIds.has(item.id)}
+                      onToggleComplete={() =>
+                        void handleToggleDeadline(item.id, item.title)
+                      }
                     />
                   ))}
                 </div>

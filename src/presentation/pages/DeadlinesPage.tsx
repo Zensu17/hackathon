@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
+import { toast } from 'sonner';
 import { DeadlineItem, SegmentedControl } from '../components/FigmaComponents';
 import { IconArrowLeft } from '../components/Icons';
 import { EmptyState, ErrorState, LoadingState } from '../components/StateViews';
@@ -8,7 +9,7 @@ import { useUpcomingDeadlines } from '../hooks/useUpcomingDeadlines';
 import { labels } from '../i18n/labels';
 import { formatDateTime, formatRelativeDue } from '../utils/formatters';
 
-type DeadlineFilter = 'all' | 'week' | 'overdue';
+type DeadlineFilter = 'all' | 'week' | 'overdue' | 'completed';
 
 function isWithinSevenDays(dueAt: string, now = Date.now()): boolean {
   const dueMs = Date.parse(dueAt);
@@ -17,9 +18,14 @@ function isWithinSevenDays(dueAt: string, now = Date.now()): boolean {
 
 export function DeadlinesPage(): React.ReactElement {
   const { session } = useAuthSession();
-  const { result, isLoading, error, reload } = useUpcomingDeadlines(
-    session?.user.id ?? null,
-  );
+  const {
+    result,
+    completedIds,
+    toggleCompleted,
+    isLoading,
+    error,
+    reload,
+  } = useUpcomingDeadlines(session?.user.id ?? null);
   const [filter, setFilter] = useState<DeadlineFilter>('all');
 
   useEffect(() => {
@@ -27,21 +33,30 @@ export function DeadlinesPage(): React.ReactElement {
   }, []);
 
   const allItems = result?.items ?? [];
+  const activeItems = useMemo(
+    () => allItems.filter((item) => !completedIds.has(item.id)),
+    [allItems, completedIds],
+  );
+  const completedItems = useMemo(
+    () => allItems.filter((item) => completedIds.has(item.id)),
+    [allItems, completedIds],
+  );
   const weekCount = useMemo(
-    () => allItems.filter((item) => isWithinSevenDays(item.dueAt)).length,
-    [allItems],
+    () => activeItems.filter((item) => isWithinSevenDays(item.dueAt)).length,
+    [activeItems],
   );
   const overdueCount = useMemo(
-    () => allItems.filter((item) => item.isOverdue).length,
-    [allItems],
+    () => activeItems.filter((item) => item.isOverdue).length,
+    [activeItems],
   );
 
   const items = useMemo(() => {
-    if (filter === 'overdue') return allItems.filter((item) => item.isOverdue);
+    if (filter === 'completed') return completedItems;
+    if (filter === 'overdue') return activeItems.filter((item) => item.isOverdue);
     if (filter === 'week')
-      return allItems.filter((item) => isWithinSevenDays(item.dueAt));
-    return allItems;
-  }, [filter, allItems]);
+      return activeItems.filter((item) => isWithinSevenDays(item.dueAt));
+    return activeItems;
+  }, [activeItems, completedItems, filter]);
 
   const grouped = useMemo(() => {
     const overdue = items.filter((item) => item.isOverdue);
@@ -49,6 +64,26 @@ export function DeadlinesPage(): React.ReactElement {
     const later = items.filter((item) => !item.isOverdue && !item.isDueSoon);
     return { overdue, dueSoon, later };
   }, [items]);
+
+  const handleToggleDeadline = async (
+    deadlineId: string,
+    title: string,
+  ): Promise<void> => {
+    const nowDone = await toggleCompleted(deadlineId);
+    toast(
+      nowDone
+        ? `${labels.deadlines.markedDoneToast} (${title})`
+        : `${labels.deadlines.markedUndoneToast} (${title})`,
+      {
+        action: {
+          label: labels.deadlines.undoCta,
+          onClick: () => {
+            void toggleCompleted(deadlineId, !nowDone);
+          },
+        },
+      },
+    );
+  };
 
   if (isLoading) {
     return <LoadingState message={labels.deadlines.loading} />;
@@ -79,15 +114,16 @@ export function DeadlinesPage(): React.ReactElement {
         </div>
       </header>
 
-      <div className="filter-tab-bar">
+      <div className="filter-tab-bar" style={{ maxWidth: '620px' }}>
         <SegmentedControl<DeadlineFilter>
-          options={['all', 'week', 'overdue']}
+          options={['all', 'week', 'overdue', 'completed']}
           active={filter}
           onChange={setFilter}
           labelsMap={{
-            all: `${labels.deadlines.filterAll} (${allItems.length})`,
+            all: `${labels.deadlines.filterAll} (${activeItems.length})`,
             week: `${labels.deadlines.filterWeek} (${weekCount})`,
             overdue: `${labels.deadlines.filterOverdue} (${overdueCount})`,
+            completed: `${labels.deadlines.filterCompleted} (${completedItems.length})`,
           }}
         />
       </div>
@@ -96,9 +132,11 @@ export function DeadlinesPage(): React.ReactElement {
         <EmptyState
           title={labels.deadlines.emptyTitle}
           body={
-            filter === 'all'
-              ? labels.deadlines.emptyBody
-              : labels.deadlines.emptyFilteredBody
+            filter === 'completed'
+              ? labels.deadlines.emptyCompletedBody
+              : filter === 'all' && allItems.length === 0
+                ? labels.deadlines.emptyBody
+                : labels.deadlines.emptyFilteredBody
           }
           actionLabel={filter === 'all' ? undefined : labels.deadlines.filterAll}
           onAction={filter === 'all' ? undefined : () => setFilter('all')}
@@ -123,6 +161,10 @@ export function DeadlinesPage(): React.ReactElement {
                     relativeText={formatRelativeDue(item.dueAt)}
                     urgency="overdue"
                     courseId={item.courseId}
+                    completed={completedIds.has(item.id)}
+                    onToggleComplete={() =>
+                      void handleToggleDeadline(item.id, item.title)
+                    }
                   />
                 ))}
               </div>
@@ -144,6 +186,10 @@ export function DeadlinesPage(): React.ReactElement {
                     relativeText={formatRelativeDue(item.dueAt)}
                     urgency="due soon"
                     courseId={item.courseId}
+                    completed={completedIds.has(item.id)}
+                    onToggleComplete={() =>
+                      void handleToggleDeadline(item.id, item.title)
+                    }
                   />
                 ))}
               </div>
@@ -165,6 +211,10 @@ export function DeadlinesPage(): React.ReactElement {
                     relativeText={formatRelativeDue(item.dueAt)}
                     urgency="normal"
                     courseId={item.courseId}
+                    completed={completedIds.has(item.id)}
+                    onToggleComplete={() =>
+                      void handleToggleDeadline(item.id, item.title)
+                    }
                   />
                 ))}
               </div>
@@ -192,6 +242,10 @@ export function DeadlinesPage(): React.ReactElement {
                     : 'normal'
               }
               courseId={item.courseId}
+              completed={completedIds.has(item.id)}
+              onToggleComplete={() =>
+                void handleToggleDeadline(item.id, item.title)
+              }
             />
           ))}
         </section>

@@ -433,6 +433,8 @@ export interface DeadlineItemProps {
   relativeText?: string;
   urgency: 'overdue' | 'due soon' | 'normal';
   courseId?: string;
+  completed?: boolean;
+  onToggleComplete?: () => void;
 }
 
 export function DeadlineItem({
@@ -442,11 +444,23 @@ export function DeadlineItem({
   relativeText,
   urgency,
   courseId,
+  completed = false,
+  onToggleComplete,
 }: DeadlineItemProps): React.ReactElement {
-  const urgencyClass = `figma-deadline-item--${urgency.replace(/\s+/g, '-')}`;
+  const urgencyClass = completed
+    ? 'figma-deadline-item--completed'
+    : `figma-deadline-item--${urgency.replace(/\s+/g, '-')}`;
 
   let iconNode = <IconCalendarCheck size={18} className="figma-deadline-item__icon" />;
-  if (urgency === 'overdue') {
+  if (completed) {
+    iconNode = (
+      <IconCheckCircle
+        size={18}
+        className="figma-deadline-item__icon"
+        style={{ color: 'var(--color-success)' }}
+      />
+    );
+  } else if (urgency === 'overdue') {
     iconNode = (
       <IconAlertCircle
         size={18}
@@ -472,14 +486,34 @@ export function DeadlineItem({
         <p className="figma-deadline-item__meta">{course}</p>
         <div className="figma-deadline-item__due-row">
           <span className="figma-deadline-item__due">
-            {urgency === 'overdue' ? 'Overdue. ' : ''}
+            {completed ? 'Completed. ' : urgency === 'overdue' ? 'Overdue. ' : ''}
             {dueText}
           </span>
-          {relativeText ? (
+          {completed ? (
+            <span className="figma-deadline-item__relative figma-deadline-item__relative--done">
+              Done
+            </span>
+          ) : relativeText ? (
             <span className="figma-deadline-item__relative">{relativeText}</span>
           ) : null}
         </div>
       </div>
+      {onToggleComplete ? (
+        <button
+          type="button"
+          className={
+            completed
+              ? 'figma-deadline-item__check-btn figma-deadline-item__check-btn--done'
+              : 'figma-deadline-item__check-btn'
+          }
+          aria-pressed={completed}
+          aria-label={completed ? `Mark ${title} as not done` : `Mark ${title} as done`}
+          onClick={onToggleComplete}
+        >
+          <IconCheckCircle size={14} />
+          <span>{completed ? 'Done' : 'Mark done'}</span>
+        </button>
+      ) : null}
     </div>
   );
 }

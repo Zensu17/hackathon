@@ -27,6 +27,7 @@ import {
   SignIn,
   SignOut,
   SignUp,
+  ToggleDeadlineCompletion,
   UnfollowCourse,
   UpdateAnnouncement,
   UpdateCourse,
@@ -49,6 +50,7 @@ import {
   createLazySupabaseClientLoader,
   resolveSupabaseConfigFromEnv,
 } from '../data/remote/supabaseClient';
+import { DexieDeadlineCompletionRepository } from '../data/repositories/DexieDeadlineCompletionRepository';
 import { DexieNoteRepository } from '../data/repositories/DexieNoteRepository';
 import { DexieSyncQueueRepository } from '../data/repositories/DexieSyncQueueRepository';
 import { HybridAnnouncementRepository } from '../data/repositories/HybridAnnouncementRepository';
@@ -114,6 +116,13 @@ export interface AppContainer {
   getSyncState(): Promise<SyncStateSummary>;
   getSyncStatus(): Promise<{ pendingChanges: number; hasFailedChanges: boolean }>;
   subscribeSyncChanges(listener: () => void): () => void;
+  listCompletedDeadlineIds(userId: string): Promise<string[]>;
+  toggleDeadlineCompletion(
+    userId: string,
+    deadlineId: string,
+    completed?: boolean,
+  ): Promise<boolean>;
+  subscribeDeadlineCompletions(listener: () => void): () => void;
   retrySync(userId?: string): Promise<void>;
   loadSampleSeedData(
     userId: string,
@@ -170,6 +179,10 @@ export function createAppContainer(
   const announcementRepository = new HybridAnnouncementRepository(db, remote);
   const noteRepository = new DexieNoteRepository(db);
   const syncQueueRepository = new DexieSyncQueueRepository(db);
+  const deadlineCompletionRepository = new DexieDeadlineCompletionRepository(db);
+  const toggleDeadlineCompletionUseCase = new ToggleDeadlineCompletion(
+    deadlineCompletionRepository,
+  );
 
   const networkStatus = new BrowserNetworkStatusService({
     probeUrl: options.supabaseUrl?.trim() || null,
@@ -372,6 +385,23 @@ export function createAppContainer(
     },
     subscribeSyncChanges(listener: () => void): () => void {
       return db.subscribeSyncQueueChanges(listener);
+    },
+    async listCompletedDeadlineIds(userId: string): Promise<string[]> {
+      return deadlineCompletionRepository.listCompletedDeadlineIds(userId);
+    },
+    async toggleDeadlineCompletion(
+      userId: string,
+      deadlineId: string,
+      completed?: boolean,
+    ): Promise<boolean> {
+      return toggleDeadlineCompletionUseCase.execute({
+        userId,
+        deadlineId,
+        completed,
+      });
+    },
+    subscribeDeadlineCompletions(listener: () => void): () => void {
+      return db.subscribeDeadlineCompletions(listener);
     },
     async retrySync(userId?: string): Promise<void> {
       if (userId && userId.trim().length > 0) {

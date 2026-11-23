@@ -83,12 +83,12 @@ Phase 3: High-Impact Study Features
 - [x] `npm run build` succeeds with reduced local-mode entry bundle; manual Chrome DevTools check on Desktop + Mobile (Light & Obsidian Dark)
 
 ### Phase 3: High-Impact Study Experience Upgrades
-- [ ] Task 7: Build keyboard-accessible `Cmd/Ctrl + K` Quick Search dialog powered by IndexedDB `useWorkspaceSearch` (M)
-- [ ] Task 8: Add local-first personal deadline completion checklist (`Mark done`) with progress reflection on Home & Deadlines (M)
+- [x] Task 7: Build keyboard-accessible `Cmd/Ctrl + K` Quick Search dialog powered by IndexedDB `useWorkspaceSearch` (M)
+- [x] Task 8: Add local-first personal deadline completion checklist (`Mark done`) with progress reflection on Home & Deadlines (M)
 
 ### Checkpoint 3: Release Readiness
-- [ ] `npm run typecheck`, `npm test`, `npm run build`, `impeccable detect src/presentation --no-advisory` all pass with 0 errors
-- [ ] Full offline hard-reload verification in Chrome DevTools at 360px and 1280px (Light & Obsidian Dark)
+- [x] `npm run typecheck`, `npm test`, `npm run build`, `impeccable detect src/presentation --no-advisory` all pass with 0 errors
+- [x] Full offline hard-reload verification in Chrome DevTools at 360px and 1280px (Light & Obsidian Dark)
 
 ## Risks and Mitigations
 
