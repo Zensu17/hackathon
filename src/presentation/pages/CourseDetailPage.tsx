@@ -1,26 +1,40 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router';
 import { toast } from 'sonner';
+import { useAppContainer } from '../../app/di';
 import { formatByteSize } from '../../domain/rules';
 import {
   EmptyState,
   ErrorState,
   LoadingState,
 } from '../components/StateViews';
-import { Chip, WeekSection } from '../components/FigmaComponents';
-import { IconArrowLeft, IconCloudCheck, IconCloudDownload } from '../components/Icons';
+import { DeadlineItem, WeekSection } from '../components/FigmaComponents';
+import {
+  IconArrowLeft,
+  IconCloudCheck,
+  IconCloudDownload,
+  IconPlus,
+  IconRefresh,
+} from '../components/Icons';
 import { useAuthSession } from '../hooks/useAuthSession';
 import { useCourseDetail } from '../hooks/useCourseDetail';
+import { useUpcomingDeadlines } from '../hooks/useUpcomingDeadlines';
 import { labels } from '../i18n/labels';
-import { formatDateTime, formatWeekCode } from '../utils/formatters';
+import {
+  formatDateTime,
+  formatRelativeDue,
+  formatWeekCode,
+} from '../utils/formatters';
 
 export function CourseDetailPage(): React.ReactElement {
   const { courseId } = useParams<{ courseId: string }>();
   const location = useLocation();
+  const container = useAppContainer();
   const { session } = useAuthSession();
   const userId = session?.user.id ?? null;
   const isRep = session?.user.role === 'rep';
   const [expandedWeekIds, setExpandedWeekIds] = useState<string[]>([]);
+  const [busyMaterialId, setBusyMaterialId] = useState<string | null>(null);
 
   const navToast = (location.state as { toast?: string } | null)?.toast ?? null;
 
@@ -41,6 +55,8 @@ export function CourseDetailPage(): React.ReactElement {
     toggleFollow,
   } = useCourseDetail(courseId, userId);
 
+  const { completedIds, toggleCompleted } = useUpcomingDeadlines(userId);
+
   const latestWeekId =
     courseWeeks && courseWeeks.weeks.length > 0
       ? courseWeeks.weeks[courseWeeks.weeks.length - 1]!.id
@@ -54,6 +70,79 @@ export function CourseDetailPage(): React.ReactElement {
     const titlePrefix = courseWeeks?.course.name ?? labels.courseDetail.weeksHeading;
     document.title = `${titlePrefix} | ${labels.app.name}`;
   }, [courseWeeks?.course.name]);
+
+  const handleInlineDownloadPdf = async (
+    materialId: string,
+    title: string,
+  ): Promise<void> => {
+    setBusyMaterialId(materialId);
+    try {
+      await container.usecases.downloadMaterialFile.execute({ materialId });
+      await reload();
+      toast.success(`Saved PDF offline: ${title}`);
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : 'Could not download PDF right now.',
+      );
+    } finally {
+      setBusyMaterialId(null);
+    }
+  };
+
+  const handleInlineOpenOfflinePdf = async (
+    materialId: string,
+  ): Promise<void> => {
+    try {
+      const stored = await container.usecases.getOfflineMaterialFile.execute({
+        materialId,
+      });
+      if (!stored) {
+        toast.error('Offline PDF not found. Downloading again...');
+        await reload();
+        return;
+      }
+      const bytesCopy = new Uint8Array(stored.bytes.byteLength);
+      bytesCopy.set(stored.bytes);
+      const pdfBlob = new Blob([bytesCopy], {
+        type: stored.mimeType || 'application/pdf',
+      });
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      const opened = window.open(blobUrl, '_blank', 'noopener,noreferrer');
+      if (!opened) {
+        const anchor = document.createElement('a');
+        anchor.href = blobUrl;
+        anchor.download = stored.fileName;
+        anchor.click();
+      }
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Could not open offline PDF.',
+      );
+    }
+  };
+
+  const handleToggleDeadline = async (
+    deadlineId: string,
+    title: string,
+  ): Promise<void> => {
+    const nowDone = await toggleCompleted(deadlineId);
+    toast(
+      nowDone
+        ? `${labels.deadlines.markedDoneToast} (${title})`
+        : `${labels.deadlines.markedUndoneToast} (${title})`,
+      {
+        action: {
+          label: labels.deadlines.undoCta,
+          onClick: () => {
+            void toggleCompleted(deadlineId, !nowDone);
+          },
+        },
+      },
+    );
+  };
 
   if (isLoading) {
     return (
@@ -301,65 +390,105 @@ export function CourseDetailPage(): React.ReactElement {
                       <div className="week-subsection">
                         <h3>{labels.courseDetail.materialsSubheading}</h3>
                         <ul className="item-list">
-                          {week.materials.map((material) => (
-                            <li key={material.id} className="item-row">
-                              <div className="item-row__header">
-                                <Link
-                                  to={`/materials/${material.id}`}
-                                  className="card-title-link"
-                                >
-                                  {material.title}
-                                </Link>
-                                <div className="breadcrumb-row">
-                                  {material.attachment ? (
-                                    material.isAvailableOffline ? (
-                                      <Chip
-                                        type="success"
-                                        size="S"
-                                        icon={<IconCloudCheck size={14} />}
-                                        label={`Offline (${formatByteSize(material.attachment.sizeBytes)})`}
-                                      />
-                                    ) : (
-                                      <Chip
-                                        type="neutral"
-                                        size="S"
-                                        icon={<IconCloudDownload size={14} />}
-                                        label={`${labels.courseDetail.pdfBadgePrefix} ${formatByteSize(material.attachment.sizeBytes)}`}
-                                      />
-                                    )
-                                  ) : null}
-                                  {material.externalUrl ? (
-                                    <span className="status-chip">
-                                      {labels.courseDetail.externalLinkBadge}
-                                    </span>
-                                  ) : null}
+                          {week.materials.map((material) => {
+                            const isBusy = busyMaterialId === material.id;
+                            return (
+                              <li key={material.id} className="item-row">
+                                <div className="item-row__header">
+                                  <Link
+                                    to={`/materials/${material.id}`}
+                                    className="card-title-link"
+                                  >
+                                    {material.title}
+                                  </Link>
+                                  <div className="breadcrumb-row">
+                                    {material.attachment ? (
+                                      material.isAvailableOffline ? (
+                                        <button
+                                          type="button"
+                                          className="btn btn-secondary btn-compact"
+                                          onClick={() =>
+                                            void handleInlineOpenOfflinePdf(
+                                              material.id,
+                                            )
+                                          }
+                                        >
+                                          <IconCloudCheck
+                                            size={14}
+                                            style={{ color: 'var(--color-success)' }}
+                                          />
+                                          <span>
+                                            {`Open PDF (${formatByteSize(material.attachment.sizeBytes)})`}
+                                          </span>
+                                        </button>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          className="btn btn-secondary btn-compact"
+                                          disabled={isBusy}
+                                          onClick={() =>
+                                            void handleInlineDownloadPdf(
+                                              material.id,
+                                              material.title,
+                                            )
+                                          }
+                                        >
+                                          {isBusy ? (
+                                            <IconRefresh
+                                              size={14}
+                                              className="anim-spin"
+                                            />
+                                          ) : (
+                                            <IconCloudDownload size={14} />
+                                          )}
+                                          <span>
+                                            {isBusy
+                                              ? 'Saving...'
+                                              : `Download PDF (${formatByteSize(material.attachment.sizeBytes)})`}
+                                          </span>
+                                        </button>
+                                      )
+                                    ) : null}
+                                    {material.externalUrl ? (
+                                      <span className="status-chip">
+                                        {labels.courseDetail.externalLinkBadge}
+                                      </span>
+                                    ) : null}
+                                  </div>
                                 </div>
-                              </div>
-                              {material.description ? (
-                                <p
-                                  className="meta-text"
-                                  style={{ margin: 0 }}
-                                >
-                                  {material.description.length > 120
-                                    ? `${material.description.slice(0, 120)}...`
-                                    : material.description}
-                                </p>
-                              ) : null}
-                              {isRep ? (
+                                {material.description ? (
+                                  <p
+                                    className="meta-text"
+                                    style={{ margin: 0 }}
+                                  >
+                                    {material.description.length > 140
+                                      ? `${material.description.slice(0, 140)}...`
+                                      : material.description}
+                                  </p>
+                                ) : null}
                                 <div
                                   className="action-row"
                                   style={{ marginTop: 0 }}
                                 >
                                   <Link
-                                    to={`/manage?type=material&courseId=${course.id}&editId=${material.id}`}
-                                    className="btn btn-secondary btn-compact"
+                                    to={`/materials/${material.id}`}
+                                    className="section-link"
+                                    style={{ minHeight: '34px', padding: '0 8px' }}
                                   >
-                                    {labels.common.edit}
+                                    Read &amp; take notes
                                   </Link>
+                                  {isRep ? (
+                                    <Link
+                                      to={`/manage?type=material&courseId=${course.id}&editId=${material.id}`}
+                                      className="btn btn-secondary btn-compact"
+                                    >
+                                      {labels.common.edit}
+                                    </Link>
+                                  ) : null}
                                 </div>
-                              ) : null}
-                            </li>
-                          ))}
+                              </li>
+                            );
+                          })}
                         </ul>
                       </div>
                     ) : null}
@@ -367,70 +496,67 @@ export function CourseDetailPage(): React.ReactElement {
                     {week.deadlines.length > 0 ? (
                       <div className="week-subsection">
                         <h3>{labels.courseDetail.weekDeadlinesSubheading}</h3>
-                        <ul className="item-list">
-                          {week.deadlines.map((deadline) => {
-                            const isUrgent =
-                              deadline.isOverdue || deadline.isDueSoon;
-                            const statusText = deadline.isOverdue
-                              ? labels.home.statusOverdue
-                              : deadline.isDueSoon
-                                ? labels.home.statusDueSoon
-                                : labels.home.statusScheduled;
-
-                            return (
-                              <li
-                                key={deadline.id}
-                                className={
-                                  isUrgent
-                                    ? 'item-row item-row--urgent'
-                                    : 'item-row'
+                        <div>
+                          {week.deadlines.map((deadline) => (
+                            <div key={deadline.id}>
+                              <DeadlineItem
+                                title={deadline.title}
+                                course={
+                                  deadline.description ||
+                                  `${course.code} - Week ${week.weekNumber}`
                                 }
-                              >
-                                <div className="item-row__header">
-                                  <strong>{deadline.title}</strong>
-                                  <span
-                                    className={
-                                      isUrgent
-                                        ? 'status-chip status-chip--urgent'
-                                        : 'status-chip'
-                                    }
+                                dueText={formatDateTime(deadline.dueAt)}
+                                relativeText={formatRelativeDue(deadline.dueAt)}
+                                urgency={
+                                  deadline.isOverdue
+                                    ? 'overdue'
+                                    : deadline.isDueSoon
+                                      ? 'due soon'
+                                      : 'normal'
+                                }
+                                completed={completedIds.has(deadline.id)}
+                                onToggleComplete={() =>
+                                  void handleToggleDeadline(
+                                    deadline.id,
+                                    deadline.title,
+                                  )
+                                }
+                              />
+                              {isRep ? (
+                                <div
+                                  className="action-row"
+                                  style={{ marginTop: '4px', marginBottom: '8px' }}
+                                >
+                                  <Link
+                                    to={`/manage?type=deadline&courseId=${course.id}&editId=${deadline.id}`}
+                                    className="btn btn-secondary btn-compact"
                                   >
-                                    <span
-                                      className={
-                                        isUrgent
-                                          ? 'status-indicator-dot'
-                                          : 'status-indicator-square'
-                                      }
-                                      aria-hidden="true"
-                                    />
-                                    {statusText}
-                                  </span>
+                                    {labels.common.edit}
+                                  </Link>
                                 </div>
-                                <p className="meta-text">
-                                  {`${labels.home.duePrefix} ${formatDateTime(deadline.dueAt)}`}
-                                </p>
-                                {deadline.description ? (
-                                  <p style={{ margin: 0 }}>
-                                    {deadline.description}
-                                  </p>
-                                ) : null}
-                                {isRep ? (
-                                  <div
-                                    className="action-row"
-                                    style={{ marginTop: 0 }}
-                                  >
-                                    <Link
-                                      to={`/manage?type=deadline&courseId=${course.id}&editId=${deadline.id}`}
-                                      className="btn btn-secondary btn-compact"
-                                    >
-                                      {labels.common.edit}
-                                    </Link>
-                                  </div>
-                                ) : null}
-                              </li>
-                            );
-                          })}
-                        </ul>
+                              ) : null}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {isRep ? (
+                      <div className="week-rep-bar">
+                        <Link
+                          to={`/manage?type=material&courseId=${course.id}&weekId=${week.id}`}
+                          className="btn btn-secondary btn-compact"
+                        >
+                          <IconPlus size={14} />
+                          <span>{`Add material to Week ${week.weekNumber}`}</span>
+                        </Link>
+                        <Link
+                          to={`/manage?type=deadline&courseId=${course.id}&weekId=${week.id}`}
+                          className="btn btn-secondary btn-compact"
+                        >
+                          <IconPlus size={14} />
+                          <span>{`Add deadline to Week ${week.weekNumber}`}</span>
+                        </Link>
                       </div>
                     ) : null}
                   </WeekSection>
@@ -441,67 +567,47 @@ export function CourseDetailPage(): React.ReactElement {
 
           {unassignedDeadlines.length > 0 ? (
             <section className="index-card section-block">
-              <div className="card-tab-bar" style={{ marginBottom: 0 }}>
-                <span className="card-tab-code">DEADLINES</span>
-              </div>
               <h2>{labels.courseDetail.courseDeadlinesHeading}</h2>
-              <ul className="item-list">
-                {unassignedDeadlines.map((deadline) => {
-                  const isUrgent = deadline.isOverdue || deadline.isDueSoon;
-                  const statusText = deadline.isOverdue
-                    ? labels.home.statusOverdue
-                    : deadline.isDueSoon
-                      ? labels.home.statusDueSoon
-                      : labels.home.statusScheduled;
-
-                  return (
-                    <li
-                      key={deadline.id}
-                      className={
-                        isUrgent
-                          ? 'index-card index-card--urgent'
-                          : 'item-row'
+              <div>
+                {unassignedDeadlines.map((deadline) => (
+                  <div key={deadline.id}>
+                    <DeadlineItem
+                      title={deadline.title}
+                      course={deadline.description || course.name}
+                      dueText={formatDateTime(deadline.dueAt)}
+                      relativeText={formatRelativeDue(deadline.dueAt)}
+                      urgency={
+                        deadline.isOverdue
+                          ? 'overdue'
+                          : deadline.isDueSoon
+                            ? 'due soon'
+                            : 'normal'
                       }
-                    >
-                      <div className="item-row__header">
-                        <h3>{deadline.title}</h3>
-                        <span
-                          className={
-                            isUrgent
-                              ? 'status-chip status-chip--urgent'
-                              : 'status-chip'
-                          }
+                      completed={completedIds.has(deadline.id)}
+                      onToggleComplete={() =>
+                        void handleToggleDeadline(deadline.id, deadline.title)
+                      }
+                    />
+                    {isRep ? (
+                      <div
+                        className="action-row"
+                        style={{ marginTop: '4px', marginBottom: '8px' }}
+                      >
+                        <Link
+                          to={`/manage?type=deadline&courseId=${course.id}&editId=${deadline.id}`}
+                          className="btn btn-secondary btn-compact"
                         >
-                          {statusText}
-                        </span>
+                          {labels.common.edit}
+                        </Link>
                       </div>
-                      <p className="meta-text">
-                        {`${labels.home.duePrefix} ${formatDateTime(deadline.dueAt)}`}
-                      </p>
-                      {deadline.description ? (
-                        <p style={{ margin: 0 }}>{deadline.description}</p>
-                      ) : null}
-                      {isRep ? (
-                        <div className="action-row" style={{ marginTop: 0 }}>
-                          <Link
-                            to={`/manage?type=deadline&courseId=${course.id}&editId=${deadline.id}`}
-                            className="btn btn-secondary btn-compact"
-                          >
-                            {labels.common.edit}
-                          </Link>
-                        </div>
-                      ) : null}
-                    </li>
-                  );
-                })}
-              </ul>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
             </section>
           ) : null}
 
           <section className="index-card section-block">
-            <div className="card-tab-bar" style={{ marginBottom: 0 }}>
-              <span className="card-tab-code">ANNOUNCEMENTS</span>
-            </div>
             <h2>{labels.courseDetail.announcementsHeading}</h2>
             {announcements.length === 0 ? (
               <p className="meta-text">
@@ -513,7 +619,7 @@ export function CourseDetailPage(): React.ReactElement {
                   <li key={ann.id} className="item-row">
                     <div className="item-row__header">
                       <h3>{ann.title}</h3>
-                      <span className="meta-text">
+                      <span className="meta-text tabular-nums">
                         {`${labels.courseDetail.postedPrefix} ${formatDateTime(ann.postedAt)}`}
                       </span>
                     </div>

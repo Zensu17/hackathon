@@ -1,5 +1,5 @@
 import React, { useId, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { AnimatePresence, m } from 'motion/react';
 import {
   IconAlertCircle,
@@ -338,6 +338,10 @@ export interface CourseCardProps {
   accent?: 1 | 2 | 3 | 4 | 5 | 6;
   followed: boolean;
   offlineReady?: boolean;
+  weekCount?: number;
+  materialCount?: number;
+  pdfCount?: number;
+  downloadedPdfCount?: number;
   courseId: string;
   editTo?: string;
   onToggleFollow?: () => void;
@@ -351,15 +355,44 @@ export function CourseCard({
   accent = 1,
   followed,
   offlineReady = false,
+  weekCount,
+  materialCount,
+  pdfCount,
+  downloadedPdfCount,
   courseId,
   editTo,
   onToggleFollow,
   toggleDisabled = false,
 }: CourseCardProps): React.ReactElement {
+  const navigate = useNavigate();
+
+  const hasMetrics =
+    followed &&
+    (typeof weekCount === 'number' || typeof materialCount === 'number');
+  const cachePercent =
+    !hasMetrics || (materialCount ?? 0) === 0
+      ? 0
+      : (pdfCount ?? 0) === 0
+        ? 100
+        : Math.round(((downloadedPdfCount ?? 0) / (pdfCount ?? 1)) * 100);
+
+  const handleCardClick = (event: React.MouseEvent<HTMLElement>): void => {
+    const target = event.target as HTMLElement | null;
+    if (
+      target?.closest(
+        'a, button, input, [role="switch"], [data-stop-card-nav="true"]',
+      )
+    ) {
+      return;
+    }
+    navigate(`/courses/${courseId}`);
+  };
+
   return (
     <article
       className="figma-course-card"
       style={{ '--course-accent': `var(--course-${accent})` } as React.CSSProperties}
+      onClick={handleCardClick}
     >
       <div
         className="figma-course-card__accent-bar"
@@ -392,7 +425,59 @@ export function CourseCard({
         <p className="figma-course-card__desc">{description}</p>
       ) : null}
 
-      <div className="figma-course-card__actions">
+      {hasMetrics ? (
+        <>
+          <div className="figma-course-card__metrics">
+            {typeof weekCount === 'number' ? (
+              <span className="figma-course-card__metric-pill">
+                {`${weekCount} week${weekCount === 1 ? '' : 's'}`}
+              </span>
+            ) : null}
+            {typeof materialCount === 'number' ? (
+              <span className="figma-course-card__metric-pill">
+                {`${materialCount} material${materialCount === 1 ? '' : 's'}`}
+              </span>
+            ) : null}
+            {typeof pdfCount === 'number' && pdfCount > 0 ? (
+              <span
+                className={
+                  (downloadedPdfCount ?? 0) === pdfCount
+                    ? 'figma-course-card__metric-pill figma-course-card__metric-pill--ready'
+                    : 'figma-course-card__metric-pill'
+                }
+              >
+                <IconCloudCheck size={12} />
+                <span>{`${downloadedPdfCount ?? 0}/${pdfCount} PDFs offline`}</span>
+              </span>
+            ) : (materialCount ?? 0) > 0 ? (
+              <span className="figma-course-card__metric-pill figma-course-card__metric-pill--ready">
+                <IconCloudCheck size={12} />
+                <span>Text ready offline</span>
+              </span>
+            ) : null}
+          </div>
+          {(materialCount ?? 0) > 0 ? (
+            <div className="figma-course-card__meter" aria-hidden="true">
+              <div
+                className={
+                  offlineReady
+                    ? 'figma-course-card__meter-fill figma-course-card__meter-fill--ready'
+                    : 'figma-course-card__meter-fill'
+                }
+                style={{ width: `${cachePercent}%` }}
+              />
+            </div>
+          ) : null}
+        </>
+      ) : !followed ? (
+        <div className="figma-course-card__metrics">
+          <span className="figma-course-card__metric-pill">
+            Follow to cache syllabus &amp; PDFs offline
+          </span>
+        </div>
+      ) : null}
+
+      <div className="figma-course-card__actions" data-stop-card-nav="true">
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Link
             to={`/courses/${courseId}`}

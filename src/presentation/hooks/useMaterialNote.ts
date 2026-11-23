@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAppContainer } from '../../app/di';
 import type { Note } from '../../domain/entities';
 
+const AUTO_SAVE_DEBOUNCE_MS = 750;
+
 export interface UseMaterialNoteResult {
   note: Note | null;
   draft: string;
@@ -45,7 +47,7 @@ export function useMaterialNote(
         if (!active) return;
         setNote(loaded);
         setDraftState(loaded?.body ?? '');
-        setSaveStatus('idle');
+        setSaveStatus(loaded ? 'saved' : 'idle');
       })
       .catch((err: unknown) => {
         if (!active) return;
@@ -101,6 +103,20 @@ export function useMaterialNote(
   }, [container, draft, materialId, userId]);
 
   const isDirty = draft !== (note?.body ?? '');
+
+  // Debounced auto-save so students never lose notes while studying offline.
+  useEffect(() => {
+    if (isLoading || !isDirty || !userId || !materialId) {
+      return undefined;
+    }
+    const timer = window.setTimeout(() => {
+      void save();
+    }, AUTO_SAVE_DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [draft, isDirty, isLoading, materialId, save, userId]);
 
   return {
     note,

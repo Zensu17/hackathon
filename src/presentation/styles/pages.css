@@ -870,7 +870,7 @@
   background-color: var(--color-success);
 }
 
-/* Settings & Profile Header */
+/* Settings & Profile Header (De-Boxed Linear / iOS Grouped Architecture) */
 .settings-row {
   display: flex;
   flex-wrap: wrap;
@@ -879,13 +879,396 @@
   gap: var(--space-3);
 }
 
-.settings-profile-banner {
+.settings-profile-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px;
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+  background-image: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--color-primary) 7%, var(--color-surface)) 0%,
+    var(--color-surface) 100%
+  );
+  border: 1px solid color-mix(in srgb, var(--color-primary) 26%, var(--color-border));
+  box-shadow: var(--shadow-1);
+}
+
+.settings-profile-hero__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.settings-profile-hero__identity {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding-bottom: 14px;
-  margin-bottom: 14px;
+  min-width: 0;
+}
+
+.settings-profile-hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.settings-class-pill {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background-color: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+}
+
+.settings-class-pill__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings-class-pill__code-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-group__label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  padding: 0 4px;
+  margin: 0;
+}
+
+.settings-group__card {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
+}
+
+.settings-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  padding: 16px 20px;
   border-bottom: 1px solid var(--color-border);
+}
+
+.settings-item:last-child {
+  border-bottom: none;
+}
+
+.settings-item--column {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.settings-item__info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1 1 220px;
+}
+
+.settings-item__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.settings-item__desc {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.45;
+  margin: 0;
+}
+
+/* Courses Catalog Toolbar */
+.courses-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.courses-toolbar__tabs {
+  flex: 1 1 280px;
+  max-width: 420px;
+}
+
+.courses-filter-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 240px;
+  max-width: 360px;
+  min-height: 44px;
+  padding: 4px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  transition: border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
+}
+
+.courses-filter-input-wrap:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 16%, transparent);
+}
+
+.courses-filter-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  min-height: 36px;
+  outline: none;
+}
+
+.courses-filter-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* 2-Column Editorial Study Reader & Sticky Study Dock */
+.study-reader-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.study-reader-article {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 26px 24px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-1);
+}
+
+.study-reader-article__header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.study-reader-article__header h1 {
+  margin: 0;
+  font-size: clamp(1.5rem, 1.3rem + 0.9vw, 2rem);
+  line-height: 1.2;
+}
+
+.study-reader-article__course {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.study-reader-article__content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.study-reader-article__subhead {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.study-reader-link-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface-2);
+}
+
+.study-reader-link-box__info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.study-reader-seq-nav {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.study-seq-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  text-decoration: none;
+  box-shadow: var(--shadow-1);
+  transition: border-color 150ms var(--ease-out), transform 150ms var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .study-seq-card:hover {
+    border-color: var(--color-primary);
+    transform: translateY(-1px);
+  }
+}
+
+.study-seq-card--next {
+  text-align: right;
+  align-items: flex-end;
+}
+
+.study-seq-card__dir {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.study-seq-card__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.study-reader-dock {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.study-dock-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-1);
+}
+
+.study-dock-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.study-pdf-meta-chip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background-color: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  font-size: 13px;
+}
+
+.notebook-quick-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.notebook-chip-btn {
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  transition: border-color 150ms var(--ease-out), color 150ms var(--ease-out);
+}
+
+.notebook-chip-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+
+.notebook-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.week-rep-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--color-border);
+}
+
+@media (min-width: 1024px) {
+  .study-reader-grid {
+    grid-template-columns: minmax(0, 1.38fr) minmax(320px, 0.92fr);
+    gap: 22px;
+  }
+
+  .study-reader-dock {
+    position: sticky;
+    top: 24px;
+  }
 }
 
 .tabular-nums {

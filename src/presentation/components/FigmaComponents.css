@@ -417,12 +417,13 @@
   position: relative;
   overflow: hidden;
   box-shadow: var(--shadow-1);
+  cursor: pointer;
   transition:
     background-color 280ms var(--ease-out),
     color 280ms var(--ease-out),
     border-color 180ms var(--ease-out),
     box-shadow 200ms var(--ease-out),
-    transform 180ms var(--ease-out);
+    transform 160ms var(--ease-out);
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -431,6 +432,56 @@
     box-shadow: var(--shadow-2);
     transform: translateY(-2px);
   }
+}
+
+.figma-course-card:active {
+  transform: scale(0.992);
+}
+
+.figma-course-card__metrics {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.figma-course-card__metric-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background-color: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+
+.figma-course-card__metric-pill--ready {
+  border-color: color-mix(in srgb, var(--color-success) 38%, var(--color-border));
+  background-color: color-mix(in srgb, var(--color-success) 10%, var(--color-surface));
+  color: var(--color-success);
+}
+
+.figma-course-card__meter {
+  width: 100%;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-surface-2);
+  overflow: hidden;
+}
+
+.figma-course-card__meter-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background-color: var(--course-accent, var(--color-primary));
+  transition: width 300ms var(--ease-out);
+}
+
+.figma-course-card__meter-fill--ready {
+  background-color: var(--color-success);
 }
 
 .figma-course-card__accent-bar {

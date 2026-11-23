@@ -643,6 +643,10 @@ export function HomePage(): React.ReactElement {
                       accent={(((idx % 6) + 1) as 1 | 2 | 3 | 4 | 5 | 6)}
                       followed={c.isFollowed}
                       offlineReady={allPdfsCached}
+                      weekCount={summary?.weekCount}
+                      materialCount={summary?.materialCount}
+                      pdfCount={summary?.pdfCount}
+                      downloadedPdfCount={summary?.downloadedPdfCount}
                       onToggleFollow={() =>
                         void handleToggleFollow(c.id, c.name, c.isFollowed)
                       }
