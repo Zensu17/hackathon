@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { Link } from 'react-router';
+import { AnimatePresence, m } from 'motion/react';
 import {
   IconAlertCircle,
   IconCalendarCheck,
@@ -102,10 +103,10 @@ export function NetworkStatus({
 
   if (state === 'slow') {
     icon = <IconSignalLow size={14} />;
-    labelText = 'Slow (Degraded)';
+    labelText = 'Slow';
   } else if (state === 'offline') {
     icon = <IconWifiOff size={14} />;
-    labelText = 'Offline (Local Cache)';
+    labelText = 'Offline';
   }
 
   return (
@@ -272,7 +273,12 @@ export function Toggle({
       }}
     >
       <span className="figma-toggle__track">
-        <span className="figma-toggle__thumb" />
+        <m.span
+          className="figma-toggle__thumb"
+          initial={false}
+          animate={{ x: checked ? 18 : 0 }}
+          transition={{ type: 'spring', stiffness: 520, damping: 34 }}
+        />
       </span>
     </button>
   );
@@ -292,6 +298,8 @@ export function SegmentedControl<T extends string>({
   onChange,
   labelsMap,
 }: SegmentedControlProps<T>): React.ReactElement {
+  const pillGroupId = useId();
+
   return (
     <div className="figma-segmented" role="tablist">
       {options.map((opt) => {
@@ -306,7 +314,15 @@ export function SegmentedControl<T extends string>({
             className={`figma-segmented__btn ${isActive ? 'figma-segmented__btn--active' : ''}`}
             onClick={() => onChange(opt)}
           >
-            {displayLabel}
+            {isActive ? (
+              <m.span
+                layoutId={`segmented-pill-${pillGroupId}`}
+                className="figma-segmented__pill"
+                transition={{ type: 'spring', stiffness: 460, damping: 36 }}
+                aria-hidden="true"
+              />
+            ) : null}
+            <span className="figma-segmented__label">{displayLabel}</span>
           </button>
         );
       })}
@@ -318,30 +334,42 @@ export function SegmentedControl<T extends string>({
 export interface CourseCardProps {
   name: string;
   code: string;
+  description?: string;
   accent?: 1 | 2 | 3 | 4 | 5 | 6;
   followed: boolean;
   offlineReady?: boolean;
   courseId: string;
+  editTo?: string;
   onToggleFollow?: () => void;
+  toggleDisabled?: boolean;
 }
 
 export function CourseCard({
   name,
   code,
+  description,
   accent = 1,
   followed,
   offlineReady = false,
   courseId,
+  editTo,
   onToggleFollow,
+  toggleDisabled = false,
 }: CourseCardProps): React.ReactElement {
   return (
-    <div className="figma-course-card">
+    <article
+      className="figma-course-card"
+      style={{ '--course-accent': `var(--course-${accent})` } as React.CSSProperties}
+    >
       <div
         className="figma-course-card__accent-bar"
         style={{ backgroundColor: `var(--course-${accent})` }}
       />
       <div className="figma-course-card__header">
-        <span className="figma-course-card__code">[{code}]</span>
+        <span className="figma-course-card__code">
+          <span className="figma-course-card__code-dot" aria-hidden="true" />
+          <span>{code}</span>
+        </span>
         {offlineReady ? (
           <Chip
             type="success"
@@ -349,6 +377,8 @@ export function CourseCard({
             icon={<IconCloudCheck size={14} />}
             label="Available offline"
           />
+        ) : followed ? (
+          <Chip type="info" size="S" label="Following" />
         ) : null}
       </div>
 
@@ -358,27 +388,40 @@ export function CourseCard({
         </Link>
       </h3>
 
+      {description ? (
+        <p className="figma-course-card__desc">{description}</p>
+      ) : null}
+
       <div className="figma-course-card__actions">
-        <Link
-          to={`/courses/${courseId}`}
-          className="figma-btn figma-btn--secondary figma-btn--size-m"
-        >
-          View syllabus
-        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Link
+            to={`/courses/${courseId}`}
+            className="figma-btn figma-btn--secondary figma-btn--size-m"
+          >
+            View syllabus
+          </Link>
+          {editTo ? (
+            <Link
+              to={editTo}
+              className="figma-btn figma-btn--ghost figma-btn--size-m"
+            >
+              Edit
+            </Link>
+          ) : null}
+        </div>
         {onToggleFollow ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-            <span style={{ fontSize: 'var(--type-small-size)', fontWeight: 600 }}>
-              {followed ? 'Following' : 'Follow'}
-            </span>
+          <div className="figma-course-card__follow-wrap">
+            <span>{followed ? 'Following' : 'Follow'}</span>
             <Toggle
               checked={followed}
+              disabled={toggleDisabled}
               onChange={() => onToggleFollow()}
               ariaLabel={`Follow course ${name}`}
             />
           </div>
         ) : null}
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -387,6 +430,7 @@ export interface DeadlineItemProps {
   title: string;
   course: string;
   dueText: string;
+  relativeText?: string;
   urgency: 'overdue' | 'due soon' | 'normal';
   courseId?: string;
 }
@@ -395,6 +439,7 @@ export function DeadlineItem({
   title,
   course,
   dueText,
+  relativeText,
   urgency,
   courseId,
 }: DeadlineItemProps): React.ReactElement {
@@ -402,14 +447,20 @@ export function DeadlineItem({
 
   let iconNode = <IconCalendarCheck size={18} className="figma-deadline-item__icon" />;
   if (urgency === 'overdue') {
-    iconNode = <IconAlertCircle size={18} className="figma-deadline-item__icon" style={{ color: 'var(--color-danger)' }} />;
+    iconNode = (
+      <IconAlertCircle
+        size={18}
+        className="figma-deadline-item__icon"
+        style={{ color: 'var(--color-danger)' }}
+      />
+    );
   }
 
   return (
     <div className={`figma-deadline-item ${urgencyClass}`}>
       {iconNode}
       <div className="figma-deadline-item__content">
-        <h4 className="figma-deadline-item__title">
+        <h3 className="figma-deadline-item__title">
           {courseId ? (
             <Link to={`/courses/${courseId}`} className="card-title-link">
               {title}
@@ -417,12 +468,17 @@ export function DeadlineItem({
           ) : (
             title
           )}
-        </h4>
+        </h3>
         <p className="figma-deadline-item__meta">{course}</p>
-        <span className="figma-deadline-item__due">
-          {urgency === 'overdue' ? 'Overdue. ' : ''}
-          {dueText}
-        </span>
+        <div className="figma-deadline-item__due-row">
+          <span className="figma-deadline-item__due">
+            {urgency === 'overdue' ? 'Overdue. ' : ''}
+            {dueText}
+          </span>
+          {relativeText ? (
+            <span className="figma-deadline-item__relative">{relativeText}</span>
+          ) : null}
+        </div>
       </div>
     </div>
   );
@@ -527,11 +583,28 @@ export function WeekSection({
             <Chip type="info" size="S" label="Current week" />
           ) : null}
         </div>
-        {expanded ? <IconChevronDown size={18} /> : <IconChevronRight size={18} />}
+        <m.span
+          style={{ display: 'inline-flex' }}
+          animate={{ rotate: expanded ? 180 : 0 }}
+          transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+        >
+          <IconChevronDown size={18} />
+        </m.span>
       </button>
-      {expanded ? (
-        <div className="figma-week-section__body">{children}</div>
-      ) : null}
+      <AnimatePresence initial={false}>
+        {expanded ? (
+          <m.div
+            key="week-body"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div className="figma-week-section__body">{children}</div>
+          </m.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

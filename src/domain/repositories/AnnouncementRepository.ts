@@ -16,6 +16,7 @@ export interface UpdateAnnouncementRecordInput {
 
 export interface AnnouncementRepository {
   listByCourseId(courseId: string): Promise<Announcement[]>;
+  listByCourseIds?(courseIds: readonly string[]): Promise<Announcement[]>;
   getById(id: string): Promise<Announcement | null>;
   create(input: CreateAnnouncementRecordInput): Promise<Announcement>;
   update(id: string, input: UpdateAnnouncementRecordInput): Promise<Announcement>;

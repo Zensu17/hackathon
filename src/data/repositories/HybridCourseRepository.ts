@@ -146,9 +146,19 @@ export class HybridCourseRepository implements CourseRepository {
 
   async create(input: CreateCourseRecordInput): Promise<Course> {
     if (this.remote !== null) {
-      const created = await this.remote.createCourse(input);
-      await this.db.courses.put(domainCourseToLocal(created));
-      return created;
+      try {
+        const created = await this.remote.createCourse(input);
+        await this.db.courses.put(domainCourseToLocal(created));
+        return created;
+      } catch (err) {
+        const isOffline =
+          (typeof navigator !== 'undefined' && !navigator.onLine) ||
+          (err instanceof Error &&
+            /failed to fetch|network|timeout|offline/i.test(err.message));
+        if (!isOffline) {
+          throw err;
+        }
+      }
     }
 
     const nowIso = new Date().toISOString();
@@ -162,15 +172,42 @@ export class HybridCourseRepository implements CourseRepository {
       updatedAt: nowIso,
       deletedAt: null,
     };
-    await this.db.courses.put(domainCourseToLocal(created));
+    await this.db.transaction(
+      'rw',
+      [this.db.courses, this.db.syncQueue],
+      async () => {
+        await this.db.courses.put(domainCourseToLocal(created));
+        await this.db.syncQueue.put({
+          id: generateUuid(),
+          entityType: 'course',
+          entityId: created.id,
+          operation: 'upsert',
+          payloadJson: JSON.stringify(created),
+          attempts: 0,
+          lastError: null,
+          nextRetryAt: null,
+          createdAt: nowIso,
+        });
+      },
+    );
     return created;
   }
 
   async update(id: string, input: UpdateCourseRecordInput): Promise<Course> {
     if (this.remote !== null) {
-      const updated = await this.remote.updateCourse(id, input);
-      await this.db.courses.put(domainCourseToLocal(updated));
-      return updated;
+      try {
+        const updated = await this.remote.updateCourse(id, input);
+        await this.db.courses.put(domainCourseToLocal(updated));
+        return updated;
+      } catch (err) {
+        const isOffline =
+          (typeof navigator !== 'undefined' && !navigator.onLine) ||
+          (err instanceof Error &&
+            /failed to fetch|network|timeout|offline/i.test(err.message));
+        if (!isOffline) {
+          throw err;
+        }
+      }
     }
 
     const existingRow = await this.db.courses.get(id);
@@ -178,6 +215,7 @@ export class HybridCourseRepository implements CourseRepository {
       throw new AppError('NOT_FOUND', 'Course not found.');
     }
 
+    const nowIso = new Date().toISOString();
     const updated: Course = {
       ...localCourseToDomain(existingRow),
       code: input.code,
@@ -185,10 +223,27 @@ export class HybridCourseRepository implements CourseRepository {
       description: input.description,
       deletedAt:
         input.deletedAt !== undefined ? input.deletedAt : existingRow.deletedAt,
-      updatedAt: new Date().toISOString(),
+      updatedAt: nowIso,
     };
 
-    await this.db.courses.put(domainCourseToLocal(updated));
+    await this.db.transaction(
+      'rw',
+      [this.db.courses, this.db.syncQueue],
+      async () => {
+        await this.db.courses.put(domainCourseToLocal(updated));
+        await this.db.syncQueue.put({
+          id: generateUuid(),
+          entityType: 'course',
+          entityId: updated.id,
+          operation: updated.deletedAt ? 'delete' : 'upsert',
+          payloadJson: JSON.stringify(updated),
+          attempts: 0,
+          lastError: null,
+          nextRetryAt: null,
+          createdAt: nowIso,
+        });
+      },
+    );
     return updated;
   }
 }

@@ -85,10 +85,26 @@
   --radius-control: 8px;
   --radius-chip: 999px;
 
-  /* Figma Shadows */
-  --shadow-1: 0 1px 3px 0 var(--color-shadow-1);
-  --shadow-2: 0 8px 24px 0 var(--color-shadow-2);
+  /* Figma Shadows & Motion Curves */
+  --shadow-1: 0 1px 2px rgba(20, 33, 61, 0.05), 0 2px 6px rgba(20, 33, 61, 0.06);
+  --shadow-2: 0 4px 12px rgba(20, 33, 61, 0.08), 0 12px 28px rgba(20, 33, 61, 0.12);
+  --shadow-masthead: 0 10px 30px rgba(20, 33, 61, 0.16), 0 2px 6px rgba(20, 33, 61, 0.08);
   --shadow-chrome: 0 2px 6px rgba(0, 0, 0, 0.12);
+
+  /* Masthead & Editorial Surface Tokens (Light) */
+  --masthead-bg: #162B66;
+  --masthead-bg-deep: #0F1E4A;
+  --masthead-border: #2B4591;
+  --masthead-text: #FFFFFF;
+  --masthead-text-muted: #D5E0FA;
+  --masthead-accent: #E0B352;
+  --masthead-pill-bg: rgba(255, 255, 255, 0.12);
+  --masthead-pill-border: rgba(255, 255, 255, 0.22);
+  --note-paper-bg: #FCFBF7;
+
+  /* Emil Kowalski Motion Curves */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 
   /* Figma Space Collection */
   --space-1: 4px;
@@ -118,42 +134,57 @@
   :root:not([data-theme="light"]) {
     color-scheme: dark;
 
-    /* Figma Native Color Collection (Dark) */
-    --color-bg: #0E1626;
-    --color-surface: #16233B;
-    --color-surface-2: #1D2C48;
-    --color-border: #2A3A57;
-    --color-text: #EAEFF8;
-    --color-text-muted: #9AA7BF;
-    --color-primary: #7DA2FF;
-    --color-primary-hover: #A8BEFF;
-    --color-primary-contrast: #0E1626;
+    /* Pitch-Black Obsidian Color Collection (Dark) */
+    --color-bg: #050608;
+    --color-surface: #0C0E13;
+    --color-surface-2: #141821;
+    --color-border: #222733;
+    --color-text: #F8FAFC;
+    --color-text-muted: #94A3B8;
+    --color-primary: #60A5FA;
+    --color-primary-hover: #93C5FD;
+    --color-primary-contrast: #050608;
     --color-accent: #E0B352;
-    --color-success: #4CC38A;
-    --color-warning: #E0A94A;
-    --color-danger: #F97066;
-    --color-shadow-1: rgba(20, 33, 61, 0);
-    --color-shadow-2: rgba(20, 33, 61, 0.14);
+    --color-success: #34D399;
+    --color-warning: #FBBF24;
+    --color-danger: #F87171;
+    --color-shadow-1: rgba(0, 0, 0, 0.35);
+    --color-shadow-2: rgba(0, 0, 0, 0.65);
 
-    /* Semantic Compatibility Tokens (Dark: Deep Slate) */
-    --bg-page: #0E1626;
-    --bg-card: #16233B;
-    --bg-subtle: #1D2C48;
-    --ink-primary: #EAEFF8;
-    --ink-secondary: #9AA7BF;
-    --border-subtle: #687894;
-    --ink-on-primary: #0E1626;
-    --color-accent-rust: #F97066;
-    --bg-accent-rust: #3A2028;
-    --ink-accent-rust: #F97066;
+    /* Semantic Compatibility Tokens (Dark: Pitch-Black Obsidian) */
+    --bg-main: #050608;
+    --bg-page: #050608;
+    --bg-card: #0C0E13;
+    --bg-subtle: #141821;
+    --ink-primary: #F8FAFC;
+    --ink-secondary: #94A3B8;
+    --border-subtle: #687387;
+    --ink-on-primary: #050608;
+    --color-accent-rust: #F87171;
+    --bg-accent-rust: #200F12;
+    --ink-accent-rust: #F87171;
 
-    /* Figma Course Accent Collection (Dark) */
-    --course-1: #7DA2FF;
-    --course-2: #5BD4C5;
-    --course-3: #B79AFF;
-    --course-4: #F4B76A;
-    --course-5: #F593C2;
-    --course-6: #A8B8CE;
+    /* Course Accent Collection (Dark) */
+    --course-1: #60A5FA;
+    --course-2: #34D399;
+    --course-3: #A78BFA;
+    --course-4: #FBBF24;
+    --course-5: #F472B6;
+    --course-6: #94A3B8;
+
+    /* Masthead & Editorial Surface Tokens (Dark: Pitch-Black Obsidian) */
+    --shadow-1: 0 1px 0 rgba(255, 255, 255, 0.04);
+    --shadow-2: 0 12px 32px rgba(0, 0, 0, 0.72);
+    --shadow-masthead: 0 16px 40px rgba(0, 0, 0, 0.78), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    --masthead-bg: #0C0F17;
+    --masthead-bg-deep: #06070B;
+    --masthead-border: #232A38;
+    --masthead-text: #F8FAFC;
+    --masthead-text-muted: #94A3B8;
+    --masthead-accent: #E0B352;
+    --masthead-pill-bg: rgba(96, 165, 250, 0.08);
+    --masthead-pill-border: rgba(148, 163, 184, 0.18);
+    --note-paper-bg: #0E1016;
   }
 }
 
@@ -161,40 +192,55 @@
 [data-theme="dark"] {
   color-scheme: dark;
 
-  /* Figma Native Color Collection (Dark) */
-  --color-bg: #0E1626;
-  --color-surface: #16233B;
-  --color-surface-2: #1D2C48;
-  --color-border: #2A3A57;
-  --color-text: #EAEFF8;
-  --color-text-muted: #9AA7BF;
-  --color-primary: #7DA2FF;
-  --color-primary-hover: #A8BEFF;
-  --color-primary-contrast: #0E1626;
+  /* Pitch-Black Obsidian Color Collection (Dark) */
+  --color-bg: #050608;
+  --color-surface: #0C0E13;
+  --color-surface-2: #141821;
+  --color-border: #222733;
+  --color-text: #F8FAFC;
+  --color-text-muted: #94A3B8;
+  --color-primary: #60A5FA;
+  --color-primary-hover: #93C5FD;
+  --color-primary-contrast: #050608;
   --color-accent: #E0B352;
-  --color-success: #4CC38A;
-  --color-warning: #E0A94A;
-  --color-danger: #F97066;
-  --color-shadow-1: rgba(20, 33, 61, 0);
-  --color-shadow-2: rgba(20, 33, 61, 0.14);
+  --color-success: #34D399;
+  --color-warning: #FBBF24;
+  --color-danger: #F87171;
+  --color-shadow-1: rgba(0, 0, 0, 0.35);
+  --color-shadow-2: rgba(0, 0, 0, 0.65);
 
-  /* Semantic Compatibility Tokens (Dark: Deep Slate) */
-  --bg-page: #0E1626;
-  --bg-card: #16233B;
-  --bg-subtle: #1D2C48;
-  --ink-primary: #EAEFF8;
-  --ink-secondary: #9AA7BF;
-  --border-subtle: #687894;
-  --ink-on-primary: #0E1626;
-  --color-accent-rust: #F97066;
-  --bg-accent-rust: #3A2028;
-  --ink-accent-rust: #F97066;
+  /* Semantic Compatibility Tokens (Dark: Pitch-Black Obsidian) */
+  --bg-main: #050608;
+  --bg-page: #050608;
+  --bg-card: #0C0E13;
+  --bg-subtle: #141821;
+  --ink-primary: #F8FAFC;
+  --ink-secondary: #94A3B8;
+  --border-subtle: #687387;
+  --ink-on-primary: #050608;
+  --color-accent-rust: #F87171;
+  --bg-accent-rust: #200F12;
+  --ink-accent-rust: #F87171;
 
-  /* Figma Course Accent Collection (Dark) */
-  --course-1: #7DA2FF;
-  --course-2: #5BD4C5;
-  --course-3: #B79AFF;
-  --course-4: #F4B76A;
-  --course-5: #F593C2;
-  --course-6: #A8B8CE;
+  /* Course Accent Collection (Dark) */
+  --course-1: #60A5FA;
+  --course-2: #34D399;
+  --course-3: #A78BFA;
+  --course-4: #FBBF24;
+  --course-5: #F472B6;
+  --course-6: #94A3B8;
+
+  /* Masthead & Editorial Surface Tokens (Dark: Pitch-Black Obsidian) */
+  --shadow-1: 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-2: 0 12px 32px rgba(0, 0, 0, 0.72);
+  --shadow-masthead: 0 16px 40px rgba(0, 0, 0, 0.78), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --masthead-bg: #0C0F17;
+  --masthead-bg-deep: #06070B;
+  --masthead-border: #232A38;
+  --masthead-text: #F8FAFC;
+  --masthead-text-muted: #94A3B8;
+  --masthead-accent: #E0B352;
+  --masthead-pill-bg: rgba(96, 165, 250, 0.08);
+  --masthead-pill-border: rgba(148, 163, 184, 0.18);
+  --note-paper-bg: #0E1016;
 }

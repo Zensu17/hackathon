@@ -24,29 +24,54 @@ export async function seedInitialLocalDemo(db: LiteLearnDb): Promise<void> {
     });
   }
 
-  // 2. Ensure default demo student account exists if users table is empty
-  const userCount = await db.users.count();
-  if (userCount === 0) {
+  // 2. Ensure default demo student and demo class rep accounts exist when users table is empty or rep is missing.
+  const existingStudent = await db.users.get('seed-user-1');
+  const existingRep = await db.users.get('seed-user-rep');
+  if (!existingStudent || !existingRep) {
     await db.transaction('rw', [db.users, db.localCredentials], async () => {
-      await db.users.put({
-        id: 'seed-user-1',
-        nim: '11S22001',
-        displayName: 'Demo Student',
-        classId,
-        role: 'student',
-        createdAt: nowIso,
-        updatedAt: nowIso,
-        deletedAt: null,
-      });
+      if (!existingStudent) {
+        await db.users.put({
+          id: 'seed-user-1',
+          nim: '11S22001',
+          displayName: 'Demo Student',
+          classId,
+          role: 'student',
+          createdAt: nowIso,
+          updatedAt: nowIso,
+          deletedAt: null,
+        });
 
-      await db.localCredentials.put({
-        nim: '11S22001',
-        userId: 'seed-user-1',
-        // SHA-256 hash of 'litelearn:11S22001:password123'
-        passwordHash:
-          '517f829ce9f46826da7ba84cf0446ccd14fc571ef19d5c07626fb871e736df2d',
-        createdAt: nowIso,
-      });
+        await db.localCredentials.put({
+          nim: '11S22001',
+          userId: 'seed-user-1',
+          // SHA-256 hash of 'litelearn:11S22001:password123'
+          passwordHash:
+            '517f829ce9f46826da7ba84cf0446ccd14fc571ef19d5c07626fb871e736df2d',
+          createdAt: nowIso,
+        });
+      }
+
+      if (!existingRep) {
+        await db.users.put({
+          id: 'seed-user-rep',
+          nim: '11S22002',
+          displayName: 'Demo Class Rep',
+          classId,
+          role: 'rep',
+          createdAt: nowIso,
+          updatedAt: nowIso,
+          deletedAt: null,
+        });
+
+        await db.localCredentials.put({
+          nim: '11S22002',
+          userId: 'seed-user-rep',
+          // SHA-256 hash of 'litelearn:11S22002:password123'
+          passwordHash:
+            '851835ae623f30d3c4ba91075f1d81f0c202b6655f8597390a6dd83d5211fd02',
+          createdAt: nowIso,
+        });
+      }
     });
   }
 
@@ -225,6 +250,16 @@ export async function seedSampleClassData(
           updatedAt: nowIso,
           deletedAt: null,
         },
+        {
+          id: 'seed-course-b-week-1',
+          courseId: courseBId,
+          weekNumber: 1,
+          title: 'Minggu 1: Kelas, Objek, dan Enkapsulasi',
+          summary: 'Pemodelan entitas domain, modifier akses, dan desain konstruktor bersih.',
+          createdAt: nowIso,
+          updatedAt: nowIso,
+          deletedAt: null,
+        },
       ]);
 
       await db.materials.bulkPut([
@@ -276,6 +311,24 @@ export async function seedSampleClassData(
           attachmentSizeBytes: 318000,
           attachmentMimeType: 'application/pdf',
           attachmentStoragePath: `${classId}/${courseAId}/seed-material-3/crs101-week3-bst.pdf`,
+          attachmentRemoteUrl: null,
+          isAvailableOffline: false,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+          deletedAt: null,
+        },
+        {
+          id: 'seed-material-4',
+          courseId: courseBId,
+          weekId: 'seed-course-b-week-1',
+          title: 'Ringkasan Materi: Prinsip Enkapsulasi & Invarian Objek',
+          description:
+            'Ringkasan teks ringan mengenai pembatasan state internal, getter/setter aman, dan studi kasus kelas Mahasiswa.',
+          externalUrl: null,
+          attachmentName: 'crs102-week1-encapsulation.pdf',
+          attachmentSizeBytes: 245760,
+          attachmentMimeType: 'application/pdf',
+          attachmentStoragePath: `${classId}/${courseBId}/seed-material-4/crs102-week1-encapsulation.pdf`,
           attachmentRemoteUrl: null,
           isAvailableOffline: false,
           createdAt: nowIso,

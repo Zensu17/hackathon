@@ -245,3 +245,39 @@ export function IconSun({ size = 20, className, ...props }: IconProps): React.Re
     </svg>
   );
 }
+
+export function IconSearch({ size = 20, className, ...props }: IconProps): React.ReactElement {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true" {...props}>
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  );
+}
+
+export function IconTrash({ size = 20, className, ...props }: IconProps): React.ReactElement {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true" {...props}>
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </svg>
+  );
+}
+
+export function BrandMark({ size = 32, className, ...props }: IconProps): React.ReactElement {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" className={className} aria-hidden="true" {...props}>
+      <rect width="64" height="64" rx="14" fill="#1E3A8A" />
+      <rect x="14" y="13" width="36" height="3.2" rx="1.6" fill="#E0B352" />
+      <rect x="14" y="19" width="16.5" height="29" rx="2.5" fill="#F7F5F0" />
+      <rect x="33.5" y="19" width="16.5" height="29" rx="2.5" fill="#F7F5F0" />
+      <rect x="30.5" y="17" width="3" height="32" rx="1.5" fill="#E0B352" />
+      <rect x="17.5" y="25" width="9.5" height="2.4" rx="1" fill="#1E3A8A" />
+      <rect x="17.5" y="31" width="9.5" height="2.4" rx="1" fill="#1E3A8A" />
+      <rect x="17.5" y="37" width="9.5" height="2.4" rx="1" fill="#1E3A8A" />
+      <rect x="37" y="25" width="9.5" height="2.4" rx="1" fill="#1E3A8A" />
+      <rect x="37" y="31" width="9.5" height="2.4" rx="1" fill="#1E3A8A" />
+      <rect x="37" y="37" width="9.5" height="2.4" rx="1" fill="#1E3A8A" />
+    </svg>
+  );
+}

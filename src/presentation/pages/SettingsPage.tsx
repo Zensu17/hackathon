@@ -1,27 +1,98 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { toast } from 'sonner';
+import { type ThemePreference, useAppContainer } from '../../app/di';
+import { formatByteSize } from '../../domain/rules';
+import {
+  Chip,
+  SegmentedControl,
+  Toggle,
+} from '../components/FigmaComponents';
+import {
+  IconCheckCircle,
+  IconCloudDownload,
+  IconRefresh,
+  IconTrash,
+} from '../components/Icons';
 import { useAuthSession } from '../hooks/useAuthSession';
+import { useInstallPrompt } from '../hooks/useInstallPrompt';
+import { useNetworkStatus } from '../hooks/useNetworkStatus';
+import { useSyncStatus } from '../hooks/useSyncStatus';
 import { useTheme } from '../hooks/useTheme';
 import { labels } from '../i18n/labels';
+import { formatDateTime, getInitials } from '../utils/formatters';
 
 export function SettingsPage(): React.ReactElement {
   const navigate = useNavigate();
+  const container = useAppContainer();
   const { session, signOut, isLocalFallbackMode } = useAuthSession();
-  const { theme, setTheme } = useTheme();
+  const { preference, theme, setTheme } = useTheme();
+  const networkState = useNetworkStatus();
+  const {
+    isSyncing,
+    lastSyncAt,
+    pendingChanges,
+    lastError,
+    syncNow,
+  } = useSyncStatus();
+  const { canInstall, isInstalled, install } = useInstallPrompt();
+
+  const [dataSaver, setDataSaver] = useState<boolean>(true);
+  const [storageStats, setStorageStats] = useState<{
+    fileCount: number;
+    totalBytes: number;
+  }>({ fileCount: 0, totalBytes: 0 });
+  const [isClearingPdfs, setIsClearingPdfs] = useState<boolean>(false);
   const [isSigningOut, setIsSigningOut] = useState<boolean>(false);
   const [isClearing, setIsClearing] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
 
+  const loadStorageInfo = useCallback(async (): Promise<void> => {
+    const [saver, stats] = await Promise.all([
+      container.getDataSaverEnabled(),
+      container.getOfflineStorageStats(),
+    ]);
+    setDataSaver(saver);
+    setStorageStats(stats);
+  }, [container]);
+
   useEffect(() => {
     document.title = `${labels.settings.heading} | ${labels.app.name}`;
-  }, []);
+    void loadStorageInfo();
+  }, [loadStorageInfo]);
 
   const user = session?.user ?? null;
   const currentClass = session?.currentClass ?? null;
   const roleLabel =
     user?.role === 'rep' ? labels.app.roleRep : labels.app.roleStudent;
   const activeThemeLabel =
-    theme === 'dark' ? labels.settings.darkModeButton : labels.settings.lightModeButton;
+    preference === 'system'
+      ? `${labels.settings.systemModeButton} (${theme === 'dark' ? labels.settings.darkModeButton : labels.settings.lightModeButton})`
+      : theme === 'dark'
+        ? labels.settings.darkModeButton
+        : labels.settings.lightModeButton;
+
+  const handleToggleDataSaver = async (next: boolean): Promise<void> => {
+    setDataSaver(next);
+    await container.setDataSaverEnabled(next);
+  };
+
+  const handleSyncNow = async (): Promise<void> => {
+    await syncNow();
+    await loadStorageInfo();
+    toast.success('Workspace sync check complete.');
+  };
+
+  const handleClearDownloads = async (): Promise<void> => {
+    setIsClearingPdfs(true);
+    try {
+      await container.clearAllOfflineFiles();
+      await loadStorageInfo();
+      toast.info('Downloaded PDFs cleared from this device.');
+    } finally {
+      setIsClearingPdfs(false);
+    }
+  };
 
   const handleCopyCode = async (): Promise<void> => {
     if (!currentClass?.joinCode) {
@@ -31,6 +102,7 @@ export function SettingsPage(): React.ReactElement {
       if (typeof navigator !== 'undefined' && navigator.clipboard) {
         await navigator.clipboard.writeText(currentClass.joinCode);
         setCopied(true);
+        toast.success(`Copied join code ${currentClass.joinCode}`);
         setTimeout(() => setCopied(false), 2000);
       }
     } catch {
@@ -61,39 +133,171 @@ export function SettingsPage(): React.ReactElement {
 
       <section className="index-card">
         <div className="card-tab-bar">
-          <span className="card-tab-code">[THEME]</span>
+          <span className="card-tab-code">THEME</span>
           <span className="status-chip">
             {`${labels.settings.activeThemePrefix} ${activeThemeLabel}`}
           </span>
         </div>
         <h2>{labels.settings.themeCardTitle}</h2>
-        <p className="meta-text">{labels.settings.themeCardDescription}</p>
-        <div className="action-row" role="group" aria-label={labels.settings.themeCardTitle}>
+        <p className="meta-text" style={{ marginBottom: 'var(--space-3)' }}>
+          {labels.settings.themeCardDescription}
+        </p>
+        <SegmentedControl<ThemePreference>
+          options={['system', 'light', 'dark']}
+          active={preference}
+          onChange={(next) => void setTheme(next)}
+          labelsMap={{
+            system: labels.settings.systemModeButton,
+            light: labels.settings.lightModeButton,
+            dark: labels.settings.darkModeButton,
+          }}
+        />
+      </section>
+
+      <section className="index-card">
+        <div className="card-tab-bar">
+          <span className="card-tab-code">DATA &amp; SYNC</span>
+          <Chip
+            type={pendingChanges > 0 ? 'warning' : 'success'}
+            size="S"
+            label={
+              pendingChanges > 0
+                ? `${pendingChanges} queued`
+                : isLocalFallbackMode
+                  ? 'Local device store'
+                  : 'Synced'
+            }
+          />
+        </div>
+        <h2>{labels.settings.dataStorageCardTitle}</h2>
+
+        <div className="settings-row" style={{ marginBottom: 'var(--space-3)' }}>
+          <div>
+            <strong>{labels.settings.dataSaverLabel}</strong>
+            <p className="meta-text" style={{ marginTop: '2px' }}>
+              {dataSaver
+                ? labels.settings.dataSaverOnHint
+                : labels.settings.dataSaverOffHint}
+            </p>
+          </div>
+          <Toggle
+            checked={dataSaver}
+            onChange={(next) => void handleToggleDataSaver(next)}
+            ariaLabel={labels.settings.dataSaverLabel}
+          />
+        </div>
+
+        <div className="action-row" style={{ marginTop: 0 }}>
           <button
             type="button"
-            className="btn btn-secondary btn-toggle"
-            aria-pressed={theme === 'light'}
-            onClick={() => void setTheme('light')}
+            className="figma-btn figma-btn--secondary figma-btn--size-m"
+            disabled={isSyncing || networkState === 'offline'}
+            onClick={() => void handleSyncNow()}
           >
-            {labels.settings.lightModeButton}
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary btn-toggle"
-            aria-pressed={theme === 'dark'}
-            onClick={() => void setTheme('dark')}
-          >
-            {labels.settings.darkModeButton}
+            <IconRefresh size={16} className={isSyncing ? 'anim-spin' : undefined} />
+            <span>
+              {isSyncing
+                ? labels.settings.syncingCta
+                : labels.settings.syncNowCta}
+            </span>
           </button>
         </div>
+
+        <p
+          className="meta-text tabular-nums"
+          style={{ marginTop: 'var(--space-2)' }}
+        >
+          {`${labels.settings.lastUpdatedPrefix} ${lastSyncAt ? formatDateTime(lastSyncAt) : labels.settings.neverSynced}`}
+          {pendingChanges > 0
+            ? ` | ${pendingChanges} change${pendingChanges === 1 ? '' : 's'} waiting to sync.`
+            : ''}
+        </p>
+
+        {lastError ? (
+          <div className="field-error" role="alert">
+            {lastError}
+          </div>
+        ) : null}
+
+        <div
+          className="settings-row"
+          style={{
+            marginTop: 'var(--space-4)',
+            paddingTop: 'var(--space-3)',
+            borderTop: '1px solid var(--color-border)',
+          }}
+        >
+          <div>
+            <p className="meta-text tabular-nums" style={{ margin: 0 }}>
+              <strong>{labels.settings.offlineFilesLabel}</strong>{' '}
+              {`${storageStats.fileCount} file${storageStats.fileCount === 1 ? '' : 's'} (${formatByteSize(storageStats.totalBytes)})`}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn btn-secondary btn-compact"
+            disabled={isClearingPdfs || storageStats.fileCount === 0}
+            onClick={() => void handleClearDownloads()}
+          >
+            <IconTrash size={14} />
+            <span>
+              {isClearingPdfs
+                ? labels.settings.clearingDownloadsCta
+                : labels.settings.clearDownloadsCta}
+            </span>
+          </button>
+        </div>
+
+        {canInstall || isInstalled ? (
+          <div
+            className="settings-row"
+            style={{
+              marginTop: 'var(--space-4)',
+              paddingTop: 'var(--space-3)',
+              borderTop: '1px solid var(--color-border)',
+            }}
+          >
+            <div>
+              <strong>{labels.settings.installAppTitle}</strong>
+              <p className="meta-text" style={{ marginTop: '2px' }}>
+                {labels.settings.installAppDescription}
+              </p>
+            </div>
+            {isInstalled ? (
+              <Chip
+                type="success"
+                size="S"
+                icon={<IconCheckCircle size={14} />}
+                label={labels.settings.installedBadge}
+              />
+            ) : (
+              <button
+                type="button"
+                className="figma-btn figma-btn--primary figma-btn--size-m"
+                onClick={() => void install()}
+              >
+                <IconCloudDownload size={16} />
+                <span>{labels.settings.installAppCta}</span>
+              </button>
+            )}
+          </div>
+        ) : null}
       </section>
 
       {user ? (
         <section className="index-card">
           <div className="card-tab-bar">
-            <span className="card-tab-code">[ACCOUNT]</span>
+            <span className="card-tab-code">ACCOUNT</span>
           </div>
-          <h2>{labels.settings.profileCardTitle}</h2>
+          <div className="settings-profile-banner">
+            <span className="user-avatar user-avatar--lg" aria-hidden="true">
+              {getInitials(user.displayName)}
+            </span>
+            <div>
+              <h2 style={{ margin: 0 }}>{user.displayName}</h2>
+              <p className="meta-text">{`${roleLabel} / ${user.nim}`}</p>
+            </div>
+          </div>
           <dl className="meta-dl">
             <div className="meta-dl__item">
               <dt>{labels.settings.nameLabel}</dt>
@@ -114,7 +318,7 @@ export function SettingsPage(): React.ReactElement {
       {currentClass ? (
         <section className="index-card">
           <div className="card-tab-bar">
-            <span className="card-tab-code">[CLASS]</span>
+            <span className="card-tab-code">CLASS</span>
           </div>
           <h2>{labels.settings.classCardTitle}</h2>
           <dl className="meta-dl">
@@ -154,7 +358,7 @@ export function SettingsPage(): React.ReactElement {
 
       <section className="index-card">
         <div className="card-tab-bar">
-          <span className="card-tab-code">[STORAGE]</span>
+          <span className="card-tab-code">SESSION</span>
         </div>
         <h2>{labels.settings.environmentCardTitle}</h2>
         <p className="meta-text">

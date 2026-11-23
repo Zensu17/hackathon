@@ -1,0 +1,226 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-23T10:36:20+07:00",
+  "title": "Design System: LiteLearn",
+  "extensions": {
+    "colorMeta": {
+      "academic-navy": {
+        "role": "primary",
+        "displayName": "Academic Navy",
+        "canonical": "#1E3A8A",
+        "tonalRamp": ["#0B1739", "#132A4F", "#1E3A8A", "#2F51B0", "#4F71D4", "#7DA2FF", "#B4CBFF", "#EBF1FF"]
+      },
+      "ivory-paper": {
+        "role": "neutral",
+        "displayName": "Ivory Paper",
+        "canonical": "#F7F5F0",
+        "tonalRamp": ["#1C1A17", "#3B3731", "#666057", "#948D82", "#C4BDB2", "#E3DED3", "#EFEBE3", "#F7F5F0"]
+      },
+      "clean-sheet": {
+        "role": "neutral",
+        "displayName": "Clean Sheet",
+        "canonical": "#FFFFFF",
+        "tonalRamp": ["#14213D", "#2A3A57", "#5B6478", "#748299", "#A8B2C2", "#D5DCE6", "#F1F4F8", "#FFFFFF"]
+      },
+      "ink-navy": {
+        "role": "neutral",
+        "displayName": "Ink Navy",
+        "canonical": "#14213D",
+        "tonalRamp": ["#09101F", "#0E1626", "#14213D", "#23355A", "#3D517A", "#687894", "#9AA7BF", "#EAEFF8"]
+      },
+      "academic-gold": {
+        "role": "secondary",
+        "displayName": "Academic Gold",
+        "canonical": "#875E16",
+        "tonalRamp": ["#2E1E04", "#54380A", "#875E16", "#A97A24", "#C99636", "#E0B352", "#F0D48E", "#FBF3DC"]
+      },
+      "offline-emerald": {
+        "role": "secondary",
+        "displayName": "Offline Emerald",
+        "canonical": "#1C7449",
+        "tonalRamp": ["#092919", "#114D2F", "#1C7449", "#289460", "#38AE74", "#4CC38A", "#95E0BA", "#E3F8ED"]
+      },
+      "due-soon-ochre": {
+        "role": "secondary",
+        "displayName": "Due-Soon Ochre",
+        "canonical": "#926016",
+        "tonalRamp": ["#332005", "#5C3C0C", "#926016", "#B57B23", "#D19336", "#E0A94A", "#F2CE8A", "#FCF3DF"]
+      },
+      "overdue-crimson": {
+        "role": "secondary",
+        "displayName": "Overdue Crimson",
+        "canonical": "#B42318",
+        "tonalRamp": ["#3A0B07", "#6E150E", "#961D14", "#B42318", "#D63B2F", "#F97066", "#FCB3AD", "#FBEAE8"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Greetings and top landmarks." },
+      "headline": { "displayName": "Headline", "purpose": "Screen titles and wordmark." },
+      "title": { "displayName": "Title", "purpose": "Section headers." },
+      "body": { "displayName": "Body", "purpose": "Summaries and notes at 65-75ch." },
+      "label": { "displayName": "Label", "purpose": "Buttons, inputs, and tabs." },
+      "mono": { "displayName": "Mono", "purpose": "NIM, course codes, join codes, and byte sizes." }
+    },
+    "shadows": [
+      {
+        "name": "surface-lift",
+        "value": "0 1px 3px 0 rgba(20, 33, 61, 0.08)",
+        "purpose": "Resting cards and active segmented tab in Light mode (luminance step in Dark mode)."
+      },
+      {
+        "name": "overlay-elevation",
+        "value": "0 8px 24px 0 rgba(20, 33, 61, 0.14)",
+        "purpose": "Modals, toasts, and interactive card hover states."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-transition",
+        "value": "150ms ease-out",
+        "purpose": "Hover, border, and background feedback on buttons, cards, and toggles. Disabled under prefers-reduced-motion."
+      },
+      {
+        "name": "press-feedback",
+        "value": "80ms ease",
+        "purpose": "Subtle 1px vertical tactile confirmation on button press."
+      }
+    ],
+    "breakpoints": [
+      { "name": "mobile-cta", "value": "479px" },
+      { "name": "tablet-dl", "value": "640px" },
+      { "name": "laptop-shell", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Primary commitment action such as Download PDF, Open PDF offline, Save note, or View deadline.",
+      "html": "<button type=\"button\" class=\"ds-btn-primary\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242\"/><path d=\"M12 12v9\"/><path d=\"m8 17 4 4 4-4\"/></svg><span>Download PDF (411.0 KB)</span></button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: var(--radius-sm, 8px); border: 1px solid var(--color-primary, #1E3A8A); background: var(--color-primary, #1E3A8A); color: var(--color-primary-contrast, #FFFFFF); font-family: var(--font-sans, Inter, system-ui, sans-serif); font-size: 14px; font-weight: 600; cursor: pointer; transition: background-color 150ms ease-out, transform 80ms ease; } .ds-btn-primary:hover { background: var(--color-primary-hover, #132A4F); border-color: var(--color-primary-hover, #132A4F); } .ds-btn-primary:active { transform: translateY(1px); } .ds-btn-primary:focus-visible { outline: 2px solid var(--color-primary, #1E3A8A); outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Supporting action such as Sync now, View syllabus, or Remove download.",
+      "html": "<button type=\"button\" class=\"ds-btn-secondary\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M21.5 2v6h-6\"/><path d=\"M2.5 22v-6h6\"/><path d=\"M2 11.5a10 10 0 0 1 18.8-4.3L21.5 8\"/><path d=\"M22 12.5a10 10 0 0 1-18.8 4.2L2.5 16\"/></svg><span>Sync now</span></button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: var(--radius-sm, 8px); border: 1px solid var(--border-subtle, #748299); background: var(--color-surface, #FFFFFF); color: var(--color-text, #14213D); font-family: var(--font-sans, Inter, system-ui, sans-serif); font-size: 14px; font-weight: 600; cursor: pointer; transition: background-color 150ms ease-out, border-color 150ms ease-out; } .ds-btn-secondary:hover { background: var(--color-surface-2, #EFEBE3); border-color: var(--color-primary, #1E3A8A); } .ds-btn-secondary:focus-visible { outline: 2px solid var(--color-primary, #1E3A8A); outline-offset: 2px; }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "description": "Destructive confirmation action such as Clear offline cache or Sign out.",
+      "html": "<button type=\"button\" class=\"ds-btn-danger\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><polyline points=\"3 6 5 6 21 6\"/><path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\"/></svg><span>Clear offline cache</span></button>",
+      "css": ".ds-btn-danger { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: var(--radius-sm, 8px); border: 1px solid var(--color-danger, #B42318); background: var(--color-danger, #B42318); color: #FFFFFF; font-family: var(--font-sans, Inter, system-ui, sans-serif); font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 150ms ease-out, transform 80ms ease; } .ds-btn-danger:hover { opacity: 0.92; } .ds-btn-danger:active { transform: translateY(1px); } .ds-btn-danger:focus-visible { outline: 2px solid var(--color-danger, #B42318); outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input-default",
+      "description": "High-clarity NIM, search, or form field with persistent label and helper hint.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-field-label\" for=\"ds-nim\">NIM</label><input id=\"ds-nim\" class=\"ds-field-input\" type=\"text\" value=\"11S22001\" /><span class=\"ds-field-hint\">8-character IT Del student ID</span></div>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 4px; width: 280px; font-family: var(--font-sans, Inter, system-ui, sans-serif); } .ds-field-label { font-size: 14px; font-weight: 600; color: var(--color-text, #14213D); } .ds-field-input { min-height: 48px; padding: 0 12px; border-radius: var(--radius-sm, 8px); border: 1px solid var(--border-subtle, #748299); background: var(--color-surface, #FFFFFF); color: var(--color-text, #14213D); font-family: var(--font-mono, ui-monospace, monospace); font-size: 16px; } .ds-field-input:focus-visible { outline: 2px solid var(--color-primary, #1E3A8A); outline-offset: 1px; border-color: var(--color-primary, #1E3A8A); } .ds-field-hint { font-size: 12px; color: var(--color-text-muted, #5B6478); }"
+    },
+    {
+      "name": "Offline Status Chip",
+      "kind": "chip",
+      "refersTo": "chip-success",
+      "description": "Icon-plus-text badge shown only after IndexedDB blob persistence is confirmed.",
+      "html": "<span class=\"ds-chip-success\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242\"/><path d=\"m9 15 2 2 4-4\"/></svg><span>Available offline</span></span>",
+      "css": ".ds-chip-success { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--color-success, #1C7449); background: rgba(28, 116, 73, 0.12); color: var(--color-success, #1C7449); font-family: var(--font-sans, Inter, system-ui, sans-serif); font-size: 12px; font-weight: 600; }"
+    },
+    {
+      "name": "Network Status",
+      "kind": "custom",
+      "description": "Live connectivity badge driven by a real reachability and latency probe.",
+      "html": "<div class=\"ds-net-group\"><span class=\"ds-net ds-net-online\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12.55a11 11 0 0 1 14.08 0\"/><path d=\"M8.53 16.11a6 6 0 0 1 6.95 0\"/><line x1=\"12\" y1=\"20\" x2=\"12.01\" y2=\"20\"/></svg>Online</span><span class=\"ds-net ds-net-slow\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M2 20h2\"/><path d=\"M7 20v-4\"/></svg>Slow</span></div>",
+      "css": ".ds-net-group { display: inline-flex; align-items: center; gap: 16px; font-family: var(--font-sans, Inter, system-ui, sans-serif); } .ds-net { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; } .ds-net-online { color: var(--color-success, #1C7449); } .ds-net-slow { color: var(--color-warning, #926016); }"
+    },
+    {
+      "name": "Course Card",
+      "kind": "card",
+      "refersTo": "card-surface",
+      "description": "Subject-coded card with 4px top accent rule, syllabus link, and follow state.",
+      "html": "<article class=\"ds-course-card\"><div class=\"ds-course-bar\"></div><div class=\"ds-course-top\"><span class=\"ds-course-code\">[CRS-101]</span><span class=\"ds-course-badge\">Following</span></div><h3 class=\"ds-course-title\">Algoritma dan Struktur Data</h3><div class=\"ds-course-foot\"><span class=\"ds-course-meta\">3 weeks, 3 materials</span><span class=\"ds-course-cta\">View syllabus</span></div></article>",
+      "css": ".ds-course-card { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 10px; width: 320px; padding: 16px; border-radius: var(--radius-md, 12px); border: 1px solid var(--color-border, #E3DED3); background: var(--color-surface, #FFFFFF); box-shadow: var(--shadow-1, 0 1px 3px rgba(20,33,61,0.08)); font-family: var(--font-sans, Inter, system-ui, sans-serif); transition: border-color 150ms ease-out, box-shadow 150ms ease-out; } .ds-course-card:hover { border-color: var(--color-primary, #1E3A8A); box-shadow: var(--shadow-2, 0 8px 24px rgba(20,33,61,0.14)); } .ds-course-bar { position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--course-1, #1E3A8A); } .ds-course-top { display: flex; align-items: center; justify-content: space-between; } .ds-course-code { font-family: var(--font-mono, ui-monospace, monospace); font-size: 13px; font-weight: 700; color: var(--color-text, #14213D); } .ds-course-badge { font-size: 12px; font-weight: 600; color: var(--color-primary, #1E3A8A); background: rgba(30,58,138,0.1); padding: 2px 8px; border-radius: 999px; } .ds-course-title { margin: 0; font-size: 17px; font-weight: 600; color: var(--color-text, #14213D); } .ds-course-foot { display: flex; align-items: center; justify-content: space-between; font-size: 13px; } .ds-course-meta { color: var(--color-text-muted, #5B6478); } .ds-course-cta { color: var(--color-primary, #1E3A8A); font-weight: 600; text-decoration: underline; }"
+    },
+    {
+      "name": "Deadline Item",
+      "kind": "custom",
+      "description": "Urgent deadline list row pairing icon and overdue copy.",
+      "html": "<div class=\"ds-deadline\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"ds-deadline-icon\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><line x1=\"12\" y1=\"8\" x2=\"12\" y2=\"12\"/><line x1=\"12\" y1=\"16\" x2=\"12.01\" y2=\"16\"/></svg><div><div class=\"ds-deadline-title\">Tugas Pendahuluan 1: Analisis Algoritma</div><div class=\"ds-deadline-meta\">CRS-101 - Algoritma dan Struktur Data</div><div class=\"ds-deadline-due\">Overdue. 23 Nov 2026, 03:28</div></div></div>",
+      "css": ".ds-deadline { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: var(--radius-md, 12px); border: 1px solid var(--color-danger, #B42318); background: var(--bg-accent-rust, #FBEAE8); font-family: var(--font-sans, Inter, system-ui, sans-serif); max-width: 340px; } .ds-deadline-icon { color: var(--color-danger, #B42318); flex-shrink: 0; margin-top: 2px; } .ds-deadline-title { font-size: 15px; font-weight: 600; color: var(--color-text, #14213D); } .ds-deadline-meta { font-size: 12px; color: var(--color-text-muted, #5B6478); margin: 2px 0; } .ds-deadline-due { font-size: 13px; font-weight: 600; color: var(--color-danger, #B42318); font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Theme Segmented Control",
+      "kind": "nav",
+      "description": "Three-option System, Light, and Dark switcher used in Settings.",
+      "html": "<div class=\"ds-seg\" role=\"tablist\"><button type=\"button\" role=\"tab\" aria-selected=\"true\" class=\"ds-seg-btn ds-seg-active\">System</button><button type=\"button\" role=\"tab\" aria-selected=\"false\" class=\"ds-seg-btn\">Light</button><button type=\"button\" role=\"tab\" aria-selected=\"false\" class=\"ds-seg-btn\">Dark</button></div>",
+      "css": ".ds-seg { display: flex; gap: 4px; padding: 4px; width: 280px; border-radius: var(--radius-sm, 8px); border: 1px solid var(--color-border, #E3DED3); background: var(--color-surface-2, #EFEBE3); font-family: var(--font-sans, Inter, system-ui, sans-serif); } .ds-seg-btn { flex: 1; height: 36px; border: none; border-radius: 6px; background: transparent; color: var(--color-text-muted, #5B6478); font-size: 14px; font-weight: 600; cursor: pointer; transition: background-color 150ms ease-out, color 150ms ease-out; } .ds-seg-btn:hover { color: var(--color-text, #14213D); } .ds-seg-active { background: var(--color-surface, #FFFFFF); color: var(--color-text, #14213D); box-shadow: var(--shadow-1, 0 1px 3px rgba(20,33,61,0.08)); } .ds-seg-btn:focus-visible { outline: 2px solid var(--color-primary, #1E3A8A); outline-offset: 1px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Dormitory Study Index",
+    "overview": "Offline-first workspace for IT Del students on 360px phones during network drops. Calm restraint (Energy 1, Rhythm 1, Motion 1) answers what is due next, what opens offline, and what is synced.",
+    "keyCharacteristics": [
+      "Warm Paper & Slate: Light ivory and dark slate passing WCAG 2.2 AA (44 pairings).",
+      "Editorial-Technical Type: Source Serif 4 headings, Inter body, tabular ui-monospace.",
+      "Vector-Only Shell: 24x24 SVG icons (1.75-2px stroke), zero decorative shell images.",
+      "Honest Offline States: Available offline, Following, Queued, Synced stay distinct.",
+      "One-Thumb Ergonomics: 44px tap targets from 360px bottom bar to 1280px sidebar."
+    ],
+    "rules": [
+      {
+        "name": "The Icon-Plus-Text Status Rule",
+        "body": "Never signal status by color alone; pair an SVG icon with text.",
+        "section": "colors"
+      },
+      {
+        "name": "The Subject-Not-Urgency Rule",
+        "body": "Course accents mark subjects only; urgency uses Ochre or Crimson.",
+        "section": "colors"
+      },
+      {
+        "name": "The Restrained Gold Rule",
+        "body": "Academic Gold stays under 5% of any viewport, never on buttons or cards.",
+        "section": "colors"
+      },
+      {
+        "name": "The Zero-Em-Dash Rule",
+        "body": "Never use em or en dashes in UI copy; use periods, commas, colons, or hyphens.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Data Rule",
+        "body": "Apply font-variant-numeric: tabular-nums to dates, NIMs, byte sizes, and counts.",
+        "section": "typography"
+      },
+      {
+        "name": "The One-Thumb Mobile Rule",
+        "body": "Below 480px, primary CTAs span 100%; targets stay >= 44x44px (8px gap).",
+        "section": "layout"
+      },
+      {
+        "name": "The Calm Surface Rule",
+        "body": "Keep static panels matte with 1px --color-border hairlines; no heavy shadows, glows, or blur.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do verify WCAG AA via src/tests/architecture/contrastAndCopy.test.ts.",
+      "Do pair every status color with an SVG icon and text.",
+      "Do show Available offline only after IndexedDB save, separate from Synced.",
+      "Do disable motion under prefers-reduced-motion: reduce.",
+      "Do keep >= 44x44px targets and 2px :focus-visible outlines."
+    ],
+    "donts": [
+      "Don't add gradients, blur stacks, grids, emojis, or stock art.",
+      "Don't auto-download PDFs when Data saver is ON or fake bytes.",
+      "Don't hardcode fake announcements or fabricated metrics.",
+      "Don't use course accents for urgency or nest cards.",
+      "Don't hide focus outlines or remove buttons from tab order."
+    ]
+  }
+}

@@ -1,36 +1,20 @@
 import { useEffect, useState } from 'react';
-import { useAuthSession } from './useAuthSession';
+import { useAppContainer } from '../../app/di';
+import type { ConnectionQuality } from '../../domain/services';
 
-export type NetworkState = 'online' | 'slow' | 'offline';
+export type NetworkState = ConnectionQuality;
 
 export function useNetworkStatus(): NetworkState {
-  const { isLocalFallbackMode } = useAuthSession();
-  const [isBrowserOnline, setIsBrowserOnline] = useState<boolean>(() => {
-    return typeof navigator !== 'undefined' ? navigator.onLine : true;
-  });
+  const container = useAppContainer();
+  const [status, setStatus] = useState<NetworkState>(() =>
+    container.networkStatus.getStatus(),
+  );
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    return container.networkStatus.subscribe((next) => {
+      setStatus(next);
+    });
+  }, [container]);
 
-    const handleOnline = (): void => setIsBrowserOnline(true);
-    const handleOffline = (): void => setIsBrowserOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-
-  if (!isBrowserOnline) {
-    return 'offline';
-  }
-
-  if (isLocalFallbackMode) {
-    return 'slow';
-  }
-
-  return 'online';
+  return status;
 }

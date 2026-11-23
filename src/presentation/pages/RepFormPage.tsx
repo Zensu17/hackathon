@@ -570,7 +570,7 @@ export function RepFormPage(): React.ReactElement {
       <section className="index-card">
         <div className="card-tab-bar">
           <span className="card-tab-code">
-            {isEditMode ? '[EDIT ITEM]' : '[MANAGE]'}
+            {isEditMode ? 'EDIT ITEM' : 'MANAGE'}
           </span>
         </div>
         <h2>{labels.repForm.typeSelectorLabel}</h2>
@@ -624,7 +624,7 @@ export function RepFormPage(): React.ReactElement {
         <section className="index-card">
           <div className="card-tab-bar">
             <span className="card-tab-code">
-              {`[${labels.repForm.types[activeType].toUpperCase()}]`}
+              {labels.repForm.types[activeType].toUpperCase()}
             </span>
           </div>
 

@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router';
+import { toast } from 'sonner';
 import {
   EmptyState,
   ErrorState,
   LoadingState,
 } from '../components/StateViews';
-import { Chip } from '../components/FigmaComponents';
+import { CourseCard, SegmentedControl } from '../components/FigmaComponents';
+import { IconPlus } from '../components/Icons';
 import { useAuthSession } from '../hooks/useAuthSession';
 import { useCourses } from '../hooks/useCourses';
 import { labels } from '../i18n/labels';
@@ -46,9 +48,10 @@ export function CoursesPage(): React.ReactElement {
           {isRep ? (
             <Link
               to="/manage?type=course"
-              className="btn btn-primary btn-compact"
+              className="figma-btn figma-btn--primary figma-btn--size-m"
             >
-              {labels.courses.addCourseCta}
+              <IconPlus size={16} />
+              <span>{labels.courses.addCourseCta}</span>
             </Link>
           ) : null}
         </div>
@@ -77,39 +80,16 @@ export function CoursesPage(): React.ReactElement {
 
       {!isLoading && !error && courses.length > 0 ? (
         <div className="card-stack">
-          <div
-            className="type-selector"
-            role="tablist"
-            aria-label={labels.courses.filterAriaLabel}
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={filterMode === 'all'}
-              className={
-                filterMode === 'all'
-                  ? 'btn btn-secondary btn-compact btn-toggle'
-                  : 'btn btn-secondary btn-compact'
-              }
-              aria-pressed={filterMode === 'all'}
-              onClick={() => setFilterMode('all')}
-            >
-              {`${labels.courses.filterAll} (${courses.length})`}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={filterMode === 'following'}
-              className={
-                filterMode === 'following'
-                  ? 'btn btn-secondary btn-compact btn-toggle'
-                  : 'btn btn-secondary btn-compact'
-              }
-              aria-pressed={filterMode === 'following'}
-              onClick={() => setFilterMode('following')}
-            >
-              {`${labels.courses.filterFollowing} (${followedCourses.length})`}
-            </button>
+          <div className="filter-tab-bar">
+            <SegmentedControl<'all' | 'following'>
+              options={['all', 'following']}
+              active={filterMode}
+              onChange={setFilterMode}
+              labelsMap={{
+                all: `${labels.courses.filterAll} (${courses.length})`,
+                following: `${labels.courses.filterFollowing} (${followedCourses.length})`,
+              }}
+            />
           </div>
 
           {filterMode === 'following' && followedCourses.length === 0 ? (
@@ -120,62 +100,38 @@ export function CoursesPage(): React.ReactElement {
               onAction={() => setFilterMode('all')}
             />
           ) : (
-            displayedCourses.map((course, idx) => {
-              const isPending = pendingCourseId === course.id;
-              const accent = (((idx % 6) + 1) as 1 | 2 | 3 | 4 | 5 | 6);
-              return (
-                <article
-                  key={course.id}
-                  className="index-card index-card--interactive"
-                  style={{ borderTop: `4px solid var(--course-${accent})` }}
-                >
-                  <div className="card-tab-bar">
-                    <span className="card-tab-code">[{course.code}]</span>
-                    {course.isFollowed ? (
-                      <Chip type="info" size="S" label="Following" />
-                    ) : null}
-                  </div>
-
-                  <h2>{course.name}</h2>
-
-                  {course.description ? (
-                    <p className="meta-text">{course.description}</p>
-                  ) : null}
-
-                  <div className="action-row">
-                    <Link
-                      to={`/courses/${course.id}`}
-                      className="figma-btn figma-btn--primary figma-btn--size-m"
-                    >
-                      {labels.courses.openWeeksCta}
-                    </Link>
-
-                    <button
-                      type="button"
-                      className="figma-btn figma-btn--secondary figma-btn--size-m"
-                      aria-pressed={course.isFollowed}
-                      disabled={isPending}
-                      onClick={() =>
-                        void toggleFollow(course.id, course.isFollowed)
-                      }
-                    >
-                      {course.isFollowed
-                        ? labels.courses.followingLabel
-                        : labels.courses.followCta}
-                    </button>
-
-                    {isRep ? (
-                      <Link
-                        to={`/manage?type=course&editId=${course.id}`}
-                        className="figma-btn figma-btn--ghost figma-btn--size-m"
-                      >
-                        {labels.courses.editCourseCta}
-                      </Link>
-                    ) : null}
-                  </div>
-                </article>
-              );
-            })
+            <div className="courses-grid">
+              {displayedCourses.map((course, idx) => {
+                const isPending = pendingCourseId === course.id;
+                const accent = (((idx % 6) + 1) as 1 | 2 | 3 | 4 | 5 | 6);
+                return (
+                  <CourseCard
+                    key={course.id}
+                    courseId={course.id}
+                    name={course.name}
+                    code={course.code}
+                    description={course.description}
+                    accent={accent}
+                    followed={course.isFollowed}
+                    toggleDisabled={isPending}
+                    editTo={
+                      isRep
+                        ? `/manage?type=course&editId=${course.id}`
+                        : undefined
+                    }
+                    onToggleFollow={() => {
+                      void toggleFollow(course.id, course.isFollowed).then(() => {
+                        if (course.isFollowed) {
+                          toast.info(`Unfollowed ${course.name}`);
+                        } else {
+                          toast.success(`Following ${course.name}`);
+                        }
+                      });
+                    }}
+                  />
+                );
+              })}
+            </div>
           )}
         </div>
       ) : null}

@@ -54,3 +54,13 @@ export function formatByteSize(bytes: number): string {
   }
   return `${(bytes / SUB_ONE_MB_BYTES).toFixed(2)} MB`;
 }
+
+export function shouldAutoDownloadMaterial(
+  sizeBytes: number,
+  dataSaverEnabled: boolean,
+): boolean {
+  if (dataSaverEnabled) {
+    return false;
+  }
+  return Number.isFinite(sizeBytes) && sizeBytes > 0 && sizeBytes < SUB_ONE_MB_BYTES;
+}

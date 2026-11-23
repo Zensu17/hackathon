@@ -446,7 +446,7 @@ describe('Clean Architecture boundaries and Antislop R-02 copy hygiene', () => {
       supabaseAnonKey: '',
     });
     expect(localContainer.isLocalFallbackMode).toBe(true);
-    expect(Object.keys(localContainer.usecases)).toHaveLength(23);
+    expect(Object.keys(localContainer.usecases)).toHaveLength(32);
 
     const onlineContainer = createAppContainer({
       databaseName: 'litelearn_test_online',

@@ -1,12 +1,14 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
+import { LazyMotion, MotionConfig, domAnimation } from 'motion/react';
+import { Toaster } from 'sonner';
 import { AppLayout, OnboardingLayout } from '../presentation/components/AppLayout';
 import { LoadingState } from '../presentation/components/StateViews';
 import {
   AuthSessionProvider,
   useAuthSession,
 } from '../presentation/hooks/useAuthSession';
-import { ThemeProvider } from '../presentation/hooks/useTheme';
+import { ThemeProvider, useTheme } from '../presentation/hooks/useTheme';
 import { labels } from '../presentation/i18n/labels';
 
 const SignInPage = lazy(() => import('../presentation/pages/SignInPage'));
@@ -182,14 +184,39 @@ export function AppRoutes(): React.ReactElement {
   );
 }
 
+function AppToaster(): React.ReactElement {
+  const { theme } = useTheme();
+  return (
+    <Toaster
+      theme={theme}
+      position="bottom-right"
+      richColors
+      closeButton
+      offset={20}
+      mobileOffset={{ bottom: 80, left: 16, right: 16 }}
+      toastOptions={{
+        style: {
+          fontFamily: 'var(--font-sans)',
+          borderRadius: '12px',
+        },
+      }}
+    />
+  );
+}
+
 export function AppRouter(): React.ReactElement {
   return (
     <ThemeProvider>
-      <AuthSessionProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-      </AuthSessionProvider>
+      <LazyMotion features={domAnimation} strict>
+        <MotionConfig reducedMotion="user">
+          <AuthSessionProvider>
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+            <AppToaster />
+          </AuthSessionProvider>
+        </MotionConfig>
+      </LazyMotion>
     </ThemeProvider>
   );
 }

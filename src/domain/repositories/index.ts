@@ -27,6 +27,8 @@ export type {
 export type {
   CreateMaterialRecordInput,
   MaterialRepository,
+  OfflineMaterialFile,
+  OfflineStorageStats,
   UpdateMaterialRecordInput,
 } from './MaterialRepository';
 export type {

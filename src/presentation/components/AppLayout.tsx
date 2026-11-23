@@ -6,19 +6,23 @@ import { useTheme } from '../hooks/useTheme';
 import { useSyncStatus } from '../hooks/useSyncStatus';
 import { labels } from '../i18n/labels';
 import {
+  BrandMark,
   IconBook,
   IconCalendarCheck,
   IconHome,
   IconLogout,
   IconMoon,
   IconNote,
+  IconRefresh,
   IconSettings,
   IconSun,
+  IconWifiOff,
 } from './Icons';
 import { NetworkStatus } from './FigmaComponents';
+import { formatDateTime, getInitials } from '../utils/formatters';
 import './AppLayout.css';
 
-function ThemeQuickSwitch(): React.ReactElement {
+function ThemeQuickSwitch({ compact = false }: { compact?: boolean }): React.ReactElement {
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -38,7 +42,15 @@ function ThemeQuickSwitch(): React.ReactElement {
       <span className="theme-btn__icon" aria-hidden="true">
         {isDark ? <IconSun size={16} /> : <IconMoon size={16} />}
       </span>
-      <span>{isDark ? labels.nav.switchToLight : labels.nav.switchToDark}</span>
+      <span>
+        {compact
+          ? isDark
+            ? 'Light'
+            : 'Dark'
+          : isDark
+            ? labels.nav.switchToLight
+            : labels.nav.switchToDark}
+      </span>
     </button>
   );
 }
@@ -72,7 +84,10 @@ export function OnboardingLayout({
           }
         >
           <div className="app-header__brand-group">
-            <span className="app-brand">{labels.app.name}</span>
+            <span className="brand-lockup">
+              <BrandMark size={30} className="brand-lockup__mark" />
+              <span className="brand-lockup__name">{labels.app.name}</span>
+            </span>
             <NetworkStatus state={networkState} />
           </div>
           <div className="app-header__controls">
@@ -116,12 +131,21 @@ export function OnboardingLayout({
 export function AppLayout(): React.ReactElement {
   const { session, signOut } = useAuthSession();
   const networkState = useNetworkStatus();
-  const { pendingChanges, hasFailedChanges, retry } = useSyncStatus();
+  const {
+    isSyncing,
+    lastSyncAt,
+    pendingChanges,
+    hasFailedChanges,
+    lastError,
+    syncNow,
+    retry,
+  } = useSyncStatus();
   const navigate = useNavigate();
 
   const isRep = session?.user.role === 'rep';
   const currentClass = session?.currentClass ?? null;
   const roleLabel = isRep ? labels.app.roleRep : labels.app.roleStudent;
+  const displayName = session?.user.displayName ?? 'Student';
 
   const handleSignOut = async (): Promise<void> => {
     await signOut();
@@ -134,23 +158,31 @@ export function AppLayout(): React.ReactElement {
         {labels.app.skipToMain}
       </a>
 
-      {/* Figma Native SideNav for Laptop (1024+ px) */}
+      {/* Desktop Left Sidebar (>= 1024px) */}
       <aside className="figma-sidenav" aria-label={labels.nav.ariaLabel}>
         <div className="figma-sidenav__header">
-          <Link to="/" className="figma-sidenav__brand">
-            {labels.app.name}
-          </Link>
-          {currentClass ? (
-            <span className="status-chip mono-code">
-              {currentClass.joinCode}
+          <Link to="/" className="brand-lockup">
+            <BrandMark size={34} className="brand-lockup__mark" />
+            <span className="brand-lockup__text">
+              <span className="brand-lockup__name">{labels.app.name}</span>
+              <span className="brand-lockup__sub">STUDY INDEX</span>
             </span>
-          ) : null}
-          <div style={{ marginTop: 'var(--space-2)' }}>
+          </Link>
+
+          <div className="figma-sidenav__meta-well">
+            {currentClass ? (
+              <span className="mono-code" style={{ fontSize: '12px', fontWeight: 700 }}>
+                {currentClass.joinCode}
+              </span>
+            ) : (
+              <span className="meta-text" style={{ fontSize: '12px' }}>No class</span>
+            )}
             <NetworkStatus state={networkState} />
           </div>
         </div>
 
         <nav className="figma-sidenav__nav">
+          <p className="figma-sidenav__nav-label">WORKSPACE</p>
           <ul className="figma-sidenav__list">
             <li>
               <NavLink
@@ -162,7 +194,7 @@ export function AppLayout(): React.ReactElement {
                     : 'figma-sidenav__link'
                 }
               >
-                <IconHome size={20} />
+                <IconHome size={19} />
                 <span>{labels.nav.home}</span>
               </NavLink>
             </li>
@@ -175,7 +207,7 @@ export function AppLayout(): React.ReactElement {
                     : 'figma-sidenav__link'
                 }
               >
-                <IconBook size={20} />
+                <IconBook size={19} />
                 <span>{labels.nav.courses}</span>
               </NavLink>
             </li>
@@ -188,7 +220,7 @@ export function AppLayout(): React.ReactElement {
                     : 'figma-sidenav__link'
                 }
               >
-                <IconCalendarCheck size={20} />
+                <IconCalendarCheck size={19} />
                 <span>Deadlines</span>
               </NavLink>
             </li>
@@ -202,7 +234,7 @@ export function AppLayout(): React.ReactElement {
                       : 'figma-sidenav__link'
                   }
                 >
-                  <IconNote size={20} />
+                  <IconNote size={19} />
                   <span>{labels.nav.manage}</span>
                 </NavLink>
               </li>
@@ -216,7 +248,7 @@ export function AppLayout(): React.ReactElement {
                     : 'figma-sidenav__link'
                 }
               >
-                <IconSettings size={20} />
+                <IconSettings size={19} />
                 <span>{labels.nav.settings}</span>
               </NavLink>
             </li>
@@ -224,21 +256,24 @@ export function AppLayout(): React.ReactElement {
         </nav>
 
         <div className="figma-sidenav__footer">
-          <div className="figma-sidenav__user">
-            <span className="figma-sidenav__user-name">
-              {session?.user.displayName ?? 'Student'}
+          <div className="figma-sidenav__profile">
+            <span className="user-avatar" aria-hidden="true">
+              {getInitials(displayName)}
             </span>
-            <span className="status-chip">{roleLabel}</span>
+            <div className="figma-sidenav__user-info">
+              <span className="figma-sidenav__user-name">{displayName}</span>
+              <span className="figma-sidenav__user-role">{roleLabel}</span>
+            </div>
           </div>
           <div className="figma-sidenav__actions">
-            <ThemeQuickSwitch />
+            <ThemeQuickSwitch compact />
             <button
               type="button"
               className="btn btn-secondary figma-sidenav__logout-btn"
               onClick={() => void handleSignOut()}
               title="Sign out"
             >
-              <IconLogout size={16} />
+              <IconLogout size={15} />
               <span>Sign out</span>
             </button>
           </div>
@@ -251,8 +286,9 @@ export function AppLayout(): React.ReactElement {
         <header className="app-header">
           <div className="app-header__inner">
             <div className="app-header__brand-group">
-              <Link to="/" className="app-brand">
-                {labels.app.name}
+              <Link to="/" className="brand-lockup">
+                <BrandMark size={28} className="brand-lockup__mark" />
+                <span className="brand-lockup__name">{labels.app.name}</span>
               </Link>
               {currentClass ? (
                 <span className="status-chip mono-code">
@@ -263,7 +299,7 @@ export function AppLayout(): React.ReactElement {
             </div>
 
             <div className="app-header__controls">
-              <ThemeQuickSwitch />
+              <ThemeQuickSwitch compact />
             </div>
           </div>
         </header>
@@ -271,32 +307,52 @@ export function AppLayout(): React.ReactElement {
         {/* Content Viewport */}
         <main id="main-content" tabIndex={-1} className="app-main">
           <div className="app-container">
-            {pendingChanges > 0 ? (
+            {networkState === 'offline' ? (
+              <div className="offline-strip" role="status">
+                <span className="offline-strip__lead">
+                  <IconWifiOff size={16} />
+                  <span>
+                    Offline mode. Showing saved courses, materials, and notes from this device.
+                  </span>
+                </span>
+              </div>
+            ) : null}
+
+            {pendingChanges > 0 || hasFailedChanges ? (
               <div className="sync-banner" role="status">
                 <span>
                   {hasFailedChanges
-                    ? 'Sync needs attention.'
+                    ? lastError ?? 'Sync needs attention. Local edits remain safe.'
                     : `${pendingChanges} change${pendingChanges === 1 ? '' : 's'} waiting to sync.`}
                 </span>
                 <span>
-                  Saved on this device. Changes will retry when connection returns.
+                  Saved on this device.
+                  {lastSyncAt ? ` Last updated: ${formatDateTime(lastSyncAt)}.` : ''}
                 </span>
-                {hasFailedChanges ? (
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-compact"
-                    onClick={() => void retry()}
-                  >
-                    Allow retry
-                  </button>
-                ) : null}
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-compact"
+                  disabled={isSyncing || networkState === 'offline'}
+                  onClick={() =>
+                    void (hasFailedChanges ? retry() : syncNow())
+                  }
+                >
+                  <IconRefresh size={14} className={isSyncing ? 'anim-spin' : undefined} />
+                  <span>
+                    {isSyncing
+                      ? 'Syncing...'
+                      : hasFailedChanges
+                        ? 'Try again'
+                        : 'Sync now'}
+                  </span>
+                </button>
               </div>
             ) : null}
             <Outlet />
           </div>
         </main>
 
-        {/* Mobile Bottom Navigation (360-767 px, up to 1023px) */}
+        {/* Mobile Bottom Navigation (< 1024px) */}
         <nav className="figma-bottom-nav" aria-label={labels.nav.ariaLabel}>
           <ul className="figma-bottom-nav__list">
             <li className="figma-bottom-nav__item">
@@ -370,7 +426,7 @@ export function AppLayout(): React.ReactElement {
           </ul>
         </nav>
 
-        {/* Global Footer on Mobile/Tablet */}
+        {/* Global Footer */}
         <footer className="app-footer">
           <div className="app-footer__inner">
             <p className="app-footer__meta">

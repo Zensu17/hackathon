@@ -3,6 +3,9 @@
 alter table public.profiles
   add column if not exists nim text;
 
+alter table public.profiles
+  alter column email drop not null;
+
 update public.profiles
   set nim = upper(split_part(email, '@', 1))
   where nim is null and email is not null;
@@ -10,10 +13,20 @@ update public.profiles
 alter table public.profiles
   alter column nim set not null;
 
-alter table public.profiles
-  add constraint profiles_nim_unique unique (nim);
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'profiles_nim_unique'
+  ) then
+    alter table public.profiles
+      add constraint profiles_nim_unique unique (nim);
+  end if;
+end;
+$$;
 
--- Update auth trigger to read NIM from user metadata.
+-- Update auth trigger to read NIM from user metadata and persist email safely.
 create or replace function public.handle_new_auth_user()
 returns trigger
 language plpgsql
@@ -34,10 +47,11 @@ begin
     split_part(coalesce(new.email, '11S22001'), '@', 1)
   );
 
-  insert into public.profiles (id, nim, display_name)
-  values (new.id, upper(v_nim), v_display_name)
+  insert into public.profiles (id, email, nim, display_name)
+  values (new.id, lower(nullif(trim(coalesce(new.email, '')), '')), upper(v_nim), v_display_name)
   on conflict (id) do update
     set nim = excluded.nim,
+        email = coalesce(excluded.email, public.profiles.email),
         display_name = excluded.display_name;
 
   return new;

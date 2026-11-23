@@ -13,6 +13,20 @@ import {
 import type { SupabaseRemoteDataSource } from '../remote/SupabaseRemoteDataSource';
 import { generateUuid } from './HybridAuthRepository';
 
+function isNetworkFailure(error: unknown): boolean {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return true;
+  }
+  const msg =
+    error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  return (
+    msg.includes('failed to fetch') ||
+    msg.includes('network') ||
+    msg.includes('timeout') ||
+    msg.includes('offline')
+  );
+}
+
 export class HybridAnnouncementRepository implements AnnouncementRepository {
   constructor(
     private readonly db: LiteLearnDb,
@@ -29,6 +43,19 @@ export class HybridAnnouncementRepository implements AnnouncementRepository {
       .map(localAnnouncementToDomain);
   }
 
+  async listByCourseIds(courseIds: readonly string[]): Promise<Announcement[]> {
+    if (courseIds.length === 0) {
+      return [];
+    }
+    const rows = await this.db.announcements
+      .where('courseId')
+      .anyOf([...courseIds])
+      .toArray();
+    return rows
+      .filter((row) => row.deletedAt === null)
+      .map(localAnnouncementToDomain);
+  }
+
   async getById(id: string): Promise<Announcement | null> {
     const row = await this.db.announcements.get(id);
     if (!row || row.deletedAt !== null) {
@@ -39,9 +66,15 @@ export class HybridAnnouncementRepository implements AnnouncementRepository {
 
   async create(input: CreateAnnouncementRecordInput): Promise<Announcement> {
     if (this.remote !== null) {
-      const created = await this.remote.createAnnouncement(input);
-      await this.db.announcements.put(domainAnnouncementToLocal(created));
-      return created;
+      try {
+        const created = await this.remote.createAnnouncement(input);
+        await this.db.announcements.put(domainAnnouncementToLocal(created));
+        return created;
+      } catch (err) {
+        if (!isNetworkFailure(err)) {
+          throw err;
+        }
+      }
     }
 
     const nowIso = new Date().toISOString();
@@ -55,7 +88,26 @@ export class HybridAnnouncementRepository implements AnnouncementRepository {
       updatedAt: nowIso,
       deletedAt: null,
     };
-    await this.db.announcements.put(domainAnnouncementToLocal(created));
+
+    await this.db.transaction(
+      'rw',
+      [this.db.announcements, this.db.syncQueue],
+      async () => {
+        await this.db.announcements.put(domainAnnouncementToLocal(created));
+        await this.db.syncQueue.put({
+          id: generateUuid(),
+          entityType: 'announcement',
+          entityId: created.id,
+          operation: 'upsert',
+          payloadJson: JSON.stringify(created),
+          attempts: 0,
+          lastError: null,
+          nextRetryAt: null,
+          createdAt: nowIso,
+        });
+      },
+    );
+
     return created;
   }
 
@@ -64,9 +116,15 @@ export class HybridAnnouncementRepository implements AnnouncementRepository {
     input: UpdateAnnouncementRecordInput,
   ): Promise<Announcement> {
     if (this.remote !== null) {
-      const updated = await this.remote.updateAnnouncement(id, input);
-      await this.db.announcements.put(domainAnnouncementToLocal(updated));
-      return updated;
+      try {
+        const updated = await this.remote.updateAnnouncement(id, input);
+        await this.db.announcements.put(domainAnnouncementToLocal(updated));
+        return updated;
+      } catch (err) {
+        if (!isNetworkFailure(err)) {
+          throw err;
+        }
+      }
     }
 
     const existingRow = await this.db.announcements.get(id);
@@ -74,6 +132,7 @@ export class HybridAnnouncementRepository implements AnnouncementRepository {
       throw new AppError('NOT_FOUND', 'Announcement not found.');
     }
 
+    const nowIso = new Date().toISOString();
     const updated: Announcement = {
       ...localAnnouncementToDomain(existingRow),
       title: input.title,
@@ -81,10 +140,28 @@ export class HybridAnnouncementRepository implements AnnouncementRepository {
       postedAt: input.postedAt ?? existingRow.postedAt,
       deletedAt:
         input.deletedAt !== undefined ? input.deletedAt : existingRow.deletedAt,
-      updatedAt: new Date().toISOString(),
+      updatedAt: nowIso,
     };
 
-    await this.db.announcements.put(domainAnnouncementToLocal(updated));
+    await this.db.transaction(
+      'rw',
+      [this.db.announcements, this.db.syncQueue],
+      async () => {
+        await this.db.announcements.put(domainAnnouncementToLocal(updated));
+        await this.db.syncQueue.put({
+          id: generateUuid(),
+          entityType: 'announcement',
+          entityId: updated.id,
+          operation: updated.deletedAt ? 'delete' : 'upsert',
+          payloadJson: JSON.stringify(updated),
+          attempts: 0,
+          lastError: null,
+          nextRetryAt: null,
+          createdAt: nowIso,
+        });
+      },
+    );
+
     return updated;
   }
 }

@@ -1,12 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Link, useLocation, useParams } from 'react-router';
+import { toast } from 'sonner';
 import { formatByteSize } from '../../domain/rules';
 import {
   EmptyState,
   ErrorState,
   LoadingState,
 } from '../components/StateViews';
-import { Toast } from '../components/FigmaComponents';
+import { Chip } from '../components/FigmaComponents';
+import { IconArrowLeft, IconCloudCheck, IconCloudDownload } from '../components/Icons';
 import { useAuthSession } from '../hooks/useAuthSession';
 import { useCourseDetail } from '../hooks/useCourseDetail';
 import { labels } from '../i18n/labels';
@@ -19,16 +21,13 @@ export function CourseDetailPage(): React.ReactElement {
   const userId = session?.user.id ?? null;
   const isRep = session?.user.role === 'rep';
 
-  const [toastMessage, setToastMessage] = useState<string | null>(() => {
-    return (location.state as { toast?: string } | null)?.toast ?? null;
-  });
+  const navToast = (location.state as { toast?: string } | null)?.toast ?? null;
 
   useEffect(() => {
-    if (toastMessage) {
-      const timer = setTimeout(() => setToastMessage(null), 4000);
-      return () => clearTimeout(timer);
+    if (navToast) {
+      toast.success(navToast, { id: 'course-detail-nav-toast' });
     }
-  }, [toastMessage]);
+  }, [navToast]);
 
   const {
     courseWeeks,
@@ -101,19 +100,14 @@ export function CourseDetailPage(): React.ReactElement {
 
   return (
     <div className="page-stack">
-      {toastMessage ? (
-        <div style={{ position: 'fixed', top: 'var(--space-4)', right: 'var(--space-4)', zIndex: 200 }}>
-          <Toast type="success" message={toastMessage} />
-        </div>
-      ) : null}
-
       <div className="breadcrumb-row">
         <Link to="/courses" className="breadcrumb-link">
-          {labels.courseDetail.backToCourses}
+          <IconArrowLeft size={15} />
+          <span>{labels.courseDetail.backToCourses}</span>
         </Link>
       </div>
 
-      <section className="index-card">
+      <section className="index-card course-hero">
         <div className="card-tab-bar">
           <span className="card-tab-code">{course.code}</span>
           {isFollowed ? (
@@ -129,6 +123,18 @@ export function CourseDetailPage(): React.ReactElement {
         {course.description ? (
           <p className="page-lead">{course.description}</p>
         ) : null}
+
+        <div className="course-hero__stats">
+          <span className="status-chip tabular-nums">
+            {`${weeks.length} week${weeks.length === 1 ? '' : 's'}`}
+          </span>
+          <span className="status-chip tabular-nums">
+            {`${weeks.reduce((sum, w) => sum + w.materials.length, 0)} material${weeks.reduce((sum, w) => sum + w.materials.length, 0) === 1 ? '' : 's'}`}
+          </span>
+          <span className="status-chip tabular-nums">
+            {`${weeks.reduce((sum, w) => sum + w.deadlines.length, 0) + unassignedDeadlines.length} deadline${weeks.reduce((sum, w) => sum + w.deadlines.length, 0) + unassignedDeadlines.length === 1 ? '' : 's'}`}
+          </span>
+        </div>
 
         <div className="action-row">
           <button
@@ -255,13 +261,25 @@ export function CourseDetailPage(): React.ReactElement {
                                 </Link>
                                 <div className="breadcrumb-row">
                                   {material.attachment ? (
-                                    <span className="card-tab-code">
-                                      {`[${labels.courseDetail.pdfBadgePrefix} ${formatByteSize(material.attachment.sizeBytes)}]`}
-                                    </span>
+                                    material.isAvailableOffline ? (
+                                      <Chip
+                                        type="success"
+                                        size="S"
+                                        icon={<IconCloudCheck size={14} />}
+                                        label={`Offline (${formatByteSize(material.attachment.sizeBytes)})`}
+                                      />
+                                    ) : (
+                                      <Chip
+                                        type="neutral"
+                                        size="S"
+                                        icon={<IconCloudDownload size={14} />}
+                                        label={`${labels.courseDetail.pdfBadgePrefix} ${formatByteSize(material.attachment.sizeBytes)}`}
+                                      />
+                                    )
                                   ) : null}
                                   {material.externalUrl ? (
                                     <span className="status-chip">
-                                      {`[${labels.courseDetail.externalLinkBadge}]`}
+                                      {labels.courseDetail.externalLinkBadge}
                                     </span>
                                   ) : null}
                                 </div>
@@ -373,7 +391,7 @@ export function CourseDetailPage(): React.ReactElement {
           {unassignedDeadlines.length > 0 ? (
             <section className="index-card section-block">
               <div className="card-tab-bar" style={{ marginBottom: 0 }}>
-                <span className="card-tab-code">[DEADLINES]</span>
+                <span className="card-tab-code">DEADLINES</span>
               </div>
               <h2>{labels.courseDetail.courseDeadlinesHeading}</h2>
               <ul className="item-list">
@@ -431,7 +449,7 @@ export function CourseDetailPage(): React.ReactElement {
 
           <section className="index-card section-block">
             <div className="card-tab-bar" style={{ marginBottom: 0 }}>
-              <span className="card-tab-code">[ANNOUNCEMENTS]</span>
+              <span className="card-tab-code">ANNOUNCEMENTS</span>
             </div>
             <h2>{labels.courseDetail.announcementsHeading}</h2>
             {announcements.length === 0 ? (

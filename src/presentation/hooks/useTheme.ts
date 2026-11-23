@@ -6,21 +6,20 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { type ThemePreference, useAppContainer } from '../../app/di';
+import {
+  type ResolvedTheme,
+  type ThemePreference,
+  useAppContainer,
+} from '../../app/di';
 
 export interface UseThemeResult {
-  theme: ThemePreference;
+  preference: ThemePreference;
+  theme: ResolvedTheme;
   setTheme: (nextTheme: ThemePreference) => Promise<void>;
   toggleTheme: () => Promise<void>;
 }
 
-function detectInitialTheme(): ThemePreference {
-  if (typeof document !== 'undefined' && document.documentElement) {
-    const existing = document.documentElement.dataset.theme;
-    if (existing === 'light' || existing === 'dark') {
-      return existing;
-    }
-  }
+function getSystemTheme(): ResolvedTheme {
   if (
     typeof window !== 'undefined' &&
     typeof window.matchMedia === 'function' &&
@@ -31,7 +30,11 @@ function detectInitialTheme(): ThemePreference {
   return 'light';
 }
 
-function applyThemeToDocument(theme: ThemePreference): void {
+function resolveTheme(preference: ThemePreference): ResolvedTheme {
+  return preference === 'system' ? getSystemTheme() : preference;
+}
+
+function applyThemeToDocument(theme: ResolvedTheme): void {
   if (typeof document !== 'undefined' && document.documentElement) {
     document.documentElement.dataset.theme = theme;
   }
@@ -39,22 +42,27 @@ function applyThemeToDocument(theme: ThemePreference): void {
 
 const ThemeContext = createContext<UseThemeResult | null>(null);
 
-function useStandaloneTheme(): UseThemeResult {
+function useThemeController(): UseThemeResult {
   const container = useAppContainer();
-  const [theme, setThemeState] = useState<ThemePreference>(() => detectInitialTheme());
+  const [preference, setPreferenceState] = useState<ThemePreference>('system');
+  const [resolved, setResolved] = useState<ResolvedTheme>(() =>
+    getSystemTheme(),
+  );
 
   useEffect(() => {
     let active = true;
-    applyThemeToDocument(theme);
+    const initialResolved = resolveTheme(preference);
+    setResolved(initialResolved);
+    applyThemeToDocument(initialResolved);
 
     void container.getThemePreference().then((stored) => {
-      if (!active) {
+      if (!active || !stored) {
         return;
       }
-      if (stored === 'light' || stored === 'dark') {
-        setThemeState(stored);
-        applyThemeToDocument(stored);
-      }
+      setPreferenceState(stored);
+      const nextResolved = resolveTheme(stored);
+      setResolved(nextResolved);
+      applyThemeToDocument(nextResolved);
     });
 
     return () => {
@@ -62,27 +70,52 @@ function useStandaloneTheme(): UseThemeResult {
     };
   }, [container]);
 
+  useEffect(() => {
+    if (
+      preference !== 'system' ||
+      typeof window === 'undefined' ||
+      typeof window.matchMedia !== 'function'
+    ) {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = (): void => {
+      const next = mediaQuery.matches ? 'dark' : 'light';
+      setResolved(next);
+      applyThemeToDocument(next);
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => {
+      mediaQuery.removeEventListener('change', handleChange);
+    };
+  }, [preference]);
+
   const setTheme = useCallback(
     async (nextTheme: ThemePreference): Promise<void> => {
-      setThemeState(nextTheme);
-      applyThemeToDocument(nextTheme);
+      setPreferenceState(nextTheme);
+      const nextResolved = resolveTheme(nextTheme);
+      setResolved(nextResolved);
+      applyThemeToDocument(nextResolved);
       await container.setThemePreference(nextTheme);
     },
     [container],
   );
 
   const toggleTheme = useCallback(async (): Promise<void> => {
-    const nextTheme: ThemePreference = theme === 'dark' ? 'light' : 'dark';
+    const nextTheme: ThemePreference = resolved === 'dark' ? 'light' : 'dark';
     await setTheme(nextTheme);
-  }, [setTheme, theme]);
+  }, [resolved, setTheme]);
 
   return useMemo(
     () => ({
-      theme,
+      preference,
+      theme: resolved,
       setTheme,
       toggleTheme,
     }),
-    [theme, setTheme, toggleTheme],
+    [preference, resolved, setTheme, toggleTheme],
   );
 }
 
@@ -91,12 +124,14 @@ export function ThemeProvider({
 }: {
   children: React.ReactNode;
 }): React.ReactElement {
-  const value = useStandaloneTheme();
+  const value = useThemeController();
   return React.createElement(ThemeContext.Provider, { value }, children);
 }
 
 export function useTheme(): UseThemeResult {
   const contextValue = useContext(ThemeContext);
-  const standalone = useStandaloneTheme();
-  return contextValue ?? standalone;
+  if (!contextValue) {
+    throw new Error('useTheme must be used inside ThemeProvider.');
+  }
+  return contextValue;
 }

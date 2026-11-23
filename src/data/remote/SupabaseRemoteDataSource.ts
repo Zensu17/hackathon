@@ -755,4 +755,104 @@ export class SupabaseRemoteDataSource {
       ).map(remoteAnnouncementToDomain),
     };
   }
+
+  async upsertNote(input: {
+    userId: string;
+    materialId: string;
+    body: string;
+  }): Promise<void> {
+    const { error } = await this.client.from('notes').upsert(
+      {
+        user_id: input.userId,
+        material_id: input.materialId,
+        body: input.body,
+        updated_at: new Date().toISOString(),
+        deleted_at: null,
+      },
+      { onConflict: 'user_id,material_id' },
+    );
+
+    if (error) {
+      throw mapRemoteError(error);
+    }
+  }
+
+  async upsertCoursePayload(payload: Record<string, unknown>): Promise<void> {
+    const { error } = await this.client.from('courses').upsert({
+      id: payload.id,
+      class_id: payload.classId,
+      code: payload.code,
+      name: payload.name,
+      description: payload.description ?? '',
+      updated_at: payload.updatedAt ?? new Date().toISOString(),
+      deleted_at: payload.deletedAt ?? null,
+    });
+    if (error) {
+      throw mapRemoteError(error);
+    }
+  }
+
+  async upsertWeekPayload(payload: Record<string, unknown>): Promise<void> {
+    const { error } = await this.client.from('weeks').upsert({
+      id: payload.id,
+      course_id: payload.courseId,
+      week_number: payload.weekNumber,
+      title: payload.title,
+      summary: payload.summary ?? '',
+      updated_at: payload.updatedAt ?? new Date().toISOString(),
+      deleted_at: payload.deletedAt ?? null,
+    });
+    if (error) {
+      throw mapRemoteError(error);
+    }
+  }
+
+  async upsertDeadlinePayload(payload: Record<string, unknown>): Promise<void> {
+    const { error } = await this.client.from('deadlines').upsert({
+      id: payload.id,
+      course_id: payload.courseId,
+      week_id: payload.weekId ?? null,
+      title: payload.title,
+      description: payload.description ?? '',
+      due_at: payload.dueAt,
+      updated_at: payload.updatedAt ?? new Date().toISOString(),
+      deleted_at: payload.deletedAt ?? null,
+    });
+    if (error) {
+      throw mapRemoteError(error);
+    }
+  }
+
+  async upsertAnnouncementPayload(
+    payload: Record<string, unknown>,
+  ): Promise<void> {
+    const { error } = await this.client.from('announcements').upsert({
+      id: payload.id,
+      course_id: payload.courseId,
+      title: payload.title,
+      body: payload.body,
+      posted_at: payload.postedAt ?? new Date().toISOString(),
+      updated_at: payload.updatedAt ?? new Date().toISOString(),
+      deleted_at: payload.deletedAt ?? null,
+    });
+    if (error) {
+      throw mapRemoteError(error);
+    }
+  }
+
+  async upsertMaterialPayload(payload: Record<string, unknown>): Promise<void> {
+    const { error } = await this.client.from('materials').upsert({
+      id: payload.id,
+      course_id: payload.courseId,
+      week_id: payload.weekId,
+      title: payload.title,
+      description: payload.description ?? '',
+      external_url: payload.externalUrl ?? null,
+      updated_at: payload.updatedAt ?? new Date().toISOString(),
+      deleted_at: payload.deletedAt ?? null,
+    });
+    if (error) {
+      throw mapRemoteError(error);
+    }
+  }
 }

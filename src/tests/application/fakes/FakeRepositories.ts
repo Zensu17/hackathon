@@ -360,11 +360,25 @@ export class FakeWeekRepository implements WeekRepository {
 
 export class FakeMaterialRepository implements MaterialRepository {
   readonly materials = new Map<string, Material>();
+  readonly blobs = new Map<
+    string,
+    { bytes: Uint8Array; mimeType: string; savedAt: string }
+  >();
   private nextId = 1;
 
   async listByCourseId(courseId: string): Promise<Material[]> {
     return Array.from(this.materials.values())
       .filter((material) => material.courseId === courseId)
+      .map((material) => ({
+        ...material,
+        attachment: material.attachment ? { ...material.attachment } : null,
+      }));
+  }
+
+  async listByCourseIds(courseIds: readonly string[]): Promise<Material[]> {
+    const allowed = new Set(courseIds);
+    return Array.from(this.materials.values())
+      .filter((material) => allowed.has(material.courseId))
       .map((material) => ({
         ...material,
         attachment: material.attachment ? { ...material.attachment } : null,
@@ -462,6 +476,89 @@ export class FakeMaterialRepository implements MaterialRepository {
       attachment: updated.attachment ? { ...updated.attachment } : null,
     };
   }
+
+  async downloadRemoteFile(
+    material: Material,
+  ): Promise<{ bytes: Uint8Array; mimeType: string }> {
+    const existing = this.blobs.get(material.id);
+    if (existing) {
+      return { bytes: existing.bytes, mimeType: existing.mimeType };
+    }
+    const bytes = new TextEncoder().encode(`%PDF-1.4\n% ${material.title}\n%%EOF`);
+    return { bytes, mimeType: 'application/pdf' };
+  }
+
+  async saveOfflineFile(
+    materialId: string,
+    bytes: Uint8Array,
+    mimeType: string,
+  ): Promise<Material> {
+    const existing = this.materials.get(materialId);
+    if (!existing) {
+      throw new AppError('NOT_FOUND', 'Material not found.');
+    }
+    this.blobs.set(materialId, {
+      bytes,
+      mimeType,
+      savedAt: '2026-11-04T09:10:00.000Z',
+    });
+    const updated: Material = {
+      ...existing,
+      isAvailableOffline: true,
+    };
+    this.materials.set(materialId, updated);
+    return {
+      ...updated,
+      attachment: updated.attachment ? { ...updated.attachment } : null,
+    };
+  }
+
+  async getOfflineFile(materialId: string) {
+    const blob = this.blobs.get(materialId);
+    const material = this.materials.get(materialId);
+    if (!blob) {
+      return null;
+    }
+    return {
+      materialId,
+      fileName: material?.attachment?.name ?? 'material.pdf',
+      bytes: blob.bytes,
+      mimeType: blob.mimeType,
+      savedAt: blob.savedAt,
+    };
+  }
+
+  async removeOfflineFile(materialId: string): Promise<Material> {
+    const existing = this.materials.get(materialId);
+    if (!existing) {
+      throw new AppError('NOT_FOUND', 'Material not found.');
+    }
+    this.blobs.delete(materialId);
+    const updated: Material = {
+      ...existing,
+      isAvailableOffline: false,
+    };
+    this.materials.set(materialId, updated);
+    return {
+      ...updated,
+      attachment: updated.attachment ? { ...updated.attachment } : null,
+    };
+  }
+
+  async getOfflineStorageStats() {
+    let totalBytes = 0;
+    for (const item of this.blobs.values()) {
+      totalBytes += item.bytes.byteLength;
+    }
+    return { fileCount: this.blobs.size, totalBytes };
+  }
+
+  async clearAllOfflineFiles(): Promise<void> {
+    this.blobs.clear();
+    for (const [id, material] of this.materials) {
+      this.materials.set(id, { ...material, isAvailableOffline: false });
+    }
+  }
 }
 
 export class FakeDeadlineRepository implements DeadlineRepository {
@@ -532,6 +629,13 @@ export class FakeAnnouncementRepository implements AnnouncementRepository {
   async listByCourseId(courseId: string): Promise<Announcement[]> {
     return Array.from(this.announcements.values())
       .filter((announcement) => announcement.courseId === courseId)
+      .map((announcement) => ({ ...announcement }));
+  }
+
+  async listByCourseIds(courseIds: readonly string[]): Promise<Announcement[]> {
+    const allowed = new Set(courseIds);
+    return Array.from(this.announcements.values())
+      .filter((announcement) => allowed.has(announcement.courseId))
       .map((announcement) => ({ ...announcement }));
   }
 

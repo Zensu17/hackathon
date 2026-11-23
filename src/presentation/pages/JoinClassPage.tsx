@@ -137,7 +137,7 @@ export function JoinClassPage(): React.ReactElement {
         <div className="onboarding-grid onboarding-grid--two-col">
           <section className="index-card">
             <div className="card-tab-bar">
-              <span className="card-tab-code">[STUDENT]</span>
+              <span className="card-tab-code">STUDENT</span>
             </div>
             <h2>{labels.joinClass.joinCardTitle}</h2>
             <p className="meta-text">{labels.joinClass.joinCardDescription}</p>
@@ -184,7 +184,7 @@ export function JoinClassPage(): React.ReactElement {
 
           <section className="index-card">
             <div className="card-tab-bar">
-              <span className="card-tab-code">[REP]</span>
+              <span className="card-tab-code">CLASS REP</span>
             </div>
             <h2>{labels.joinClass.createCardTitle}</h2>
             <p className="meta-text">{labels.joinClass.createCardDescription}</p>
@@ -249,7 +249,7 @@ export function JoinClassPage(): React.ReactElement {
         {isLocalFallbackMode ? (
           <section className="index-card">
             <div className="card-tab-bar">
-              <span className="card-tab-code">[SAMPLE SEED]</span>
+              <span className="card-tab-code">SAMPLE SEED</span>
             </div>
             <h2>{labels.joinClass.demoCardTitle}</h2>
             <p className="meta-text">{labels.joinClass.demoCardDescription}</p>

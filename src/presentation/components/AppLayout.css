@@ -1,4 +1,4 @@
-/* LiteLearn Application Shell & Layout System (Figma Spec) */
+/* LiteLearn Application Shell & Editorial Navigation System */
 
 .app-shell {
   min-height: 100dvh;
@@ -6,6 +6,7 @@
   flex-direction: column;
   background-color: var(--color-bg);
   color: var(--color-text);
+  transition: background-color 280ms var(--ease-out), color 280ms var(--ease-out);
 }
 
 .app-container {
@@ -14,14 +15,62 @@
   margin: 0 auto;
 }
 
-/* Header (Mobile & Tablet) */
+/* Brand Lockup */
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--color-text);
+  min-height: var(--tap-target-min);
+  border-radius: var(--radius-sm);
+  padding: 2px 4px 2px 0;
+}
+
+.brand-lockup__mark {
+  flex-shrink: 0;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(20, 33, 61, 0.16);
+}
+
+.brand-lockup__text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.brand-lockup__name {
+  font-family: var(--font-serif);
+  font-optical-sizing: auto;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+}
+
+.brand-lockup__sub {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .brand-lockup:hover .brand-lockup__name {
+    color: var(--color-primary);
+  }
+}
+
+/* Header (Mobile & Tablet + Onboarding) */
 .app-header {
-  background-color: var(--color-surface);
+  background-color: color-mix(in srgb, var(--color-surface) 94%, transparent);
   border-bottom: 1px solid var(--color-border);
-  padding: var(--space-4);
+  padding: 10px var(--space-4);
   position: sticky;
   top: 0;
   z-index: 90;
+  transition: background-color 280ms var(--ease-out), border-color 280ms var(--ease-out);
 }
 
 .app-header__inner {
@@ -39,24 +88,21 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2);
+  gap: 10px;
 }
 
 .app-brand {
   display: inline-flex;
   align-items: center;
+  gap: 10px;
   min-height: var(--tap-target-min);
-  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
   font-family: var(--font-serif);
-  font-size: var(--type-h1-size);
-  font-weight: 600;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--color-text);
   text-decoration: none;
-}
-
-.app-brand:hover {
-  color: var(--color-primary);
 }
 
 .app-header__controls {
@@ -68,11 +114,17 @@
 .app-theme-btn {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  min-height: var(--tap-target-min);
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--type-caption-size);
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 12px;
+  font-size: 13px;
   font-weight: 600;
+}
+
+.theme-btn__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Main Content Viewport */
@@ -80,20 +132,28 @@
   flex: 1 0 auto;
   width: 100%;
   margin-inline: auto;
-  padding: var(--space-6) var(--space-4) calc(var(--mobile-nav-height) + var(--space-8) + env(safe-area-inset-bottom, 0px));
+  padding: var(--space-5) var(--space-4)
+    calc(var(--mobile-nav-height) + var(--space-8) + env(safe-area-inset-bottom, 0px));
 }
 
-.app-main--onboarding .index-card {
-  max-width: 420px;
-  margin: 0 auto;
+.app-shell--onboarding .app-header {
+  position: static;
+}
+
+.app-main--onboarding {
+  display: flex;
+  align-items: flex-start;
+  padding: 28px var(--space-4) 40px;
+}
+
+@media (min-height: 860px) and (min-width: 900px) {
+  .app-main--onboarding {
+    align-items: center;
+  }
 }
 
 .app-main--onboarding .app-container {
-  max-width: 420px;
-}
-
-.app-main--wide-onboarding .index-card {
-  max-width: 100%;
+  max-width: 980px;
 }
 
 .app-main--wide-onboarding .app-container {
@@ -101,7 +161,7 @@
 }
 
 .settings-workspace {
-  max-width: 640px;
+  max-width: 680px;
   margin: 0 auto;
   width: 100%;
 }
@@ -109,9 +169,10 @@
 /* Footer */
 .app-footer {
   border-top: 1px solid var(--color-border);
-  background-color: var(--color-surface-2);
+  background-color: var(--color-surface);
   color: var(--color-text-muted);
-  padding: var(--space-4) var(--space-4) calc(var(--mobile-nav-height) + var(--space-6) + env(safe-area-inset-bottom, 0px));
+  padding: var(--space-4) var(--space-4)
+    calc(var(--mobile-nav-height) + var(--space-6) + env(safe-area-inset-bottom, 0px));
 }
 
 .app-footer--onboarding {
@@ -134,7 +195,7 @@
   margin: 0;
 }
 
-/* Mobile Bottom Navigation (Drafts 360 x 800) */
+/* Mobile Bottom Navigation */
 .figma-bottom-nav {
   position: fixed;
   left: 0;
@@ -142,10 +203,10 @@
   bottom: 0;
   z-index: 100;
   min-height: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px));
-  padding: 0 var(--space-2) env(safe-area-inset-bottom, 0px);
+  padding: 6px var(--space-2) calc(6px + env(safe-area-inset-bottom, 0px));
   background-color: var(--color-surface);
   border-top: 1px solid var(--color-border);
-  box-shadow: 0 -4px 16px var(--color-shadow-1);
+  box-shadow: 0 -4px 20px var(--color-shadow-1);
 }
 
 .figma-bottom-nav__list {
@@ -157,7 +218,8 @@
   display: flex;
   align-items: center;
   justify-content: space-around;
-  height: var(--mobile-nav-height);
+  gap: 4px;
+  min-height: 52px;
 }
 
 .figma-bottom-nav__item {
@@ -167,31 +229,53 @@
 }
 
 .figma-bottom-nav__link {
+  position: relative;
   display: inline-flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 3px;
   width: 100%;
-  min-height: var(--tap-target-min);
-  padding: 4px;
-  border-radius: var(--radius-sm);
+  min-height: 48px;
+  padding: 6px 4px;
+  border-radius: 10px;
   color: var(--color-text-muted);
-  font-size: var(--type-caption-size);
+  font-size: 11px;
   font-weight: 600;
   text-decoration: none;
-  transition: color 150ms ease-out;
-}
-
-.figma-bottom-nav__link:hover {
-  color: var(--color-text);
+  transition: color 150ms var(--ease-out), background-color 150ms var(--ease-out);
 }
 
 .figma-bottom-nav__link--active {
   color: var(--color-primary);
+  background-color: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface-2));
 }
 
-/* SideNav (Drafts 1280 x 800) - Default Hidden on Mobile (< 1024px) */
+/* Offline status strip */
+.offline-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 12px 16px;
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 55%, var(--color-border));
+  background-color: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface));
+  color: var(--color-text);
+  font-size: var(--type-small-size);
+  font-weight: 500;
+  box-shadow: var(--shadow-1);
+}
+
+.offline-strip__lead {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* SideNav (Hidden on Mobile < 1024px) */
 .figma-sidenav {
   display: none;
 }
@@ -203,46 +287,86 @@
   min-width: 0;
 }
 
+/* User monogram avatar */
+.user-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background-color: var(--color-primary);
+  color: var(--color-primary-contrast);
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+.user-avatar--lg {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  font-size: 20px;
+}
+
 /* Laptop Viewport (>= 1024px) */
 @media (min-width: 1024px) {
   .app-shell--with-sidenav {
     flex-direction: row;
   }
 
-  /* 240px Fixed Left Sidebar */
   .figma-sidenav {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    width: var(--dimension-240);
-    min-width: var(--dimension-240);
+    width: 256px;
+    min-width: 256px;
     height: 100vh;
     position: sticky;
     top: 0;
     background-color: var(--color-surface);
     border-right: 1px solid var(--color-border);
-    padding: var(--space-6) var(--space-4);
+    padding: 22px 16px 18px;
     box-sizing: border-box;
     z-index: 100;
+    transition: background-color 280ms var(--ease-out), border-color 280ms var(--ease-out);
   }
 
   .figma-sidenav__header {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    align-items: stretch;
+    gap: 12px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--color-border);
   }
 
-  .figma-sidenav__brand {
-    font-family: var(--font-serif);
-    font-size: var(--type-h1-size);
-    font-weight: 600;
-    color: var(--color-text);
-    text-decoration: none;
+  .figma-sidenav__meta-well {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface-2);
+    border: 1px solid var(--color-border);
   }
 
   .figma-sidenav__nav {
     flex: 1;
-    margin: var(--space-6) 0;
+    margin: 18px 0;
+    overflow-y: auto;
+  }
+
+  .figma-sidenav__nav-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--color-text-muted);
+    padding: 0 12px 8px;
+    margin: 0;
   }
 
   .figma-sidenav__list {
@@ -251,50 +375,76 @@
     margin: 0;
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: 4px;
   }
 
   .figma-sidenav__link {
+    position: relative;
     display: flex;
     align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius-sm);
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
     color: var(--color-text-muted);
-    font-size: var(--type-body-strong-size);
+    font-size: 15px;
     font-weight: 600;
     text-decoration: none;
     min-height: 44px;
-    transition: background-color 150ms ease-out, color 150ms ease-out;
+    transition:
+      background-color 150ms var(--ease-out),
+      color 150ms var(--ease-out);
   }
 
-  .figma-sidenav__link:hover {
-    background-color: var(--color-surface-2);
-    color: var(--color-text);
+  @media (hover: hover) and (pointer: fine) {
+    .figma-sidenav__link:hover {
+      background-color: var(--color-surface-2);
+      color: var(--color-text);
+    }
   }
 
   .figma-sidenav__link--active {
-    background-color: color-mix(in srgb, var(--color-primary) 12%, transparent);
+    background-color: color-mix(in srgb, var(--color-primary) 11%, transparent);
     color: var(--color-primary);
+  }
+
+  .figma-sidenav__link--active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 9px;
+    bottom: 9px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background-color: var(--color-primary);
   }
 
   .figma-sidenav__footer {
     display: flex;
     flex-direction: column;
-    gap: var(--space-3);
-    padding-top: var(--space-4);
+    gap: 12px;
+    padding-top: 14px;
     border-top: 1px solid var(--color-border);
   }
 
-  .figma-sidenav__user {
+  .figma-sidenav__profile {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2);
+    gap: 10px;
+    padding: 8px;
+    border-radius: 10px;
+    background-color: var(--color-surface-2);
+    border: 1px solid var(--color-border);
+  }
+
+  .figma-sidenav__user-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
   }
 
   .figma-sidenav__user-name {
-    font-size: var(--type-small-strong-size);
+    font-size: 13px;
     font-weight: 600;
     color: var(--color-text);
     white-space: nowrap;
@@ -302,21 +452,31 @@
     text-overflow: ellipsis;
   }
 
+  .figma-sidenav__user-role {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+  }
+
   .figma-sidenav__actions {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .figma-sidenav__actions .btn {
+    padding: 8px 10px;
+    font-size: 12px;
+    gap: 6px;
   }
 
   .figma-sidenav__logout-btn {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: 6px;
     justify-content: center;
-    font-size: var(--type-caption-size);
   }
 
-  /* Hide mobile header and bottom nav on laptop */
   .app-workspace .app-header {
     display: none;
   }
@@ -327,12 +487,12 @@
 
   .app-main {
     width: 100%;
-    max-width: 1040px;
+    max-width: 1080px;
     margin-inline: auto;
-    padding: var(--space-8) 32px;
+    padding: 28px 36px 40px;
   }
 
   .app-footer {
-    padding: var(--space-4) var(--space-8);
+    padding: 14px 36px;
   }
 }

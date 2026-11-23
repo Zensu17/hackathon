@@ -60,5 +60,36 @@ export function isSafeHttpUrl(candidate: string | null | undefined): candidate i
 }
 
 export function formatWeekCode(prefix: string, weekNumber: number): string {
-  return `[${prefix} ${padTwo(weekNumber)}]`;
+  return `${prefix} ${padTwo(weekNumber)}`;
+}
+
+export function formatRelativeDue(isoString: string, nowMs = Date.now()): string {
+  const dueMs = Date.parse(isoString);
+  if (Number.isNaN(dueMs)) {
+    return '';
+  }
+  const diffMs = dueMs - nowMs;
+  const absMinutes = Math.max(1, Math.round(Math.abs(diffMs) / 60_000));
+  const absHours = Math.round(absMinutes / 60);
+  const absDays = Math.round(absHours / 24);
+
+  if (diffMs < 0) {
+    if (absMinutes < 60) return `Overdue by ${absMinutes}m`;
+    if (absHours < 48) return `Overdue by ${absHours}h`;
+    return `Overdue by ${absDays}d`;
+  }
+
+  if (absMinutes < 60) return `Due in ${absMinutes}m`;
+  if (absHours < 48) return `Due in ${absHours}h`;
+  return `Due in ${absDays}d`;
+}
+
+export function getInitials(displayName: string): string {
+  const parts = displayName
+    .trim()
+    .split(/\s+/)
+    .filter((segment) => segment.length > 0);
+  if (parts.length === 0) return 'ST';
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return `${parts[0]![0] ?? ''}${parts[parts.length - 1]![0] ?? ''}`.toUpperCase();
 }

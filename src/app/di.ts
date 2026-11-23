@@ -7,14 +7,23 @@ import {
   CreateDeadline,
   CreateMaterial,
   CreateWeek,
+  DownloadMaterialFile,
   FollowCourse,
   GetCourseWeeks,
   GetCurrentUser,
   GetMaterial,
+  GetMaterialNote,
+  GetOfflineMaterialFile,
+  GetOfflineStudyOverview,
   GetUpcomingDeadlines,
   JoinClass,
   ListAnnouncements,
   ListCourses,
+  ListRecentAnnouncements,
+  RemoveOfflineMaterialFile,
+  RunSync,
+  SaveMaterialNote,
+  SearchWorkspace,
   SignIn,
   SignOut,
   SignUp,
@@ -25,6 +34,11 @@ import {
   UpdateMaterial,
   UpdateWeek,
 } from '../application/usecases';
+import type { OfflineStorageStats } from '../domain/repositories';
+import type {
+  NetworkStatusService,
+  SyncStateSummary,
+} from '../domain/services';
 import { LiteLearnDb } from '../data/local/LiteLearnDb';
 import {
   seedInitialLocalDemo,
@@ -41,10 +55,13 @@ import { HybridCourseRepository } from '../data/repositories/HybridCourseReposit
 import { HybridDeadlineRepository } from '../data/repositories/HybridDeadlineRepository';
 import { HybridMaterialRepository } from '../data/repositories/HybridMaterialRepository';
 import { HybridWeekRepository } from '../data/repositories/HybridWeekRepository';
+import { BrowserNetworkStatusService } from '../data/services/BrowserNetworkStatusService';
+import { LiteLearnSyncService } from '../data/services/LiteLearnSyncService';
 
 const THEME_META_KEY = 'theme_preference';
 
-export type ThemePreference = 'light' | 'dark';
+export type ThemePreference = 'system' | 'light' | 'dark';
+export type ResolvedTheme = 'light' | 'dark';
 
 export interface AppUseCases {
   readonly signUp: SignUp;
@@ -58,8 +75,17 @@ export interface AppUseCases {
   readonly unfollowCourse: UnfollowCourse;
   readonly getCourseWeeks: GetCourseWeeks;
   readonly getMaterial: GetMaterial;
+  readonly downloadMaterialFile: DownloadMaterialFile;
+  readonly getOfflineMaterialFile: GetOfflineMaterialFile;
+  readonly removeOfflineMaterialFile: RemoveOfflineMaterialFile;
+  readonly getOfflineStudyOverview: GetOfflineStudyOverview;
+  readonly getMaterialNote: GetMaterialNote;
+  readonly saveMaterialNote: SaveMaterialNote;
   readonly getUpcomingDeadlines: GetUpcomingDeadlines;
   readonly listAnnouncements: ListAnnouncements;
+  readonly listRecentAnnouncements: ListRecentAnnouncements;
+  readonly searchWorkspace: SearchWorkspace;
+  readonly runSync: RunSync;
   readonly createCourse: CreateCourse;
   readonly updateCourse: UpdateCourse;
   readonly createWeek: CreateWeek;
@@ -74,11 +100,17 @@ export interface AppUseCases {
 
 export interface AppContainer {
   readonly usecases: AppUseCases;
+  readonly networkStatus: NetworkStatusService;
   readonly isLocalFallbackMode: boolean;
   getThemePreference(): Promise<ThemePreference | null>;
   setThemePreference(theme: ThemePreference): Promise<void>;
+  getDataSaverEnabled(): Promise<boolean>;
+  setDataSaverEnabled(enabled: boolean): Promise<void>;
+  getOfflineStorageStats(): Promise<OfflineStorageStats>;
+  clearAllOfflineFiles(): Promise<void>;
+  getSyncState(): Promise<SyncStateSummary>;
   getSyncStatus(): Promise<{ pendingChanges: number; hasFailedChanges: boolean }>;
-  retrySync(): Promise<void>;
+  retrySync(userId?: string): Promise<void>;
   loadSampleSeedData(
     userId: string,
   ): Promise<{ classId: string; joinCode: string }>;
@@ -90,9 +122,23 @@ export interface CreateAppContainerOptions {
   supabaseAnonKey?: string;
 }
 
-function applyDocumentTheme(theme: ThemePreference): void {
+function resolveDocumentTheme(preference: ThemePreference): ResolvedTheme {
+  if (preference === 'light' || preference === 'dark') {
+    return preference;
+  }
+  if (
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-color-scheme: dark)').matches
+  ) {
+    return 'dark';
+  }
+  return 'light';
+}
+
+function applyDocumentTheme(preference: ThemePreference): void {
   if (typeof document !== 'undefined' && document.documentElement) {
-    document.documentElement.dataset.theme = theme;
+    document.documentElement.dataset.theme = resolveDocumentTheme(preference);
   }
 }
 
@@ -116,9 +162,18 @@ export function createAppContainer(
   const materialRepository = new HybridMaterialRepository(db, remote);
   const deadlineRepository = new HybridDeadlineRepository(db, remote);
   const announcementRepository = new HybridAnnouncementRepository(db, remote);
-  // Instantiate Phase 2 note and syncQueue repositories inside the composition root so schema stores stay wired.
-  void new DexieNoteRepository(db);
-  void new DexieSyncQueueRepository(db);
+  const noteRepository = new DexieNoteRepository(db);
+  const syncQueueRepository = new DexieSyncQueueRepository(db);
+
+  const networkStatus = new BrowserNetworkStatusService({
+    probeUrl: options.supabaseUrl?.trim() || null,
+  });
+  const syncService = new LiteLearnSyncService(
+    db,
+    syncQueueRepository,
+    materialRepository,
+    remote,
+  );
 
   const initPromise =
     isLocalFallbackMode &&
@@ -149,9 +204,41 @@ export function createAppContainer(
     }
   }
 
+  class LocalAwareListRecentAnnouncements extends ListRecentAnnouncements {
+    override async execute(
+      input: Parameters<ListRecentAnnouncements['execute']>[0],
+    ) {
+      await initPromise;
+      return super.execute(input);
+    }
+  }
+
+  class LocalAwareGetOfflineStudyOverview extends GetOfflineStudyOverview {
+    override async execute(
+      input: Parameters<GetOfflineStudyOverview['execute']>[0],
+    ) {
+      await initPromise;
+      return super.execute(input);
+    }
+  }
+
+  class LocalAwareSearchWorkspace extends SearchWorkspace {
+    override async execute(input: Parameters<SearchWorkspace['execute']>[0]) {
+      await initPromise;
+      return super.execute(input);
+    }
+  }
+
+  class LocalAwareSignIn extends SignIn {
+    override async execute(input: Parameters<SignIn['execute']>[0]) {
+      await initPromise;
+      return super.execute(input);
+    }
+  }
+
   const usecases: AppUseCases = {
     signUp: new SignUp(authRepository),
-    signIn: new SignIn(authRepository),
+    signIn: new LocalAwareSignIn(authRepository),
     signOut: new SignOut(authRepository),
     getCurrentUser: new GetCurrentUser(authRepository, classRepository),
     joinClass: new JoinClass(classRepository),
@@ -170,11 +257,34 @@ export function createAppContainer(
       courseRepository,
       weekRepository,
     ),
+    downloadMaterialFile: new DownloadMaterialFile(materialRepository),
+    getOfflineMaterialFile: new GetOfflineMaterialFile(materialRepository),
+    removeOfflineMaterialFile: new RemoveOfflineMaterialFile(materialRepository),
+    getOfflineStudyOverview: new LocalAwareGetOfflineStudyOverview(
+      courseRepository,
+      weekRepository,
+      materialRepository,
+      deadlineRepository,
+    ),
+    getMaterialNote: new GetMaterialNote(noteRepository),
+    saveMaterialNote: new SaveMaterialNote(noteRepository, syncQueueRepository),
     getUpcomingDeadlines: new LocalAwareGetUpcomingDeadlines(
       courseRepository,
       deadlineRepository,
     ),
     listAnnouncements: new ListAnnouncements(announcementRepository),
+    listRecentAnnouncements: new LocalAwareListRecentAnnouncements(
+      courseRepository,
+      announcementRepository,
+    ),
+    searchWorkspace: new LocalAwareSearchWorkspace(
+      courseRepository,
+      weekRepository,
+      materialRepository,
+      deadlineRepository,
+      announcementRepository,
+    ),
+    runSync: new RunSync(syncService),
     createCourse: new CreateCourse(courseRepository),
     updateCourse: new UpdateCourse(courseRepository),
     createWeek: new CreateWeek(courseRepository, weekRepository),
@@ -211,10 +321,15 @@ export function createAppContainer(
 
   return {
     usecases,
+    networkStatus,
     isLocalFallbackMode,
     async getThemePreference(): Promise<ThemePreference | null> {
       const row = await db.meta.get(THEME_META_KEY);
-      if (row?.value === 'light' || row?.value === 'dark') {
+      if (
+        row?.value === 'system' ||
+        row?.value === 'light' ||
+        row?.value === 'dark'
+      ) {
         applyDocumentTheme(row.value);
         return row.value;
       }
@@ -224,16 +339,37 @@ export function createAppContainer(
       await db.meta.put({ key: THEME_META_KEY, value: theme });
       applyDocumentTheme(theme);
     },
-    async getSyncStatus(): Promise<{ pendingChanges: number; hasFailedChanges: boolean }> {
-      const rows = await db.syncQueue.toArray();
+    async getDataSaverEnabled(): Promise<boolean> {
+      return syncService.getDataSaverEnabled();
+    },
+    async setDataSaverEnabled(enabled: boolean): Promise<void> {
+      await syncService.setDataSaverEnabled(enabled);
+    },
+    async getOfflineStorageStats(): Promise<OfflineStorageStats> {
+      return materialRepository.getOfflineStorageStats();
+    },
+    async clearAllOfflineFiles(): Promise<void> {
+      await materialRepository.clearAllOfflineFiles();
+    },
+    async getSyncState(): Promise<SyncStateSummary> {
+      return syncService.getSyncState();
+    },
+    async getSyncStatus(): Promise<{
+      pendingChanges: number;
+      hasFailedChanges: boolean;
+    }> {
+      const state = await syncService.getSyncState();
       return {
-        pendingChanges: rows.length,
-        hasFailedChanges: rows.some((row) => Boolean(row.lastError)),
+        pendingChanges: state.pendingCount,
+        hasFailedChanges: state.hasFailedChanges,
       };
     },
-    async retrySync(): Promise<void> {
-      const queue = new DexieSyncQueueRepository(db);
-      await queue.clearFailureState();
+    async retrySync(userId?: string): Promise<void> {
+      if (userId && userId.trim().length > 0) {
+        await syncService.retryFailed(userId);
+        return;
+      }
+      await syncQueueRepository.clearFailureState();
     },
     async loadSampleSeedData(
       userId: string,

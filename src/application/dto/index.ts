@@ -27,6 +27,24 @@ export type {
   UpcomingDeadlinesResultDto,
 } from './DeadlineDto';
 export type {
+  CourseOfflineSummaryDto,
+  DownloadMaterialFileInput,
+  GetMaterialNoteInput,
+  GetOfflineMaterialFileInput,
+  GetOfflineStudyOverviewInput,
+  ListRecentAnnouncementsInput,
+  OfflineStudyOverviewDto,
+  RecentAnnouncementDto,
+  RemoveOfflineMaterialFileInput,
+  RunSyncInput,
+  SaveMaterialNoteInput,
+  SearchAnnouncementHitDto,
+  SearchDeadlineHitDto,
+  SearchMaterialHitDto,
+  SearchWorkspaceInput,
+  WorkspaceSearchResultDto,
+} from './OfflineDto';
+export type {
   CreateAnnouncementInput,
   CreateCourseInput,
   CreateDeadlineInput,
