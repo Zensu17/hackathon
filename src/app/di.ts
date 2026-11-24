@@ -1,6 +1,12 @@
 import React from 'react';
 import { AppError } from '../application/errors/AppError';
 import {
+  AdminCreateClass,
+  AdminCreateUser,
+  AdminResetPassword,
+  AdminSetUserActive,
+  AdminUpdateUser,
+  ChangeOwnPassword,
   CreateAnnouncement,
   CreateClass,
   CreateCourse,
@@ -36,8 +42,16 @@ import {
   UpdateUserProfile,
   UpdateWeek,
 } from '../application/usecases';
-import type { UpdateProfileInput } from '../application/dto';
-import type { User, UserRole } from '../domain/entities';
+import type {
+  AdminCreateClassDto,
+  AdminCreateUserDto,
+  AdminResetPasswordDto,
+  AdminSetUserActiveDto,
+  AdminUpdateUserDto,
+  ChangeOwnPasswordDto,
+  UpdateProfileInput,
+} from '../application/dto';
+import type { Class, User, UserRole } from '../domain/entities';
 import type { OfflineStorageStats } from '../domain/repositories';
 import type {
   NetworkStatusService,
@@ -137,6 +151,20 @@ export interface AppContainer {
     targetUserId: string,
     nextRole: UserRole,
   ): Promise<User>;
+  listAllUsers(actorId: string): Promise<User[]>;
+  listAllClasses(actorId: string): Promise<Class[]>;
+  adminCreateUser(input: AdminCreateUserDto): Promise<User>;
+  adminUpdateUser(input: AdminUpdateUserDto): Promise<User>;
+  adminSetUserActive(input: AdminSetUserActiveDto): Promise<User>;
+  adminResetPassword(input: AdminResetPasswordDto): Promise<void>;
+  adminCreateClass(input: AdminCreateClassDto): Promise<Class>;
+  changeOwnPassword(input: ChangeOwnPasswordDto): Promise<void>;
+  exportUserNotesMarkdown(userId: string): Promise<{
+    fileName: string;
+    markdown: string;
+    noteCount: number;
+    completedDeadlineCount: number;
+  }>;
 }
 
 export interface CreateAppContainerOptions {
@@ -194,6 +222,12 @@ export function createAppContainer(
     deadlineCompletionRepository,
   );
   const updateUserProfileUseCase = new UpdateUserProfile(authRepository);
+  const adminCreateUserUseCase = new AdminCreateUser(authRepository);
+  const adminUpdateUserUseCase = new AdminUpdateUser(authRepository);
+  const adminSetUserActiveUseCase = new AdminSetUserActive(authRepository);
+  const adminResetPasswordUseCase = new AdminResetPassword(authRepository);
+  const adminCreateClassUseCase = new AdminCreateClass(authRepository);
+  const changeOwnPasswordUseCase = new ChangeOwnPassword(authRepository);
 
   const networkStatus = new BrowserNetworkStatusService({
     probeUrl: options.supabaseUrl?.trim() || null,
@@ -457,7 +491,153 @@ export function createAppContainer(
       nextRole: UserRole,
     ): Promise<User> {
       await initPromise;
-      return authRepository.updateMemberRole(actorId, targetUserId, nextRole);
+      return adminUpdateUserUseCase.execute({
+        actorId,
+        targetUserId,
+        role: nextRole,
+      });
+    },
+    async listAllUsers(actorId: string): Promise<User[]> {
+      await initPromise;
+      return authRepository.listAllUsers(actorId);
+    },
+    async listAllClasses(actorId: string): Promise<Class[]> {
+      await initPromise;
+      return authRepository.listAllClasses(actorId);
+    },
+    async adminCreateUser(input: AdminCreateUserDto): Promise<User> {
+      await initPromise;
+      return adminCreateUserUseCase.execute(input);
+    },
+    async adminUpdateUser(input: AdminUpdateUserDto): Promise<User> {
+      await initPromise;
+      return adminUpdateUserUseCase.execute(input);
+    },
+    async adminSetUserActive(input: AdminSetUserActiveDto): Promise<User> {
+      await initPromise;
+      return adminSetUserActiveUseCase.execute(input);
+    },
+    async adminResetPassword(input: AdminResetPasswordDto): Promise<void> {
+      await initPromise;
+      return adminResetPasswordUseCase.execute(input);
+    },
+    async adminCreateClass(input: AdminCreateClassDto): Promise<Class> {
+      await initPromise;
+      return adminCreateClassUseCase.execute(input);
+    },
+    async changeOwnPassword(input: ChangeOwnPasswordDto): Promise<void> {
+      await initPromise;
+      return changeOwnPasswordUseCase.execute(input);
+    },
+    async exportUserNotesMarkdown(userId: string): Promise<{
+      fileName: string;
+      markdown: string;
+      noteCount: number;
+      completedDeadlineCount: number;
+    }> {
+      await initPromise;
+      const trimmedUserId = userId.trim();
+      const [userRow, rawNotes, rawCompletions] = await Promise.all([
+        db.users.get(trimmedUserId),
+        db.notes.where('userId').equals(trimmedUserId).toArray(),
+        db.deadlineCompletions.where('userId').equals(trimmedUserId).toArray(),
+      ]);
+
+      const activeNotes = rawNotes.filter(
+        (n) => n.deletedAt === null && n.body.trim().length > 0,
+      );
+      const materialIds = Array.from(
+        new Set(activeNotes.map((n) => n.materialId)),
+      );
+      const deadlineIds = Array.from(
+        new Set(rawCompletions.map((c) => c.deadlineId)),
+      );
+
+      const [materials, deadlines] = await Promise.all([
+        materialIds.length > 0
+          ? db.materials.where('id').anyOf(materialIds).toArray()
+          : Promise.resolve([]),
+        deadlineIds.length > 0
+          ? db.deadlines.where('id').anyOf(deadlineIds).toArray()
+          : Promise.resolve([]),
+      ]);
+
+      const courseIds = Array.from(
+        new Set([
+          ...materials.map((m) => m.courseId),
+          ...deadlines.map((d) => d.courseId),
+        ]),
+      );
+      const weekIds = Array.from(new Set(materials.map((m) => m.weekId)));
+
+      const [courses, weeks] = await Promise.all([
+        courseIds.length > 0
+          ? db.courses.where('id').anyOf(courseIds).toArray()
+          : Promise.resolve([]),
+        weekIds.length > 0
+          ? db.weeks.where('id').anyOf(weekIds).toArray()
+          : Promise.resolve([]),
+      ]);
+
+      const materialById = new Map(materials.map((m) => [m.id, m]));
+      const courseById = new Map(courses.map((c) => [c.id, c]));
+      const weekById = new Map(weeks.map((w) => [w.id, w]));
+      const deadlineById = new Map(deadlines.map((d) => [d.id, d]));
+
+      const exportDate = new Date().toISOString().slice(0, 10);
+      const studentName = userRow?.displayName ?? 'Student';
+      const studentNim = userRow?.nim ?? 'LOCAL';
+
+      const lines: string[] = [
+        `# LiteLearn Study Backup (${studentName}, ${studentNim})`,
+        '',
+        `Exported: ${new Date().toISOString()}`,
+        '',
+        `## Private Study Notes (${activeNotes.length})`,
+        '',
+      ];
+
+      if (activeNotes.length === 0) {
+        lines.push('No personal study notes saved on this device yet.', '');
+      } else {
+        for (const note of activeNotes) {
+          const mat = materialById.get(note.materialId);
+          const course = mat ? courseById.get(mat.courseId) : undefined;
+          const week = mat ? weekById.get(mat.weekId) : undefined;
+          const headingParts = [
+            course ? `${course.code} (${course.name})` : null,
+            week ? `Week ${week.weekNumber}` : null,
+            mat ? mat.title : `Material ${note.materialId}`,
+          ].filter(Boolean);
+          lines.push(`### ${headingParts.join(' / ')}`);
+          lines.push(`Updated: ${note.updatedAt}`);
+          lines.push('');
+          lines.push(note.body.trim());
+          lines.push('');
+        }
+      }
+
+      lines.push(`## Completed Deadlines (${rawCompletions.length})`, '');
+      if (rawCompletions.length === 0) {
+        lines.push('No completed deadlines recorded yet.', '');
+      } else {
+        for (const completion of rawCompletions) {
+          const dl = deadlineById.get(completion.deadlineId);
+          const course = dl ? courseById.get(dl.courseId) : undefined;
+          const label = dl
+            ? `${course ? `${course.code}: ` : ''}${dl.title}`
+            : `Deadline ${completion.deadlineId}`;
+          lines.push(`- [x] ${label} (completed ${completion.completedAt})`);
+        }
+        lines.push('');
+      }
+
+      return {
+        fileName: `litelearn-notes-${studentNim.toLowerCase()}-${exportDate}.md`,
+        markdown: lines.join('\n'),
+        noteCount: activeNotes.length,
+        completedDeadlineCount: rawCompletions.length,
+      };
     },
   };
 }

@@ -1,40 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import type { UserRole } from '../../domain/entities';
-import { isValidNim, USER_ROLES } from '../../domain/rules';
+import { isValidNim } from '../../domain/rules';
 import { AuthSplitShell } from '../components/AuthSplitShell';
-import { IconCheckCircle, IconEye, IconEyeOff } from '../components/Icons';
+import {
+  IconCheckCircle,
+  IconEye,
+  IconEyeOff,
+  IconUser,
+} from '../components/Icons';
 import { useAuthSession } from '../hooks/useAuthSession';
 import { labels } from '../i18n/labels';
-import { getRoleLabel, getRoleSummary } from '../utils/formatters';
-
-function getIdExampleForRole(role: UserRole): {
-  placeholder: string;
-  hint: string;
-} {
-  if (role === 'lecturer') {
-    return {
-      placeholder: '01D10001',
-      hint: 'Enter your 8-character lecturer ID: 2 digits, 1 letter, 5 digits (e.g. 01D10001).',
-    };
-  }
-  if (role === 'admin') {
-    return {
-      placeholder: '00A00001',
-      hint: 'Enter your 8-character admin ID: 2 digits, 1 letter, 5 digits (e.g. 00A00001).',
-    };
-  }
-  return {
-    placeholder: '11S22001',
-    hint: labels.auth.nimHint,
-  };
-}
 
 export function RegisterPage(): React.ReactElement {
   const navigate = useNavigate();
   const { signUp, clearError, isLocalFallbackMode } = useAuthSession();
 
-  const [role, setRole] = useState<UserRole>('student');
   const [nim, setNim] = useState<string>('');
   const [displayName, setDisplayName] = useState<string>('');
   const [password, setPassword] = useState<string>('');
@@ -52,7 +32,7 @@ export function RegisterPage(): React.ReactElement {
   const trimmedNim = nim.trim().toUpperCase();
   const hasNimInput = trimmedNim.length > 0;
   const nimLooksValid = isValidNim(trimmedNim);
-  const idCopy = getIdExampleForRole(role);
+  const passwordLooksValid = password.length >= 8;
 
   const handleSubmit = async (
     event: React.FormEvent<HTMLFormElement>,
@@ -88,7 +68,7 @@ export function RegisterPage(): React.ReactElement {
       return;
     }
 
-    if (password.length < 8) {
+    if (!passwordLooksValid) {
       setFormError(labels.auth.errors.shortPassword);
       return;
     }
@@ -111,7 +91,6 @@ export function RegisterPage(): React.ReactElement {
         password,
         confirmPassword,
         classCode: trimmedClassCode,
-        role,
       });
 
       if (nextSession.user.classId && nextSession.currentClass) {
@@ -134,7 +113,14 @@ export function RegisterPage(): React.ReactElement {
         <div className="auth-panel__header">
           <h1>{labels.auth.signUpHeading}</h1>
           <p className="meta-text">
-            Choose your campus role, enter your ID and class code, and start studying offline.
+            Enter your NIM, full name, and class code to start with a Student account.
+          </p>
+        </div>
+
+        <div className="auth-role-notice" role="note">
+          <IconUser size={18} className="auth-role-notice__icon" />
+          <p className="auth-role-notice__text">
+            {labels.auth.studentDefaultNotice}
           </p>
         </div>
 
@@ -143,51 +129,6 @@ export function RegisterPage(): React.ReactElement {
           noValidate
           onSubmit={(e) => void handleSubmit(e)}
         >
-          <fieldset
-            className="field-group"
-            style={{ border: 'none', padding: 0, margin: 0 }}
-          >
-            <legend className="field-label">{labels.auth.roleLabel}</legend>
-            <div className="role-picker-grid" role="radiogroup" aria-label={labels.auth.roleLabel}>
-              {USER_ROLES.map((candidate) => {
-                const isSelected = role === candidate;
-                return (
-                  <button
-                    key={candidate}
-                    type="button"
-                    role="radio"
-                    aria-checked={isSelected}
-                    className={
-                      isSelected
-                        ? 'role-option-card role-option-card--active'
-                        : 'role-option-card'
-                    }
-                    onClick={() => setRole(candidate)}
-                    disabled={isSubmitting}
-                  >
-                    <span className="role-option-card__title">
-                      {getRoleLabel(candidate)}
-                    </span>
-                    <span className="role-option-card__desc">
-                      {candidate === 'student'
-                        ? 'Courses & notes'
-                        : candidate === 'rep'
-                          ? 'Cohort updates'
-                          : candidate === 'lecturer'
-                            ? 'Publish lectures'
-                            : candidate === 'assistant'
-                              ? 'Labs & tutorials'
-                              : 'Manage roles'}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            <p className="field-hint" style={{ marginTop: '8px' }}>
-              {getRoleSummary(role)}
-            </p>
-          </fieldset>
-
           <div className="field-group">
             <label htmlFor="register-nim" className="field-label">
               {labels.auth.nimLabel}
@@ -199,7 +140,7 @@ export function RegisterPage(): React.ReactElement {
               autoCapitalize="characters"
               autoComplete="username"
               className="field-input mono-input"
-              placeholder={idCopy.placeholder}
+              placeholder={labels.auth.nimPlaceholder}
               aria-describedby="register-nim-hint"
               value={nim}
               onChange={(event) => setNim(event.target.value)}
@@ -211,13 +152,13 @@ export function RegisterPage(): React.ReactElement {
                 className="field-status-hint field-status-hint--valid"
               >
                 <IconCheckCircle size={15} />
-                <span>Valid 8-character ID format</span>
+                <span>Valid 8-character NIM format</span>
               </p>
             ) : (
               <p id="register-nim-hint" className="field-hint">
                 {hasNimInput
-                  ? `Use 2 digits, 1 letter, and 5 digits (e.g. ${idCopy.placeholder}).`
-                  : idCopy.hint}
+                  ? 'Use 2 digits, 1 letter, and 5 digits (e.g. 11S22001).'
+                  : labels.auth.nimHint}
               </p>
             )}
           </div>
@@ -269,9 +210,19 @@ export function RegisterPage(): React.ReactElement {
                 {showPassword ? <IconEyeOff size={18} /> : <IconEye size={18} />}
               </button>
             </div>
-            <p id="register-password-hint" className="field-hint">
-              Use at least 8 characters.
-            </p>
+            {passwordLooksValid ? (
+              <p
+                id="register-password-hint"
+                className="field-status-hint field-status-hint--valid"
+              >
+                <IconCheckCircle size={15} />
+                <span>Password length looks good</span>
+              </p>
+            ) : (
+              <p id="register-password-hint" className="field-hint">
+                Use at least 8 characters.
+              </p>
+            )}
           </div>
 
           <div className="field-group">

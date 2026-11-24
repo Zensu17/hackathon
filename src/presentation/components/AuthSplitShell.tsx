@@ -59,10 +59,10 @@ export function AuthSplitShell({
               <IconCalendarCheck size={20} className="auth-pillar__icon" />
               <div>
                 <span className="auth-pillar__title">
-                  Multi-role campus accounts
+                  Student sign-up, Admin role control
                 </span>
                 <span className="auth-pillar__body">
-                  Register as a Student, Class Representative, Lecturer (Dosen), Teaching Assistant, or Admin using an 8-character ID (such as 11S22001 or 01D10001) and class code.
+                  New registrations join as Student with an 8-character NIM (such as 11S22001) and class code. Administrators assign Lecturer, Assistant, Class Rep, or Admin roles later.
                 </span>
               </div>
             </li>

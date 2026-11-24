@@ -3,6 +3,14 @@ export { ListRecentAnnouncements } from './announcements/ListRecentAnnouncements
 export { CreateClass } from './auth/CreateClass';
 export { GetCurrentUser } from './auth/GetCurrentUser';
 export { JoinClass } from './auth/JoinClass';
+export {
+  AdminCreateClass,
+  AdminCreateUser,
+  AdminResetPassword,
+  AdminSetUserActive,
+  AdminUpdateUser,
+  ChangeOwnPassword,
+} from './auth/ManageUsers';
 export { SignIn } from './auth/SignIn';
 export { SignOut } from './auth/SignOut';
 export { SignUp } from './auth/SignUp';

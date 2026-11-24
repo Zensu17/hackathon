@@ -1,7 +1,12 @@
 import { AppError } from '../../application/errors/AppError';
-import type { User, UserRole } from '../../domain/entities';
+import type { Class, User, UserRole } from '../../domain/entities';
 import type {
+  AdminCreateUserInput,
+  AdminResetPasswordInput,
+  AdminSetUserActiveInput,
+  AdminUpdateUserInput,
   AuthRepository,
+  ChangeOwnPasswordInput,
   SignInCredentials,
   SignOutOptions,
   SignUpCredentials,
@@ -9,7 +14,10 @@ import type {
 } from '../../domain/repositories';
 import { isAdminRole } from '../../domain/rules';
 import type { LiteLearnDb } from '../local/LiteLearnDb';
-import { domainClassToLocal } from '../mappers/classMapper';
+import {
+  domainClassToLocal,
+  localClassToDomain,
+} from '../mappers/classMapper';
 import {
   domainAnnouncementToLocal,
   domainDeadlineToLocal,
@@ -204,7 +212,6 @@ export class HybridAuthRepository implements AuthRepository {
         password: input.password,
         displayName: input.displayName,
         classCode: input.classCode,
-        ...(input.role !== undefined ? { role: input.role } : {}),
       });
 
       const remoteCourses = currentClass
@@ -285,7 +292,7 @@ export class HybridAuthRepository implements AuthRepository {
       nim: normalizedNim,
       displayName: input.displayName.trim(),
       classId: matchedClass.id,
-      role: input.role ?? (createdLocalClass ? 'rep' : 'student'),
+      role: 'student',
       createdAt: nowIso,
       updatedAt: nowIso,
       deletedAt: null,
@@ -614,11 +621,48 @@ export class HybridAuthRepository implements AuthRepository {
       ...(input.avatarDataUrl !== undefined
         ? { avatarDataUrl: input.avatarDataUrl }
         : {}),
-      ...(input.role !== undefined ? { role: input.role } : {}),
     };
 
     await this.db.users.put(nextRow);
     return localUserToDomain(nextRow);
+  }
+
+  private sortUsersForDirectory(users: User[]): User[] {
+    return [...users].sort((a, b) => {
+      const inactiveA = a.deletedAt !== null ? 1 : 0;
+      const inactiveB = b.deletedAt !== null ? 1 : 0;
+      if (inactiveA !== inactiveB) {
+        return inactiveA - inactiveB;
+      }
+      const rankA = a.role ? ROLE_SORT_PRIORITY[a.role] : 99;
+      const rankB = b.role ? ROLE_SORT_PRIORITY[b.role] : 99;
+      if (rankA !== rankB) {
+        return rankA - rankB;
+      }
+      return a.displayName.localeCompare(b.displayName);
+    });
+  }
+
+  private async requireActiveAdmin(actorId: string) {
+    const actorRow = await this.db.users.get(actorId);
+    if (
+      !actorRow ||
+      actorRow.deletedAt !== null ||
+      !isAdminRole(actorRow.role)
+    ) {
+      throw new AppError(
+        'FORBIDDEN_ROLE',
+        'Only an active Administrator can manage users and roles.',
+      );
+    }
+    return actorRow;
+  }
+
+  private async countActiveAdmins(): Promise<number> {
+    const rows = await this.db.users.toArray();
+    return rows.filter(
+      (row) => row.deletedAt === null && row.role === 'admin',
+    ).length;
   }
 
   async listClassMembers(classId: string): Promise<User[]> {
@@ -627,22 +671,345 @@ export class HybridAuthRepository implements AuthRepository {
       return [];
     }
 
+    if (this.remote !== null) {
+      try {
+        const allUsers = await this.remote.adminListAllUsers();
+        const members = allUsers.filter(
+          (user) => user.classId === trimmedClassId && user.deletedAt === null,
+        );
+        return this.sortUsersForDirectory(members);
+      } catch {
+        // Fallback to local cache when caller is not an Admin
+      }
+    }
+
     const rows = await this.db.users
       .where('classId')
       .equals(trimmedClassId)
       .toArray();
 
+    return this.sortUsersForDirectory(
+      rows.filter((row) => row.deletedAt === null).map(localUserToDomain),
+    );
+  }
+
+  async listAllUsers(actorId: string): Promise<User[]> {
+    if (this.remote !== null) {
+      const users = await this.remote.adminListAllUsers();
+      return this.sortUsersForDirectory(users);
+    }
+
+    await this.requireActiveAdmin(actorId);
+    const rows = await this.db.users.toArray();
+    return this.sortUsersForDirectory(rows.map(localUserToDomain));
+  }
+
+  async listAllClasses(actorId: string): Promise<Class[]> {
+    if (this.remote !== null) {
+      return this.remote.adminListAllClasses();
+    }
+
+    await this.requireActiveAdmin(actorId);
+    const rows = await this.db.classes.toArray();
     return rows
       .filter((row) => row.deletedAt === null)
-      .map(localUserToDomain)
-      .sort((a, b) => {
-        const rankA = a.role ? ROLE_SORT_PRIORITY[a.role] : 99;
-        const rankB = b.role ? ROLE_SORT_PRIORITY[b.role] : 99;
-        if (rankA !== rankB) {
-          return rankA - rankB;
+      .map(localClassToDomain)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async adminCreateUser(input: AdminCreateUserInput): Promise<User> {
+    if (this.remote !== null) {
+      throw new AppError(
+        'FORBIDDEN_ROLE',
+        'In online mode, new users register as Student first and Admin assigns their role here.',
+      );
+    }
+
+    await this.requireActiveAdmin(input.actorId);
+
+    const normalizedNim = input.nim.trim().toUpperCase();
+    const nowIso = new Date().toISOString();
+    const targetClassId =
+      input.classId && input.classId.trim().length > 0
+        ? input.classId.trim()
+        : null;
+
+    if (targetClassId !== null) {
+      const classRow = await this.db.classes.get(targetClassId);
+      if (!classRow || classRow.deletedAt !== null) {
+        throw new AppError('NOT_FOUND', 'Selected class was not found.');
+      }
+    }
+
+    const passwordHash = await hashLocalPassword(normalizedNim, input.password);
+    const createdUser: User = {
+      id: generateUuid(),
+      nim: normalizedNim,
+      displayName: input.displayName.trim(),
+      classId: targetClassId,
+      role: input.role,
+      ...(input.studyProgram !== undefined && input.studyProgram.trim().length > 0
+        ? { studyProgram: input.studyProgram.trim() }
+        : {}),
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      deletedAt: null,
+    };
+
+    await this.db.transaction(
+      'rw',
+      [this.db.users, this.db.localCredentials, this.db.courseFollows],
+      async () => {
+        const existingCred = await this.db.localCredentials.get(normalizedNim);
+        if (existingCred) {
+          throw new AppError(
+            'DUPLICATE_NIM',
+            'This NIM is already registered. Try editing that user instead.',
+          );
         }
-        return a.displayName.localeCompare(b.displayName);
+
+        await this.db.users.put(domainUserToLocal(createdUser));
+        await this.db.localCredentials.put({
+          nim: normalizedNim,
+          userId: createdUser.id,
+          passwordHash,
+          createdAt: nowIso,
+        });
+
+        if (targetClassId === 'seed-class-a') {
+          await this.db.courseFollows.bulkPut([
+            {
+              id: `seed-follow-${createdUser.id}-seed-course-a`,
+              userId: createdUser.id,
+              courseId: 'seed-course-a',
+              createdAt: nowIso,
+            },
+            {
+              id: `seed-follow-${createdUser.id}-seed-course-b`,
+              userId: createdUser.id,
+              courseId: 'seed-course-b',
+              createdAt: nowIso,
+            },
+          ]);
+        }
+      },
+    );
+
+    return createdUser;
+  }
+
+  async adminUpdateUser(input: AdminUpdateUserInput): Promise<User> {
+    if (this.remote !== null) {
+      const updated = await this.remote.adminUpdateUser({
+        targetUserId: input.targetUserId,
+        displayName: input.displayName,
+        role: input.role,
+        classId: input.classId,
+        studyProgram: input.studyProgram,
+        bio: input.bio,
       });
+      await this.db.users.put(domainUserToLocal(updated));
+      return updated;
+    }
+
+    await this.requireActiveAdmin(input.actorId);
+
+    const targetRow = await this.db.users.get(input.targetUserId);
+    if (!targetRow) {
+      throw new AppError('NOT_FOUND', 'Target user was not found.');
+    }
+
+    if (
+      targetRow.deletedAt === null &&
+      targetRow.role === 'admin' &&
+      input.role !== undefined &&
+      input.role !== 'admin'
+    ) {
+      const activeAdmins = await this.countActiveAdmins();
+      if (activeAdmins <= 1) {
+        throw new AppError(
+          'FORBIDDEN_ROLE',
+          'Cannot remove the Admin role from the last active Administrator.',
+        );
+      }
+    }
+
+    if (input.classId !== undefined && input.classId !== null) {
+      const classRow = await this.db.classes.get(input.classId);
+      if (!classRow || classRow.deletedAt !== null) {
+        throw new AppError('NOT_FOUND', 'Selected class was not found.');
+      }
+    }
+
+    const updatedRow = {
+      ...targetRow,
+      displayName:
+        input.displayName !== undefined
+          ? input.displayName.trim()
+          : targetRow.displayName,
+      role: input.role !== undefined ? input.role : targetRow.role,
+      classId: input.classId !== undefined ? input.classId : targetRow.classId,
+      studyProgram:
+        input.studyProgram !== undefined
+          ? input.studyProgram.trim()
+          : targetRow.studyProgram,
+      bio: input.bio !== undefined ? input.bio.trim() : targetRow.bio,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await this.db.users.put(updatedRow);
+    return localUserToDomain(updatedRow);
+  }
+
+  async adminSetUserActive(input: AdminSetUserActiveInput): Promise<User> {
+    if (this.remote !== null) {
+      const updated = await this.remote.adminSetUserActive({
+        targetUserId: input.targetUserId,
+        active: input.active,
+      });
+      await this.db.users.put(domainUserToLocal(updated));
+      return updated;
+    }
+
+    await this.requireActiveAdmin(input.actorId);
+
+    if (input.actorId === input.targetUserId && !input.active) {
+      throw new AppError(
+        'FORBIDDEN_ROLE',
+        'You cannot deactivate your own admin account.',
+      );
+    }
+
+    const targetRow = await this.db.users.get(input.targetUserId);
+    if (!targetRow) {
+      throw new AppError('NOT_FOUND', 'Target user was not found.');
+    }
+
+    if (!input.active && targetRow.deletedAt === null && targetRow.role === 'admin') {
+      const activeAdmins = await this.countActiveAdmins();
+      if (activeAdmins <= 1) {
+        throw new AppError(
+          'FORBIDDEN_ROLE',
+          'Cannot deactivate the last active Administrator.',
+        );
+      }
+    }
+
+    const nowIso = new Date().toISOString();
+    const updatedRow = {
+      ...targetRow,
+      deletedAt: input.active ? null : nowIso,
+      updatedAt: nowIso,
+    };
+
+    await this.db.users.put(updatedRow);
+    return localUserToDomain(updatedRow);
+  }
+
+  async adminResetPassword(input: AdminResetPasswordInput): Promise<void> {
+    if (this.remote !== null) {
+      throw new AppError(
+        'FORBIDDEN_ROLE',
+        'Password resets in online mode require Supabase Auth Admin.',
+      );
+    }
+
+    await this.requireActiveAdmin(input.actorId);
+
+    const targetRow = await this.db.users.get(input.targetUserId);
+    if (!targetRow) {
+      throw new AppError('NOT_FOUND', 'Target user was not found.');
+    }
+
+    const nowIso = new Date().toISOString();
+    const passwordHash = await hashLocalPassword(targetRow.nim, input.newPassword);
+    await this.db.localCredentials.put({
+      nim: targetRow.nim,
+      userId: targetRow.id,
+      passwordHash,
+      createdAt: nowIso,
+    });
+  }
+
+  async adminCreateClass(
+    actorId: string,
+    name: string,
+    joinCode: string,
+  ): Promise<Class> {
+    const normalizedCode = joinCode.trim().toUpperCase();
+    const trimmedName = name.trim();
+
+    if (this.remote !== null) {
+      const created = await this.remote.adminCreateClass(
+        trimmedName,
+        normalizedCode,
+      );
+      await this.db.classes.put(domainClassToLocal(created));
+      return created;
+    }
+
+    await this.requireActiveAdmin(actorId);
+
+    const existingRows = await this.db.classes
+      .where('joinCode')
+      .equals(normalizedCode)
+      .toArray();
+    const collision = existingRows.some((row) => row.deletedAt === null);
+    if (collision) {
+      throw new AppError(
+        'DUPLICATE_JOIN_CODE',
+        'Join code is already assigned to another class.',
+      );
+    }
+
+    const nowIso = new Date().toISOString();
+    const createdClass: Class = {
+      id: generateUuid(),
+      name: trimmedName,
+      joinCode: normalizedCode,
+      createdByUserId: actorId,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      deletedAt: null,
+    };
+
+    await this.db.classes.put(domainClassToLocal(createdClass));
+    return createdClass;
+  }
+
+  async changeOwnPassword(input: ChangeOwnPasswordInput): Promise<void> {
+    const userRow = await this.db.users.get(input.userId);
+    if (!userRow || userRow.deletedAt !== null) {
+      throw new AppError('NOT_FOUND', 'User account not found.');
+    }
+
+    if (this.remote !== null) {
+      await this.remote.changeOwnPassword(
+        userRow.nim,
+        input.currentPassword,
+        input.newPassword,
+      );
+      return;
+    }
+
+    const credential = await this.db.localCredentials.get(userRow.nim);
+    if (!credential) {
+      throw new AppError('AUTH_ERROR', 'Local credentials were not found.');
+    }
+
+    const currentHash = await hashLocalPassword(
+      userRow.nim,
+      input.currentPassword,
+    );
+    if (currentHash !== credential.passwordHash) {
+      throw new AppError('AUTH_ERROR', 'Current password is incorrect.');
+    }
+
+    const nextHash = await hashLocalPassword(userRow.nim, input.newPassword);
+    await this.db.localCredentials.put({
+      ...credential,
+      passwordHash: nextHash,
+    });
   }
 
   async updateMemberRole(
@@ -650,44 +1017,10 @@ export class HybridAuthRepository implements AuthRepository {
     targetUserId: string,
     nextRole: UserRole,
   ): Promise<User> {
-    if (this.remote !== null) {
-      throw new AppError(
-        'FORBIDDEN_ROLE',
-        'Role changes are managed on the server in online mode.',
-      );
-    }
-
-    const [actorRow, targetRow] = await Promise.all([
-      this.db.users.get(actorId),
-      this.db.users.get(targetUserId),
-    ]);
-
-    if (
-      !actorRow ||
-      actorRow.deletedAt !== null ||
-      !isAdminRole(actorRow.role) ||
-      !actorRow.classId
-    ) {
-      throw new AppError(
-        'FORBIDDEN_ROLE',
-        'Only an active Admin can change member roles.',
-      );
-    }
-
-    if (
-      !targetRow ||
-      targetRow.deletedAt !== null ||
-      targetRow.classId !== actorRow.classId
-    ) {
-      throw new AppError('NOT_FOUND', 'Target class member was not found.');
-    }
-
-    const updatedRow = {
-      ...targetRow,
+    return this.adminUpdateUser({
+      actorId,
+      targetUserId,
       role: nextRole,
-      updatedAt: new Date().toISOString(),
-    };
-    await this.db.users.put(updatedRow);
-    return localUserToDomain(updatedRow);
+    });
   }
 }

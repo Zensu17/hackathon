@@ -124,7 +124,7 @@ export function RepFormPage(): React.ReactElement {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const container = useAppContainer();
-  const { session, refreshSession, isLocalFallbackMode } = useAuthSession();
+  const { session, refreshSession } = useAuthSession();
 
   const activeType = parseRepEntityType(searchParams.get('type'));
   const queryCourseId = searchParams.get('courseId') ?? '';
@@ -1609,32 +1609,38 @@ export function RepFormPage(): React.ReactElement {
               {`Class members & roles (${members.length})`}
             </h2>
           </div>
-          {currentClass ? (
-            <button
-              type="button"
-              className="btn btn-secondary btn-compact"
-              onClick={() => {
-                if (typeof navigator !== 'undefined' && navigator.clipboard) {
-                  void navigator.clipboard
-                    .writeText(currentClass.joinCode)
-                    .then(() => {
-                      toast.success(`Copied join code ${currentClass.joinCode}`);
-                    });
-                }
-              }}
-            >
-              <IconCopy size={14} />
-              <span>{`Copy ${currentClass.joinCode}`}</span>
-            </button>
-          ) : null}
+          <div className="action-row" style={{ marginTop: 0 }}>
+            {isAdmin ? (
+              <Link to="/admin/users" className="btn btn-secondary btn-compact">
+                <IconUsers size={14} />
+                <span>Manage all users</span>
+              </Link>
+            ) : null}
+            {currentClass ? (
+              <button
+                type="button"
+                className="btn btn-secondary btn-compact"
+                onClick={() => {
+                  if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                    void navigator.clipboard
+                      .writeText(currentClass.joinCode)
+                      .then(() => {
+                        toast.success(`Copied join code ${currentClass.joinCode}`);
+                      });
+                  }
+                }}
+              >
+                <IconCopy size={14} />
+                <span>{`Copy ${currentClass.joinCode}`}</span>
+              </button>
+            ) : null}
+          </div>
         </div>
 
         <p className="meta-text" style={{ margin: 0 }}>
-          {isAdmin && isLocalFallbackMode
-            ? 'As Admin in local mode, you can assign Student, Class Representative, Lecturer, Teaching Assistant, or Admin roles to class members.'
-            : isAdmin
-              ? 'View class members stored on this device.'
-              : 'Members active in this class on this device. Admin accounts can manage member roles.'}
+          {isAdmin
+            ? 'As Admin, you can assign Student, Class Representative, Lecturer, Teaching Assistant, or Admin roles here, or open Manage all users for cross-class accounts.'
+            : 'Members active in this class on this device. Admin accounts can manage member roles.'}
         </p>
 
         {members.length === 0 ? (
@@ -1674,7 +1680,7 @@ export function RepFormPage(): React.ReactElement {
                       size="S"
                       label={getRoleLabel(member.role)}
                     />
-                    {isAdmin && isLocalFallbackMode ? (
+                    {isAdmin ? (
                       <select
                         aria-label={`Role for ${member.displayName}`}
                         name={`member-role-${member.id}`}

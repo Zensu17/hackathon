@@ -4,7 +4,12 @@ export type {
   UpdateAnnouncementRecordInput,
 } from './AnnouncementRepository';
 export type {
+  AdminCreateUserInput,
+  AdminResetPasswordInput,
+  AdminSetUserActiveInput,
+  AdminUpdateUserInput,
   AuthRepository,
+  ChangeOwnPasswordInput,
   SignInCredentials,
   SignOutOptions,
   SignUpCredentials,

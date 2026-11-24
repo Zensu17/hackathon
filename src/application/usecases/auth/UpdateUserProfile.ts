@@ -1,6 +1,5 @@
 import type { User } from '../../../domain/entities';
 import type { AuthRepository } from '../../../domain/repositories';
-import { isValidUserRole } from '../../../domain/rules';
 import type { UpdateProfileInput } from '../../dto/AuthDto';
 import { AppError, isAppError } from '../../errors/AppError';
 
@@ -69,10 +68,6 @@ export class UpdateUserProfile {
       }
     }
 
-    if (input.role !== undefined && !isValidUserRole(input.role)) {
-      throw new AppError('VALIDATION_ERROR', 'Select a valid account role.');
-    }
-
     try {
       return await this.authRepository.updateProfile({
         userId,
@@ -90,7 +85,6 @@ export class UpdateUserProfile {
                   : null,
             }
           : {}),
-        ...(input.role !== undefined ? { role: input.role } : {}),
       });
     } catch (error) {
       if (isAppError(error)) {

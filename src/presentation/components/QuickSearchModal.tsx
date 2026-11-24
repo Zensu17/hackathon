@@ -12,6 +12,7 @@ import {
   IconNote,
   IconSearch,
   IconSettings,
+  IconShield,
   IconUser,
 } from './Icons';
 
@@ -21,6 +22,7 @@ export interface QuickSearchModalProps {
   classId: string | null;
   userId: string | null;
   isRep: boolean;
+  isAdmin?: boolean;
 }
 
 interface QuickSearchFlatItem {
@@ -38,6 +40,7 @@ export function QuickSearchModal({
   classId,
   userId,
   isRep,
+  isAdmin = false,
 }: QuickSearchModalProps): React.ReactElement {
   const navigate = useNavigate();
   const dialogTitleId = useId();
@@ -98,12 +101,22 @@ export function QuickSearchModal({
         category: 'Quick navigation',
         badge: 'MANAGE',
         title: 'Publish class update & members',
-        subtitle: 'Add or edit courses, weeks, materials, deadlines, and member roles',
+        subtitle: 'Add or edit courses, weeks, materials, deadlines, and announcements',
         to: '/manage',
       });
     }
+    if (isAdmin) {
+      base.splice(isRep ? 4 : 3, 0, {
+        id: 'nav-admin-users',
+        category: 'Quick navigation',
+        badge: 'ADMIN',
+        title: 'Manage all users & roles',
+        subtitle: 'Assign Student, Lecturer, Assistant, Class Rep, and Admin roles across all classes',
+        to: '/admin/users',
+      });
+    }
     return base;
-  }, [isRep]);
+  }, [isAdmin, isRep]);
 
   const flatItems = useMemo<QuickSearchFlatItem[]>(() => {
     if (query.trim().length === 0) {
@@ -248,6 +261,7 @@ export function QuickSearchModal({
   };
 
   const renderCategoryIcon = (itemId: string, category: string): React.ReactNode => {
+    if (itemId === 'nav-admin-users') return <IconShield size={16} />;
     if (itemId === 'nav-profile') return <IconUser size={16} />;
     if (category === 'Courses') return <IconBook size={16} />;
     if (category === 'Materials') return <IconNote size={16} />;

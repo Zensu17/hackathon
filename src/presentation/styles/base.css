@@ -431,3 +431,36 @@ textarea.field-input {
     scroll-behavior: auto !important;
   }
 }
+
+@media print {
+  .figma-sidenav,
+  .figma-bottom-nav,
+  .app-header,
+  .app-footer,
+  .offline-strip,
+  .sync-banner,
+  .study-masthead__actions,
+  .quick-guide-card,
+  .breadcrumb-row,
+  .btn,
+  .figma-btn {
+    display: none !important;
+  }
+
+  body,
+  .app-shell,
+  .app-main {
+    background: #ffffff !important;
+    color: #000000 !important;
+    padding: 0 !important;
+    max-width: none !important;
+  }
+
+  .index-card,
+  .study-reader-article,
+  .study-dock-card {
+    border: 1px solid #cccccc !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+}

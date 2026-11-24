@@ -1162,7 +1162,7 @@ describe('Sync Queue, Offline Resilience, Security, and Critical Fix Regressions
     expect(sql).toContain('create or replace function public.check_class_join_code');
   });
 
-  it('supports CLASSA student signup, custom local class creation as rep, and rejects invalid local class codes', async () => {
+  it('enforces student role on all local signups including custom class creation and rejects invalid class codes', async () => {
     const db = createFakeDb();
     const authRepo = new HybridAuthRepository(
       db as unknown as LiteLearnDb,
@@ -1178,14 +1178,14 @@ describe('Sync Queue, Offline Resilience, Security, and Critical Fix Regressions
     expect(sampleStudent.role).toBe('student');
     expect(sampleStudent.classId).toBe('seed-class-a');
 
-    const repUser = await authRepo.signUp({
+    const cohortCreator = await authRepo.signUp({
       nim: '11S24002',
       displayName: 'Budi Santoso',
       password: 'password123',
       classCode: 'IF2026',
     });
-    expect(repUser.role).toBe('rep');
-    const createdClass = await db.classes.get(repUser.classId!);
+    expect(cohortCreator.role).toBe('student');
+    const createdClass = await db.classes.get(cohortCreator.classId!);
     expect(createdClass?.joinCode).toBe('IF2026');
 
     const classmate = await authRepo.signUp({
@@ -1195,7 +1195,7 @@ describe('Sync Queue, Offline Resilience, Security, and Critical Fix Regressions
       classCode: 'if2026',
     });
     expect(classmate.role).toBe('student');
-    expect(classmate.classId).toBe(repUser.classId);
+    expect(classmate.classId).toBe(cohortCreator.classId);
 
     await expect(
       authRepo.signUp({
@@ -1209,29 +1209,49 @@ describe('Sync Queue, Offline Resilience, Security, and Critical Fix Regressions
     });
   });
 
-  it('persists profile customization and allows local admin role management only for admins', async () => {
+  it('supports cross-class Admin user directory, creation, role/class updates, password reset, activation, and 006 SQL RPCs', async () => {
     const db = createFakeDb();
     const authRepo = new HybridAuthRepository(
       db as unknown as LiteLearnDb,
       null,
     );
 
-    const adminUser = await authRepo.signUp({
-      nim: '00A24001',
-      displayName: 'Class Admin',
-      password: 'password123',
-      classCode: 'IF2027',
-      role: 'admin',
-    });
     const studentUser = await authRepo.signUp({
       nim: '11S24010',
       displayName: 'Student Member',
       password: 'password123',
       classCode: 'IF2027',
-      role: 'student',
+    });
+    expect(studentUser.role).toBe('student');
+
+    // Seed an active Admin in Class A to test cross-class management
+    const adminId = 'seed-admin-1';
+    await db.classes.put({
+      id: 'seed-class-a',
+      name: 'Class A',
+      joinCode: 'CLASSA',
+      createdByUserId: adminId,
+      createdAt: '2026-11-20T00:00:00.000Z',
+      updatedAt: '2026-11-20T00:00:00.000Z',
+      deletedAt: null,
+    });
+    await db.users.put({
+      id: adminId,
+      nim: '00A00001',
+      displayName: 'Academic Admin',
+      classId: 'seed-class-a',
+      role: 'admin',
+      createdAt: '2026-11-20T00:00:00.000Z',
+      updatedAt: '2026-11-20T00:00:00.000Z',
+      deletedAt: null,
+    });
+    await db.sessions.put({
+      id: 'current',
+      userId: adminId,
+      updatedAt: '2026-11-20T00:00:00.000Z',
     });
 
-    const updated = await authRepo.updateProfile({
+    const updatedProfile = await authRepo.updateProfile({
       userId: studentUser.id,
       displayName: 'Student Member Updated',
       studyProgram: 'S1 Informatika',
@@ -1239,23 +1259,111 @@ describe('Sync Queue, Offline Resilience, Security, and Critical Fix Regressions
       avatarColor: '#0F766E',
       avatarDataUrl: null,
     });
-    expect(updated.displayName).toBe('Student Member Updated');
-    expect(updated.studyProgram).toBe('S1 Informatika');
+    expect(updatedProfile.displayName).toBe('Student Member Updated');
+    expect(updatedProfile.studyProgram).toBe('S1 Informatika');
+    expect(updatedProfile.role).toBe('student');
 
-    const members = await authRepo.listClassMembers(adminUser.classId!);
-    expect(members.map((m) => m.id)).toEqual([adminUser.id, studentUser.id]);
+    // Admin lists users & classes across the workspace
+    const allUsers = await authRepo.listAllUsers(adminId);
+    expect(allUsers.map((u) => u.id)).toEqual([adminId, studentUser.id]);
+    const allClasses = await authRepo.listAllClasses(adminId);
+    expect(allClasses).toHaveLength(2);
 
-    const promoted = await authRepo.updateMemberRole(
-      adminUser.id,
-      studentUser.id,
-      'assistant',
-    );
+    // Admin creates a lecturer directly without hijacking the active Admin session
+    const createdLecturer = await authRepo.adminCreateUser({
+      actorId: adminId,
+      nim: '01D24001',
+      displayName: 'Dr. Sari Panjaitan',
+      password: 'password123',
+      role: 'lecturer',
+      classId: 'seed-class-a',
+      studyProgram: 'Faculty of Informatics',
+    });
+    expect(createdLecturer.role).toBe('lecturer');
+    expect((await authRepo.getCurrentUser())?.id).toBe(adminId);
+
+    // Admin reassigns student across classes and promotes role
+    const promoted = await authRepo.adminUpdateUser({
+      actorId: adminId,
+      targetUserId: studentUser.id,
+      role: 'assistant',
+      classId: 'seed-class-a',
+    });
     expect(promoted.role).toBe('assistant');
+    expect(promoted.classId).toBe('seed-class-a');
 
+    // Non-admin cannot change roles or list all users
     await expect(
-      authRepo.updateMemberRole(studentUser.id, adminUser.id, 'student'),
-    ).rejects.toMatchObject({
+      authRepo.updateMemberRole(studentUser.id, adminId, 'student'),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN_ROLE' });
+    await expect(authRepo.listAllUsers(studentUser.id)).rejects.toMatchObject({
       code: 'FORBIDDEN_ROLE',
     });
+
+    // Admin resets password, user signs in and changes own password
+    await authRepo.adminResetPassword({
+      actorId: adminId,
+      targetUserId: createdLecturer.id,
+      newPassword: 'resetpass99',
+    });
+    const signedLecturer = await authRepo.signIn({
+      nim: '01D24001',
+      password: 'resetpass99',
+    });
+    expect(signedLecturer.id).toBe(createdLecturer.id);
+
+    await authRepo.changeOwnPassword({
+      userId: createdLecturer.id,
+      currentPassword: 'resetpass99',
+      newPassword: 'userpass88',
+    });
+    await authRepo.signIn({
+      nim: '01D24001',
+      password: 'userpass88',
+    });
+
+    // Admin deactivates & restores another user; cannot deactivate self or last admin
+    await expect(
+      authRepo.adminSetUserActive({
+        actorId: adminId,
+        targetUserId: adminId,
+        active: false,
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN_ROLE' });
+
+    await authRepo.adminSetUserActive({
+      actorId: adminId,
+      targetUserId: createdLecturer.id,
+      active: false,
+    });
+    await expect(
+      authRepo.signIn({ nim: '01D24001', password: 'userpass88' }),
+    ).rejects.toMatchObject({ code: 'AUTH_ERROR' });
+
+    await authRepo.adminSetUserActive({
+      actorId: adminId,
+      targetUserId: createdLecturer.id,
+      active: true,
+    });
+    await authRepo.signIn({ nim: '01D24001', password: 'userpass88' });
+
+    // Verify 006 Supabase migration SQL contains Admin RPCs
+    const migration006 = fs
+      .readFileSync(
+        path.join(
+          repoRoot,
+          'supabase',
+          'migrations',
+          '006_admin_user_management.sql',
+        ),
+        'utf8',
+      )
+      .toLowerCase();
+    expect(migration006).toContain('public.is_admin');
+    expect(migration006).toContain('public.admin_list_all_users');
+    expect(migration006).toContain('public.admin_list_all_classes');
+    expect(migration006).toContain('public.admin_update_user_profile');
+    expect(migration006).toContain('public.admin_set_user_active');
+    expect(migration006).toContain('public.admin_create_class');
   });
 });

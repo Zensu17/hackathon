@@ -18,6 +18,8 @@ import type {
   Week,
 } from '../../domain/entities';
 import type {
+  AdminSetUserActiveInput,
+  AdminUpdateUserInput,
   ClassOnboardingResult,
   CreateAnnouncementRecordInput,
   CreateCourseRecordInput,
@@ -171,7 +173,6 @@ export class SupabaseRemoteDataSource {
         data: {
           display_name: input.displayName,
           nim: normalizedNim,
-          requested_role: input.role ?? 'student',
         },
       },
     });
@@ -327,6 +328,101 @@ export class SupabaseRemoteDataSource {
     }
 
     return remoteProfileToDomain(data as RemoteProfileRow);
+  }
+
+  async adminListAllUsers(): Promise<User[]> {
+    const client = await this.getClient();
+    const { data, error } = await client.rpc('admin_list_all_users');
+    if (error) {
+      throw mapRemoteError(error, 'FORBIDDEN_ROLE');
+    }
+    return ((data ?? []) as RemoteProfileRow[]).map(remoteProfileToDomain);
+  }
+
+  async adminListAllClasses(): Promise<Class[]> {
+    const client = await this.getClient();
+    const { data, error } = await client.rpc('admin_list_all_classes');
+    if (error) {
+      throw mapRemoteError(error, 'FORBIDDEN_ROLE');
+    }
+    return ((data ?? []) as RemoteClassRow[]).map(remoteClassToDomain);
+  }
+
+  async adminUpdateUser(
+    input: Omit<AdminUpdateUserInput, 'actorId'>,
+  ): Promise<User> {
+    const client = await this.getClient();
+    const { data, error } = await client.rpc('admin_update_user_profile', {
+      p_target_user_id: input.targetUserId,
+      p_display_name: input.displayName ?? null,
+      p_role: input.role ?? null,
+      p_class_id: input.classId ?? null,
+      p_update_class: input.classId !== undefined,
+      p_study_program: input.studyProgram ?? null,
+      p_bio: input.bio ?? null,
+    });
+    if (error || !data) {
+      throw mapRemoteError(
+        error ?? new Error('Could not update target user profile.'),
+        'FORBIDDEN_ROLE',
+      );
+    }
+    return remoteProfileToDomain(data as RemoteProfileRow);
+  }
+
+  async adminSetUserActive(
+    input: Omit<AdminSetUserActiveInput, 'actorId'>,
+  ): Promise<User> {
+    const client = await this.getClient();
+    const { data, error } = await client.rpc('admin_set_user_active', {
+      p_target_user_id: input.targetUserId,
+      p_active: input.active,
+    });
+    if (error || !data) {
+      throw mapRemoteError(
+        error ?? new Error('Could not update account status.'),
+        'FORBIDDEN_ROLE',
+      );
+    }
+    return remoteProfileToDomain(data as RemoteProfileRow);
+  }
+
+  async adminCreateClass(name: string, joinCode: string): Promise<Class> {
+    const client = await this.getClient();
+    const { data, error } = await client.rpc('admin_create_class', {
+      p_name: name,
+      p_join_code: joinCode,
+    });
+    if (error || !data) {
+      throw mapRemoteError(
+        error ?? new Error('Could not create class.'),
+        'FORBIDDEN_ROLE',
+      );
+    }
+    return remoteClassToDomain(data as RemoteClassRow);
+  }
+
+  async changeOwnPassword(
+    nim: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    const client = await this.getClient();
+    const hiddenEmail = nimToHiddenAuthEmail(nim);
+    const { error: verifyError } = await client.auth.signInWithPassword({
+      email: hiddenEmail,
+      password: currentPassword,
+    });
+    if (verifyError) {
+      throw new AppError('AUTH_ERROR', 'Current password is incorrect.');
+    }
+
+    const { error: updateError } = await client.auth.updateUser({
+      password: newPassword,
+    });
+    if (updateError) {
+      throw mapRemoteError(updateError, 'AUTH_ERROR');
+    }
   }
 
   async fetchClassById(classId: string): Promise<Class | null> {

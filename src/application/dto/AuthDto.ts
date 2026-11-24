@@ -7,7 +7,6 @@ export interface SignUpInput {
   password: string;
   confirmPassword?: string;
   classCode: string;
-  role?: UserRole;
 }
 
 export interface SignInInput {
@@ -22,7 +21,53 @@ export interface UpdateProfileInput {
   bio?: string;
   avatarColor?: string;
   avatarDataUrl?: string | null;
+}
+
+export interface AdminCreateUserDto {
+  actorId: string;
+  nim: string;
+  displayName: string;
+  password: string;
+  confirmPassword?: string;
+  role: UserRole;
+  classId: string | null;
+  studyProgram?: string;
+}
+
+export interface AdminUpdateUserDto {
+  actorId: string;
+  targetUserId: string;
+  displayName?: string;
   role?: UserRole;
+  classId?: string | null;
+  studyProgram?: string;
+  bio?: string;
+}
+
+export interface AdminSetUserActiveDto {
+  actorId: string;
+  targetUserId: string;
+  active: boolean;
+}
+
+export interface AdminResetPasswordDto {
+  actorId: string;
+  targetUserId: string;
+  newPassword: string;
+  confirmPassword?: string;
+}
+
+export interface AdminCreateClassDto {
+  actorId: string;
+  name: string;
+  joinCode?: string;
+}
+
+export interface ChangeOwnPasswordDto {
+  userId: string;
+  currentPassword: string;
+  newPassword: string;
+  confirmNewPassword?: string;
 }
 
 export interface AuthSessionDto {
