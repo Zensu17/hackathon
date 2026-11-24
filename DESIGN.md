@@ -2,46 +2,46 @@
 name: LiteLearn
 description: Calm, low-bandwidth academic design system for offline-first study.
 colors:
-  academic-navy: "#1E3A8A"
-  ivory-paper: "#F7F5F0"
+  academic-navy: "#1D3E8A"
+  ivory-paper: "#F6F4EE"
   clean-sheet: "#FFFFFF"
-  warm-linen: "#EFEBE3"
-  paper-rule: "#E3DED3"
-  control-slate: "#748299"
-  ink-navy: "#14213D"
-  muted-slate: "#5B6478"
-  academic-gold: "#875E16"
-  offline-emerald: "#1C7449"
-  due-soon-ochre: "#926016"
+  warm-linen: "#EDE9DF"
+  paper-rule: "#DFD9CC"
+  control-slate: "#6B788E"
+  ink-navy: "#13203B"
+  muted-slate: "#515B70"
+  academic-gold: "#855A10"
+  offline-emerald: "#166E45"
+  due-soon-ochre: "#8F5B10"
   overdue-crimson: "#B42318"
 typography:
   display:
     fontFamily: Source Serif 4
-    fontSize: 28px
+    fontSize: 30px
     fontWeight: 600
-    lineHeight: 34px
+    lineHeight: 36px
   headline:
     fontFamily: Source Serif 4
-    fontSize: 24px
+    fontSize: 26px
     fontWeight: 600
-    lineHeight: 30px
+    lineHeight: 32px
   title:
     fontFamily: Source Serif 4
-    fontSize: 20px
+    fontSize: 21px
     fontWeight: 600
-    lineHeight: 26px
+    lineHeight: 28px
   body:
-    fontFamily: Inter
+    fontFamily: Plus Jakarta Sans
     fontSize: 16px
     fontWeight: 400
-    lineHeight: 24px
+    lineHeight: 26px
   label:
-    fontFamily: Inter
+    fontFamily: Plus Jakarta Sans
     fontSize: 14px
     fontWeight: 600
-    lineHeight: 20px
+    lineHeight: 21px
   mono:
-    fontFamily: ui-monospace
+    fontFamily: JetBrains Mono
     fontSize: 14px
     fontWeight: 500
     lineHeight: 20px
@@ -64,42 +64,42 @@ components:
     textColor: "{colors.clean-sheet}"
     typography: "{typography.label}"
     rounded: "{rounded.sm}"
-    padding: 0 16px
+    padding: 0 18px
     height: 44px
   button-secondary:
     backgroundColor: "{colors.clean-sheet}"
     textColor: "{colors.ink-navy}"
     typography: "{typography.label}"
     rounded: "{rounded.sm}"
-    padding: 0 16px
+    padding: 0 18px
     height: 44px
   card-surface:
     backgroundColor: "{colors.clean-sheet}"
     textColor: "{colors.ink-navy}"
     rounded: "{rounded.md}"
-    padding: 16px
+    padding: 22px
   input-default:
     backgroundColor: "{colors.clean-sheet}"
     textColor: "{colors.ink-navy}"
     typography: "{typography.body}"
     rounded: "{rounded.sm}"
-    padding: 0 12px
-    height: 52px
+    padding: 11px 14px
+    height: 48px
   chip-success:
     backgroundColor: "{colors.warm-linen}"
     textColor: "{colors.offline-emerald}"
     typography: "{typography.label}"
     rounded: "{rounded.full}"
-    padding: 0 8px
-    height: 32px
+    padding: 0 11px
+    height: 30px
 ---
 
 # Design System: LiteLearn
 
 <!-- impeccable:design-map -->
 Name: LiteLearn
-Colors: primary: academic-navy #1E3A8A; secondary: academic-gold #875E16; neutral: ivory-paper #F7F5F0; secondary: offline-emerald #1C7449; secondary: due-soon-ochre #926016 (+3 more in the sidecar)
-Fonts: Source Serif 4 (display, headline, title); Inter (body, label); ui-monospace (mono)
+Colors: primary: academic-navy #1D3E8A; secondary: academic-gold #855A10; neutral: ivory-paper #F6F4EE; secondary: offline-emerald #166E45; secondary: due-soon-ochre #8F5B10 (+3 more in the sidecar)
+Fonts: Source Serif 4 (display, headline, title); Plus Jakarta Sans (body, label); JetBrains Mono (mono)
 Spacing: 1 4px, 2 8px, 3 12px, 4 16px, 6 24px, 8 32px, 12 48px
 Radius: sm 8px, md 12px, lg 16px, full 999px
 North Star: "The Dormitory Study Index"

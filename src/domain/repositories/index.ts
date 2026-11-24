@@ -8,6 +8,7 @@ export type {
   SignInCredentials,
   SignOutOptions,
   SignUpCredentials,
+  UpdateProfileRecordInput,
 } from './AuthRepository';
 export type {
   ClassOnboardingResult,

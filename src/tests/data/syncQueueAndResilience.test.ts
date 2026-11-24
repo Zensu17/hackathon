@@ -1161,4 +1161,101 @@ describe('Sync Queue, Offline Resilience, Security, and Critical Fix Regressions
     expect(sql).toContain('profiles_nim_format_check');
     expect(sql).toContain('create or replace function public.check_class_join_code');
   });
+
+  it('supports CLASSA student signup, custom local class creation as rep, and rejects invalid local class codes', async () => {
+    const db = createFakeDb();
+    const authRepo = new HybridAuthRepository(
+      db as unknown as LiteLearnDb,
+      null,
+    );
+
+    const sampleStudent = await authRepo.signUp({
+      nim: '11S24001',
+      displayName: 'Andi Pratama',
+      password: 'password123',
+      classCode: 'CLASSA',
+    });
+    expect(sampleStudent.role).toBe('student');
+    expect(sampleStudent.classId).toBe('seed-class-a');
+
+    const repUser = await authRepo.signUp({
+      nim: '11S24002',
+      displayName: 'Budi Santoso',
+      password: 'password123',
+      classCode: 'IF2026',
+    });
+    expect(repUser.role).toBe('rep');
+    const createdClass = await db.classes.get(repUser.classId!);
+    expect(createdClass?.joinCode).toBe('IF2026');
+
+    const classmate = await authRepo.signUp({
+      nim: '11S24003',
+      displayName: 'Citra Dewi',
+      password: 'password123',
+      classCode: 'if2026',
+    });
+    expect(classmate.role).toBe('student');
+    expect(classmate.classId).toBe(repUser.classId);
+
+    await expect(
+      authRepo.signUp({
+        nim: '11S24004',
+        displayName: 'Deni Kurnia',
+        password: 'password123',
+        classCode: 'BAD CODE!',
+      }),
+    ).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+    });
+  });
+
+  it('persists profile customization and allows local admin role management only for admins', async () => {
+    const db = createFakeDb();
+    const authRepo = new HybridAuthRepository(
+      db as unknown as LiteLearnDb,
+      null,
+    );
+
+    const adminUser = await authRepo.signUp({
+      nim: '00A24001',
+      displayName: 'Class Admin',
+      password: 'password123',
+      classCode: 'IF2027',
+      role: 'admin',
+    });
+    const studentUser = await authRepo.signUp({
+      nim: '11S24010',
+      displayName: 'Student Member',
+      password: 'password123',
+      classCode: 'IF2027',
+      role: 'student',
+    });
+
+    const updated = await authRepo.updateProfile({
+      userId: studentUser.id,
+      displayName: 'Student Member Updated',
+      studyProgram: 'S1 Informatika',
+      bio: 'Lab assistant candidate',
+      avatarColor: '#0F766E',
+      avatarDataUrl: null,
+    });
+    expect(updated.displayName).toBe('Student Member Updated');
+    expect(updated.studyProgram).toBe('S1 Informatika');
+
+    const members = await authRepo.listClassMembers(adminUser.classId!);
+    expect(members.map((m) => m.id)).toEqual([adminUser.id, studentUser.id]);
+
+    const promoted = await authRepo.updateMemberRole(
+      adminUser.id,
+      studentUser.id,
+      'assistant',
+    );
+    expect(promoted.role).toBe('assistant');
+
+    await expect(
+      authRepo.updateMemberRole(studentUser.id, adminUser.id, 'student'),
+    ).rejects.toMatchObject({
+      code: 'FORBIDDEN_ROLE',
+    });
+  });
 });

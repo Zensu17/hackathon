@@ -1,11 +1,13 @@
 import { AppError } from '../../application/errors/AppError';
-import type { User } from '../../domain/entities';
+import type { User, UserRole } from '../../domain/entities';
 import type {
   AuthRepository,
   SignInCredentials,
   SignOutOptions,
   SignUpCredentials,
+  UpdateProfileRecordInput,
 } from '../../domain/repositories';
+import { isAdminRole } from '../../domain/rules';
 import type { LiteLearnDb } from '../local/LiteLearnDb';
 import { domainClassToLocal } from '../mappers/classMapper';
 import {
@@ -164,6 +166,14 @@ async function hashLocalPassword(nim: string, password: string): Promise<string>
   return sha256PureJs(encoded);
 }
 
+const ROLE_SORT_PRIORITY: Record<UserRole, number> = {
+  admin: 0,
+  lecturer: 1,
+  assistant: 2,
+  rep: 3,
+  student: 4,
+};
+
 export class HybridAuthRepository implements AuthRepository {
   constructor(
     private readonly db: LiteLearnDb,
@@ -194,6 +204,7 @@ export class HybridAuthRepository implements AuthRepository {
         password: input.password,
         displayName: input.displayName,
         classCode: input.classCode,
+        ...(input.role !== undefined ? { role: input.role } : {}),
       });
 
       const remoteCourses = currentClass
@@ -228,6 +239,8 @@ export class HybridAuthRepository implements AuthRepository {
       .equals(normalizedCode)
       .first();
 
+    let createdLocalClass = false;
+
     if (!matchedClass && normalizedCode === 'CLASSA') {
       matchedClass = {
         id: 'seed-class-a',
@@ -241,17 +254,38 @@ export class HybridAuthRepository implements AuthRepository {
       await this.db.classes.put(matchedClass);
     }
 
-    if (!matchedClass || matchedClass.deletedAt !== null) {
+    if (matchedClass && matchedClass.deletedAt !== null) {
       throw new AppError('NOT_FOUND', 'No class matched that class code.');
+    }
+
+    const createdUserId = generateUuid();
+
+    if (!matchedClass) {
+      if (!/^[A-Z0-9][A-Z0-9-]{2,15}$/.test(normalizedCode)) {
+        throw new AppError(
+          'VALIDATION_ERROR',
+          'Class code must be 3 to 16 letters, digits, or hyphens.',
+        );
+      }
+      matchedClass = {
+        id: generateUuid(),
+        name: `Class ${normalizedCode}`,
+        joinCode: normalizedCode,
+        createdByUserId: createdUserId,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        deletedAt: null,
+      };
+      createdLocalClass = true;
     }
 
     const passwordHash = await hashLocalPassword(normalizedNim, input.password);
     const createdUser: User = {
-      id: generateUuid(),
+      id: createdUserId,
       nim: normalizedNim,
       displayName: input.displayName.trim(),
       classId: matchedClass.id,
-      role: 'student',
+      role: input.role ?? (createdLocalClass ? 'rep' : 'student'),
       createdAt: nowIso,
       updatedAt: nowIso,
       deletedAt: null,
@@ -263,6 +297,7 @@ export class HybridAuthRepository implements AuthRepository {
         this.db.users,
         this.db.localCredentials,
         this.db.sessions,
+        this.db.classes,
         this.db.courseFollows,
       ],
       async () => {
@@ -274,6 +309,9 @@ export class HybridAuthRepository implements AuthRepository {
           );
         }
 
+        if (createdLocalClass && matchedClass) {
+          await this.db.classes.put(matchedClass);
+        }
         await this.db.users.put(domainUserToLocal(createdUser));
         await this.db.localCredentials.put({
           nim: normalizedNim,
@@ -533,5 +571,123 @@ export class HybridAuthRepository implements AuthRepository {
       this.db.notifySyncQueueChanged?.();
       this.db.notifyDeadlineCompletionsChanged?.();
     }
+  }
+
+  async updateProfile(input: UpdateProfileRecordInput): Promise<User> {
+    const nowIso = new Date().toISOString();
+
+    if (this.remote !== null) {
+      const remoteUser = await this.remote.updateProfile(input);
+      const mergedLocal: User = {
+        ...remoteUser,
+        ...(input.studyProgram !== undefined
+          ? { studyProgram: input.studyProgram }
+          : {}),
+        ...(input.bio !== undefined ? { bio: input.bio } : {}),
+        ...(input.avatarColor !== undefined
+          ? { avatarColor: input.avatarColor }
+          : {}),
+        ...(input.avatarDataUrl !== undefined
+          ? { avatarDataUrl: input.avatarDataUrl }
+          : {}),
+      };
+      await this.db.users.put(domainUserToLocal(mergedLocal));
+      return mergedLocal;
+    }
+
+    const existingRow = await this.db.users.get(input.userId);
+    if (!existingRow || existingRow.deletedAt !== null) {
+      throw new AppError('NOT_FOUND', 'User account not found.');
+    }
+
+    const nextRow = {
+      ...existingRow,
+      displayName: input.displayName.trim(),
+      updatedAt: nowIso,
+      ...(input.studyProgram !== undefined
+        ? { studyProgram: input.studyProgram }
+        : {}),
+      ...(input.bio !== undefined ? { bio: input.bio } : {}),
+      ...(input.avatarColor !== undefined
+        ? { avatarColor: input.avatarColor }
+        : {}),
+      ...(input.avatarDataUrl !== undefined
+        ? { avatarDataUrl: input.avatarDataUrl }
+        : {}),
+      ...(input.role !== undefined ? { role: input.role } : {}),
+    };
+
+    await this.db.users.put(nextRow);
+    return localUserToDomain(nextRow);
+  }
+
+  async listClassMembers(classId: string): Promise<User[]> {
+    const trimmedClassId = classId.trim();
+    if (trimmedClassId.length === 0) {
+      return [];
+    }
+
+    const rows = await this.db.users
+      .where('classId')
+      .equals(trimmedClassId)
+      .toArray();
+
+    return rows
+      .filter((row) => row.deletedAt === null)
+      .map(localUserToDomain)
+      .sort((a, b) => {
+        const rankA = a.role ? ROLE_SORT_PRIORITY[a.role] : 99;
+        const rankB = b.role ? ROLE_SORT_PRIORITY[b.role] : 99;
+        if (rankA !== rankB) {
+          return rankA - rankB;
+        }
+        return a.displayName.localeCompare(b.displayName);
+      });
+  }
+
+  async updateMemberRole(
+    actorId: string,
+    targetUserId: string,
+    nextRole: UserRole,
+  ): Promise<User> {
+    if (this.remote !== null) {
+      throw new AppError(
+        'FORBIDDEN_ROLE',
+        'Role changes are managed on the server in online mode.',
+      );
+    }
+
+    const [actorRow, targetRow] = await Promise.all([
+      this.db.users.get(actorId),
+      this.db.users.get(targetUserId),
+    ]);
+
+    if (
+      !actorRow ||
+      actorRow.deletedAt !== null ||
+      !isAdminRole(actorRow.role) ||
+      !actorRow.classId
+    ) {
+      throw new AppError(
+        'FORBIDDEN_ROLE',
+        'Only an active Admin can change member roles.',
+      );
+    }
+
+    if (
+      !targetRow ||
+      targetRow.deletedAt !== null ||
+      targetRow.classId !== actorRow.classId
+    ) {
+      throw new AppError('NOT_FOUND', 'Target class member was not found.');
+    }
+
+    const updatedRow = {
+      ...targetRow,
+      role: nextRole,
+      updatedAt: new Date().toISOString(),
+    };
+    await this.db.users.put(updatedRow);
+    return localUserToDomain(updatedRow);
   }
 }

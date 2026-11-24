@@ -1,32 +1,48 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
+import { useAppContainer } from '../../app/di';
 import type {
   AnnotatedDeadlineDto,
   CourseListItemDto,
   WeekWithContentDto,
 } from '../../application/dto';
-import type { Announcement, MaterialAttachment } from '../../domain/entities';
-import { formatByteSize, validateMaterialFile } from '../../domain/rules';
+import type {
+  Announcement,
+  MaterialAttachment,
+  User,
+  UserRole,
+} from '../../domain/entities';
+import {
+  canManageClassContent,
+  formatByteSize,
+  isAdminRole,
+  USER_ROLES,
+  validateMaterialFile,
+} from '../../domain/rules';
 import { Chip, SegmentedControl } from '../components/FigmaComponents';
 import {
   IconArrowLeft,
   IconCloudDownload,
+  IconCopy,
   IconNote,
   IconPlus,
   IconTrash,
+  IconUsers,
 } from '../components/Icons';
 import {
   EmptyState,
   ErrorState,
   LoadingState,
 } from '../components/StateViews';
+import { UserAvatar } from '../components/UserAvatar';
 import { useAuthSession } from '../hooks/useAuthSession';
 import { type RepEntityType, useRepForms } from '../hooks/useRepForms';
 import { labels } from '../i18n/labels';
 import {
   formatDateTime,
   formatWeekCode,
+  getRoleLabel,
   toDateTimeLocalValue,
 } from '../utils/formatters';
 
@@ -107,7 +123,8 @@ function formatWeekOptionLabel(weekNumber: number, title: string): string {
 export function RepFormPage(): React.ReactElement {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { session } = useAuthSession();
+  const container = useAppContainer();
+  const { session, refreshSession, isLocalFallbackMode } = useAuthSession();
 
   const activeType = parseRepEntityType(searchParams.get('type'));
   const queryCourseId = searchParams.get('courseId') ?? '';
@@ -182,9 +199,13 @@ export function RepFormPage(): React.ReactElement {
   const [announcementBody, setAnnouncementBody] = useState<string>('');
 
   const [formError, setFormError] = useState<string | null>(null);
+  const [members, setMembers] = useState<User[]>([]);
+  const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null);
 
   const actor = session?.user ?? null;
-  const isRep = actor?.role === 'rep' && Boolean(actor.classId);
+  const currentClass = session?.currentClass ?? null;
+  const isRep = canManageClassContent(actor?.role) && Boolean(actor?.classId);
+  const isAdmin = isAdminRole(actor?.role);
 
   const heading = isEditMode
     ? labels.repForm.editHeading
@@ -194,8 +215,27 @@ export function RepFormPage(): React.ReactElement {
     document.title = `${isRep ? heading : labels.repForm.forbiddenTitle} | ${labels.app.name}`;
   }, [heading, isRep]);
 
+  const loadMembers = useCallback(async (): Promise<void> => {
+    if (!actor?.classId) {
+      setMembers([]);
+      return;
+    }
+    try {
+      const list = await container.listClassMembers(actor.classId);
+      setMembers(list);
+    } catch {
+      setMembers([]);
+    }
+  }, [actor?.classId, container]);
+
+  useEffect(() => {
+    if (isRep) {
+      void loadMembers();
+    }
+  }, [isRep, loadMembers]);
+
   const hydrateForm = useCallback(async (): Promise<void> => {
-    if (!actor || actor.role !== 'rep' || !actor.classId) {
+    if (!actor || !canManageClassContent(actor.role) || !actor.classId) {
       return;
     }
 
@@ -1557,6 +1597,130 @@ export function RepFormPage(): React.ReactElement {
           </aside>
         </div>
       ) : null}
+
+      <section
+        className="index-card section-block"
+        aria-labelledby="class-members-heading"
+      >
+        <div className="section-heading-row" style={{ flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <IconUsers size={18} style={{ color: 'var(--color-primary)' }} />
+            <h2 id="class-members-heading" style={{ margin: 0 }}>
+              {`Class members & roles (${members.length})`}
+            </h2>
+          </div>
+          {currentClass ? (
+            <button
+              type="button"
+              className="btn btn-secondary btn-compact"
+              onClick={() => {
+                if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                  void navigator.clipboard
+                    .writeText(currentClass.joinCode)
+                    .then(() => {
+                      toast.success(`Copied join code ${currentClass.joinCode}`);
+                    });
+                }
+              }}
+            >
+              <IconCopy size={14} />
+              <span>{`Copy ${currentClass.joinCode}`}</span>
+            </button>
+          ) : null}
+        </div>
+
+        <p className="meta-text" style={{ margin: 0 }}>
+          {isAdmin && isLocalFallbackMode
+            ? 'As Admin in local mode, you can assign Student, Class Representative, Lecturer, Teaching Assistant, or Admin roles to class members.'
+            : isAdmin
+              ? 'View class members stored on this device.'
+              : 'Members active in this class on this device. Admin accounts can manage member roles.'}
+        </p>
+
+        {members.length === 0 ? (
+          <p className="meta-text" style={{ margin: 0 }}>
+            No class members found in local storage yet.
+          </p>
+        ) : (
+          <ul className="members-list">
+            {members.map((member) => {
+              const isSelf = member.id === actor.id;
+              return (
+                <li key={member.id} className="member-row">
+                  <div className="member-row__identity">
+                    <UserAvatar
+                      displayName={member.displayName}
+                      avatarColor={member.avatarColor}
+                      avatarDataUrl={member.avatarDataUrl}
+                      size="sm"
+                    />
+                    <div className="member-row__meta">
+                      <strong>
+                        {member.displayName}
+                        {isSelf ? ' (You)' : ''}
+                      </strong>
+                      <span className="meta-text" style={{ fontSize: '13px' }}>
+                        {member.studyProgram
+                          ? `${member.nim} - ${member.studyProgram}`
+                          : member.nim}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="member-row__controls">
+                    <Chip
+                      type={
+                        canManageClassContent(member.role) ? 'info' : 'neutral'
+                      }
+                      size="S"
+                      label={getRoleLabel(member.role)}
+                    />
+                    {isAdmin && isLocalFallbackMode ? (
+                      <select
+                        aria-label={`Role for ${member.displayName}`}
+                        name={`member-role-${member.id}`}
+                        className="member-role-select"
+                        value={member.role ?? 'student'}
+                        disabled={updatingMemberId === member.id}
+                        onChange={(e) => {
+                          const nextRole = e.target.value as UserRole;
+                          setUpdatingMemberId(member.id);
+                          void container
+                            .updateMemberRole(actor.id, member.id, nextRole)
+                            .then(async () => {
+                              await loadMembers();
+                              if (isSelf) {
+                                await refreshSession();
+                              }
+                              toast.success(
+                                `Updated ${member.displayName} to ${getRoleLabel(nextRole)}.`,
+                              );
+                            })
+                            .catch((err) => {
+                              toast.error(
+                                err instanceof Error
+                                  ? err.message
+                                  : 'Could not update member role.',
+                              );
+                            })
+                            .finally(() => {
+                              setUpdatingMemberId(null);
+                            });
+                        }}
+                      >
+                        {USER_ROLES.map((roleOpt) => (
+                          <option key={roleOpt} value={roleOpt}>
+                            {getRoleLabel(roleOpt)}
+                          </option>
+                        ))}
+                      </select>
+                    ) : null}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

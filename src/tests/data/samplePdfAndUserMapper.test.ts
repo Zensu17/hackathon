@@ -90,33 +90,39 @@ describe('Sample PDF generator and user mappers', () => {
     expect(roundTripped).toEqual(user);
   });
 
-  it('maps valid remote profile roles (student and rep) accurately', () => {
-    // Arrange
-    const repRow: RemoteProfileRow = {
-      id: 'rep-1',
-      nim: '11S22002',
-      display_name: 'Class Rep',
-      class_id: 'class-1',
-      role: 'rep',
-      created_at: '2026-11-01T08:00:00.000Z',
-      updated_at: '2026-11-02T08:00:00.000Z',
-      deleted_at: null,
-    };
+  it('maps all valid remote profile roles and customization fields accurately', () => {
+    for (const validRole of ['student', 'rep', 'lecturer', 'assistant', 'admin'] as const) {
+      const row: RemoteProfileRow = {
+        id: `user-${validRole}`,
+        nim: '11S22002',
+        display_name: 'Member',
+        class_id: 'class-1',
+        role: validRole,
+        study_program: 'S1 Informatika',
+        bio: 'Course focus note',
+        avatar_color: '#2563EB',
+        avatar_data_url: null,
+        created_at: '2026-11-01T08:00:00.000Z',
+        updated_at: '2026-11-02T08:00:00.000Z',
+        deleted_at: null,
+      };
 
-    // Act
-    const mapped = remoteProfileToDomain(repRow);
-
-    // Assert
-    expect(mapped).toEqual({
-      id: 'rep-1',
-      nim: '11S22002',
-      displayName: 'Class Rep',
-      classId: 'class-1',
-      role: 'rep',
-      createdAt: '2026-11-01T08:00:00.000Z',
-      updatedAt: '2026-11-02T08:00:00.000Z',
-      deletedAt: null,
-    });
+      const mapped = remoteProfileToDomain(row);
+      expect(mapped).toEqual({
+        id: `user-${validRole}`,
+        nim: '11S22002',
+        displayName: 'Member',
+        classId: 'class-1',
+        role: validRole,
+        studyProgram: 'S1 Informatika',
+        bio: 'Course focus note',
+        avatarColor: '#2563EB',
+        avatarDataUrl: null,
+        createdAt: '2026-11-01T08:00:00.000Z',
+        updatedAt: '2026-11-02T08:00:00.000Z',
+        deletedAt: null,
+      });
+    }
   });
 
   it('coerces unknown or arbitrary remote role strings to null', () => {
@@ -126,7 +132,7 @@ describe('Sample PDF generator and user mappers', () => {
       nim: '11S22099',
       display_name: 'Unknown Role',
       class_id: null,
-      role: 'admin',
+      role: 'superhero',
       created_at: '2026-11-01T08:00:00.000Z',
       updated_at: '2026-11-01T08:00:00.000Z',
       deleted_at: null,

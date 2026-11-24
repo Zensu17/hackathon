@@ -12,7 +12,8 @@ import {
 import { ThemeProvider, useTheme } from '../presentation/hooks/useTheme';
 import { labels } from '../presentation/i18n/labels';
 
-const SignInPage = lazy(() => import('../presentation/pages/SignInPage'));
+const LoginPage = lazy(() => import('../presentation/pages/LoginPage'));
+const RegisterPage = lazy(() => import('../presentation/pages/RegisterPage'));
 const JoinClassPage = lazy(() => import('../presentation/pages/JoinClassPage'));
 const HomePage = lazy(() => import('../presentation/pages/HomePage'));
 const CoursesPage = lazy(() => import('../presentation/pages/CoursesPage'));
@@ -24,6 +25,7 @@ const MaterialDetailPage = lazy(
   () => import('../presentation/pages/MaterialDetailPage'),
 );
 const RepFormPage = lazy(() => import('../presentation/pages/RepFormPage'));
+const ProfilePage = lazy(() => import('../presentation/pages/ProfilePage'));
 const SettingsPage = lazy(() => import('../presentation/pages/SettingsPage'));
 
 function WorkspaceBootScreen(): React.ReactElement {
@@ -37,7 +39,11 @@ function WorkspaceBootScreen(): React.ReactElement {
   );
 }
 
-function SignInRouteGuard(): React.ReactElement {
+function GuestRouteGuard({
+  screen,
+}: {
+  screen: 'login' | 'register';
+}): React.ReactElement {
   const { session, isLoading } = useAuthSession();
   if (isLoading) {
     return <WorkspaceBootScreen />;
@@ -48,18 +54,21 @@ function SignInRouteGuard(): React.ReactElement {
     }
     return <Navigate to="/join-class" replace />;
   }
+  const heading =
+    screen === 'login' ? labels.auth.signInHeading : labels.auth.signUpHeading;
+
   return (
     <Suspense
       fallback={
         <OnboardingLayout>
           <div className="page-stack">
-            <h1>{labels.auth.signInHeading}</h1>
+            <h1>{heading}</h1>
             <LoadingState message={labels.common.loadingPage} />
           </div>
         </OnboardingLayout>
       }
     >
-      <SignInPage />
+      {screen === 'login' ? <LoginPage /> : <RegisterPage />}
     </Suspense>
   );
 }
@@ -70,7 +79,7 @@ function JoinClassRouteGuard(): React.ReactElement {
     return <WorkspaceBootScreen />;
   }
   if (!session) {
-    return <Navigate to="/signin" replace />;
+    return <Navigate to="/login" replace />;
   }
   if (session.user.classId && session.currentClass) {
     return <Navigate to="/" replace />;
@@ -97,7 +106,7 @@ function ProtectedShellGuard(): React.ReactElement {
     return <WorkspaceBootScreen />;
   }
   if (!session) {
-    return <Navigate to="/signin" replace />;
+    return <Navigate to="/login" replace />;
   }
   if (!session.user.classId || !session.currentClass) {
     return <Navigate to="/join-class" replace />;
@@ -123,7 +132,10 @@ function LazyScreen({
 export function AppRoutes(): React.ReactElement {
   return (
     <Routes>
-      <Route path="/signin" element={<SignInRouteGuard />} />
+      <Route path="/login" element={<GuestRouteGuard screen="login" />} />
+      <Route path="/register" element={<GuestRouteGuard screen="register" />} />
+      <Route path="/signin" element={<Navigate to="/login" replace />} />
+      <Route path="/signup" element={<Navigate to="/register" replace />} />
       <Route path="/join-class" element={<JoinClassRouteGuard />} />
       <Route element={<ProtectedShellGuard />}>
         <Route
@@ -171,6 +183,14 @@ export function AppRoutes(): React.ReactElement {
           element={
             <LazyScreen>
               <RepFormPage />
+            </LazyScreen>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <LazyScreen>
+              <ProfilePage />
             </LazyScreen>
           }
         />

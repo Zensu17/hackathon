@@ -24,10 +24,12 @@ export async function seedInitialLocalDemo(db: LiteLearnDb): Promise<void> {
     });
   }
 
-  // 2. Ensure default demo student and demo class rep accounts exist when users table is empty or rep is missing.
+  // 2. Ensure default local accounts exist for Student, Class Rep, Lecturer, and Admin.
   const existingStudent = await db.users.get('seed-user-1');
   const existingRep = await db.users.get('seed-user-rep');
-  if (!existingStudent || !existingRep) {
+  const existingLecturer = await db.users.get('seed-user-lecturer');
+  const existingAdmin = await db.users.get('seed-user-admin');
+  if (!existingStudent || !existingRep || !existingLecturer || !existingAdmin) {
     await db.transaction('rw', [db.users, db.localCredentials], async () => {
       if (!existingStudent) {
         await db.users.put({
@@ -36,6 +38,9 @@ export async function seedInitialLocalDemo(db: LiteLearnDb): Promise<void> {
           displayName: 'Demo Student',
           classId,
           role: 'student',
+          studyProgram: 'S1 Informatika',
+          bio: 'Focused on offline weekly summaries and lab deadlines.',
+          avatarColor: '#2563EB',
           createdAt: nowIso,
           updatedAt: nowIso,
           deletedAt: null,
@@ -58,6 +63,9 @@ export async function seedInitialLocalDemo(db: LiteLearnDb): Promise<void> {
           displayName: 'Demo Class Rep',
           classId,
           role: 'rep',
+          studyProgram: 'S1 Informatika',
+          bio: 'Class representative organizing weekly outlines and deadlines.',
+          avatarColor: '#B45309',
           createdAt: nowIso,
           updatedAt: nowIso,
           deletedAt: null,
@@ -69,6 +77,56 @@ export async function seedInitialLocalDemo(db: LiteLearnDb): Promise<void> {
           // SHA-256 hash of 'litelearn:11S22002:password123'
           passwordHash:
             '851835ae623f30d3c4ba91075f1d81f0c202b6655f8597390a6dd83d5211fd02',
+          createdAt: nowIso,
+        });
+      }
+
+      if (!existingLecturer) {
+        await db.users.put({
+          id: 'seed-user-lecturer',
+          nim: '01D10001',
+          displayName: 'Dr. Hendra Situmorang',
+          classId,
+          role: 'lecturer',
+          studyProgram: 'Faculty of Informatics',
+          bio: 'Course coordinator for Algorithms and Data Structures.',
+          avatarColor: '#0F766E',
+          createdAt: nowIso,
+          updatedAt: nowIso,
+          deletedAt: null,
+        });
+
+        await db.localCredentials.put({
+          nim: '01D10001',
+          userId: 'seed-user-lecturer',
+          // SHA-256 hash of 'litelearn:01D10001:password123'
+          passwordHash:
+            '03c6738c10f2e06816f210384a2886f644072eac30b82af183df7ffd9dd43c55',
+          createdAt: nowIso,
+        });
+      }
+
+      if (!existingAdmin) {
+        await db.users.put({
+          id: 'seed-user-admin',
+          nim: '00A00001',
+          displayName: 'Academic Admin',
+          classId,
+          role: 'admin',
+          studyProgram: 'Academic Operations',
+          bio: 'Manages classes, courses, and member permissions.',
+          avatarColor: '#6D28D9',
+          createdAt: nowIso,
+          updatedAt: nowIso,
+          deletedAt: null,
+        });
+
+        await db.localCredentials.put({
+          nim: '00A00001',
+          userId: 'seed-user-admin',
+          // SHA-256 hash of 'litelearn:00A00001:password123'
+          passwordHash:
+            'f2e85f31f77ff640b8d978d80392e2101e1768168116322ed29cdfe690ed7a36',
           createdAt: nowIso,
         });
       }

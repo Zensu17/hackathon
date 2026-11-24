@@ -30,6 +30,7 @@ import type {
   UpdateCourseRecordInput,
   UpdateDeadlineRecordInput,
   UpdateMaterialRecordInput,
+  UpdateProfileRecordInput,
   UpdateWeekRecordInput,
 } from '../../domain/repositories';
 import { validateMaterialFile } from '../../domain/rules';
@@ -170,6 +171,7 @@ export class SupabaseRemoteDataSource {
         data: {
           display_name: input.displayName,
           nim: normalizedNim,
+          requested_role: input.role ?? 'student',
         },
       },
     });
@@ -272,6 +274,58 @@ export class SupabaseRemoteDataSource {
     if (!data) {
       return null;
     }
+    return remoteProfileToDomain(data as RemoteProfileRow);
+  }
+
+  async updateProfile(input: UpdateProfileRecordInput): Promise<User> {
+    const client = await this.getClient();
+    const nowIso = new Date().toISOString();
+    const extendedPayload: Record<string, string | null | undefined> = {
+      display_name: input.displayName,
+      updated_at: nowIso,
+      ...(input.studyProgram !== undefined
+        ? { study_program: input.studyProgram }
+        : {}),
+      ...(input.bio !== undefined ? { bio: input.bio } : {}),
+      ...(input.avatarColor !== undefined
+        ? { avatar_color: input.avatarColor }
+        : {}),
+      ...(input.avatarDataUrl !== undefined
+        ? { avatar_data_url: input.avatarDataUrl }
+        : {}),
+    };
+
+    const { data, error } = await client
+      .from('profiles')
+      .update(extendedPayload)
+      .eq('id', input.userId)
+      .select('*')
+      .maybeSingle();
+
+    if (error) {
+      const msg = error.message?.toLowerCase() ?? '';
+      if (msg.includes('column') || error.code === '42703') {
+        const fallbackRes = await client
+          .from('profiles')
+          .update({ display_name: input.displayName, updated_at: nowIso })
+          .eq('id', input.userId)
+          .select('*')
+          .maybeSingle();
+        if (fallbackRes.error || !fallbackRes.data) {
+          throw mapRemoteError(
+            fallbackRes.error ?? new Error('Could not update profile.'),
+            'STORAGE_ERROR',
+          );
+        }
+        return remoteProfileToDomain(fallbackRes.data as RemoteProfileRow);
+      }
+      throw mapRemoteError(error, 'STORAGE_ERROR');
+    }
+
+    if (!data) {
+      throw new AppError('NOT_FOUND', 'User profile not found.');
+    }
+
     return remoteProfileToDomain(data as RemoteProfileRow);
   }
 

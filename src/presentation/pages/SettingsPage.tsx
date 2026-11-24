@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { type ThemePreference, useAppContainer } from '../../app/di';
-import { formatByteSize } from '../../domain/rules';
+import { canManageClassContent, formatByteSize } from '../../domain/rules';
 import {
   Chip,
   SegmentedControl,
@@ -15,14 +15,20 @@ import {
   IconLogout,
   IconRefresh,
   IconTrash,
+  IconUser,
 } from '../components/Icons';
+import { UserAvatar } from '../components/UserAvatar';
 import { useAuthSession } from '../hooks/useAuthSession';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import { useSyncStatus } from '../hooks/useSyncStatus';
 import { useTheme } from '../hooks/useTheme';
+import {
+  isQuickGuideDismissed,
+  setQuickGuideDismissed,
+} from '../components/QuickStartGuide';
 import { labels } from '../i18n/labels';
-import { formatDateTime, getInitials } from '../utils/formatters';
+import { formatDateTime, getRoleLabel } from '../utils/formatters';
 
 export function SettingsPage(): React.ReactElement {
   const navigate = useNavigate();
@@ -48,6 +54,9 @@ export function SettingsPage(): React.ReactElement {
   const [isSigningOut, setIsSigningOut] = useState<boolean>(false);
   const [isClearing, setIsClearing] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
+  const [guideHidden, setGuideHidden] = useState<boolean>(() =>
+    isQuickGuideDismissed(),
+  );
 
   const loadStorageInfo = useCallback(async (): Promise<void> => {
     const [saver, stats] = await Promise.all([
@@ -65,8 +74,7 @@ export function SettingsPage(): React.ReactElement {
 
   const user = session?.user ?? null;
   const currentClass = session?.currentClass ?? null;
-  const roleLabel =
-    user?.role === 'rep' ? labels.app.roleRep : labels.app.roleStudent;
+  const roleLabel = getRoleLabel(user?.role);
   const activeThemeLabel =
     preference === 'system'
       ? `${labels.settings.systemModeButton} (${theme === 'dark' ? labels.settings.darkModeButton : labels.settings.lightModeButton})`
@@ -125,7 +133,7 @@ export function SettingsPage(): React.ReactElement {
     }
     try {
       await signOut({ clearLocalData });
-      navigate('/signin', { replace: true });
+      navigate('/login', { replace: true });
     } finally {
       setIsSigningOut(false);
       setIsClearing(false);
@@ -138,26 +146,44 @@ export function SettingsPage(): React.ReactElement {
         <h1>{labels.settings.heading}</h1>
       </header>
 
-      {/* Unified Student & Class Identity Hero Card */}
+      {/* Unified User & Class Identity Hero Card */}
       {user ? (
         <section className="settings-profile-hero" aria-label={labels.settings.profileCardTitle}>
           <div className="settings-profile-hero__top">
             <div className="settings-profile-hero__identity">
-              <span className="user-avatar user-avatar--lg" aria-hidden="true">
-                {getInitials(user.displayName)}
-              </span>
+              <UserAvatar
+                displayName={user.displayName}
+                avatarColor={user.avatarColor}
+                avatarDataUrl={user.avatarDataUrl}
+                size="lg"
+              />
               <div>
                 <h2 style={{ margin: 0 }}>{user.displayName}</h2>
                 <div className="settings-profile-hero__meta">
                   <span className="card-tab-code">{user.nim}</span>
                   <Chip
-                    type={user.role === 'rep' ? 'info' : 'neutral'}
+                    type={canManageClassContent(user.role) ? 'info' : 'neutral'}
                     size="S"
                     label={roleLabel}
                   />
+                  {user.studyProgram ? (
+                    <span className="meta-text" style={{ fontSize: '13.5px' }}>
+                      {user.studyProgram}
+                    </span>
+                  ) : null}
                 </div>
+                {user.bio ? (
+                  <p className="meta-text" style={{ marginTop: '6px', fontSize: '13.5px' }}>
+                    {user.bio}
+                  </p>
+                ) : null}
               </div>
             </div>
+
+            <Link to="/profile" className="btn btn-secondary btn-compact">
+              <IconUser size={15} />
+              <span>{labels.profile.heading}</span>
+            </Link>
           </div>
 
           {currentClass ? (
@@ -353,6 +379,34 @@ export function SettingsPage(): React.ReactElement {
                   : labels.settings.onlineModeDescription}
               </p>
             </div>
+          </div>
+          <div className="settings-item">
+            <div className="settings-item__info">
+              <p className="settings-item__title">Workspace guide &amp; shortcuts</p>
+              <p className="settings-item__desc">
+                Press Ctrl+K (or Cmd+K on Mac) anytime to jump to courses, materials, or deadlines.
+              </p>
+            </div>
+            {guideHidden ? (
+              <button
+                type="button"
+                className="btn btn-secondary btn-compact"
+                onClick={() => {
+                  setQuickGuideDismissed(false);
+                  setGuideHidden(false);
+                  toast.success('Quick-start guide restored on Home.');
+                }}
+              >
+                Show guide on Home
+              </button>
+            ) : (
+              <Chip
+                type="success"
+                size="S"
+                icon={<IconCheckCircle size={14} />}
+                label="Guide visible on Home"
+              />
+            )}
           </div>
           <div className="settings-item">
             <div className="settings-item__info">

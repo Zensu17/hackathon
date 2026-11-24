@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { toast } from 'sonner';
 import { useAppContainer } from '../../app/di';
-import { formatByteSize } from '../../domain/rules';
+import { canManageClassContent, formatByteSize } from '../../domain/rules';
 import {
   EmptyState,
   ErrorState,
@@ -36,7 +36,7 @@ export function MaterialDetailPage(): React.ReactElement {
   const container = useAppContainer();
   const { session } = useAuthSession();
   const userId = session?.user.id ?? null;
-  const isRep = session?.user.role === 'rep';
+  const isRep = canManageClassContent(session?.user.role);
 
   const [isDownloading, setIsDownloading] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);

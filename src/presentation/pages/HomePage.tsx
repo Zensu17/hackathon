@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { m } from 'motion/react';
 import { toast } from 'sonner';
 import { useAppContainer } from '../../app/di';
-import { formatByteSize } from '../../domain/rules';
+import { canManageClassContent, formatByteSize } from '../../domain/rules';
 import {
   EmptyState,
   ErrorState,
@@ -15,12 +15,18 @@ import {
   DeadlineItem,
 } from '../components/FigmaComponents';
 import {
+  isQuickGuideDismissed,
+  QuickStartGuide,
+  setQuickGuideDismissed,
+} from '../components/QuickStartGuide';
+import {
   IconAlertCircle,
   IconCalendarCheck,
   IconCheckCircle,
   IconClock,
   IconCloudCheck,
   IconCloudDownload,
+  IconCopy,
   IconNote,
   IconPlus,
   IconRefresh,
@@ -31,7 +37,11 @@ import { useCourses } from '../hooks/useCourses';
 import { useHomeWorkspace } from '../hooks/useHomeWorkspace';
 import { useUpcomingDeadlines } from '../hooks/useUpcomingDeadlines';
 import { labels } from '../i18n/labels';
-import { formatDateTime, formatRelativeDue } from '../utils/formatters';
+import {
+  formatDateTime,
+  formatRelativeDue,
+  getRoleLabel,
+} from '../utils/formatters';
 import { openOfflinePdfBlob } from '../utils/openOfflinePdf';
 
 function getTimeGreeting(): string {
@@ -45,16 +55,54 @@ function getTimeGreeting(): string {
   return labels.home.greetingEvening;
 }
 
+const HONORIFIC_PREFIXES = new Set([
+  'dr.',
+  'dr',
+  'prof.',
+  'prof',
+  'ir.',
+  'ir',
+  'pak',
+  'bu',
+  'ibu',
+  'mr.',
+  'ms.',
+  'mrs.',
+]);
+
+function getGreetingName(
+  displayName: string | undefined,
+  fallback: string,
+): string {
+  const parts = (displayName ?? '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) {
+    return fallback;
+  }
+  const first = parts[0]!;
+  if (HONORIFIC_PREFIXES.has(first.toLowerCase()) && parts.length > 1) {
+    return `${first} ${parts[1]}`;
+  }
+  return first;
+}
+
 export function HomePage(): React.ReactElement {
   const container = useAppContainer();
   const { session } = useAuthSession();
   const userId = session?.user.id ?? null;
   const classId = session?.user.classId ?? null;
   const currentClass = session?.currentClass ?? null;
-  const isRep = session?.user.role === 'rep';
-  const firstName =
-    session?.user.displayName.trim().split(/\s+/)[0] || labels.app.roleStudent;
+  const userRole = session?.user.role ?? null;
+  const isRep = canManageClassContent(userRole);
+  const roleLabel = getRoleLabel(userRole);
+  const studyProgram = session?.user.studyProgram;
+  const firstName = getGreetingName(
+    session?.user.displayName,
+    labels.app.roleStudent,
+  );
   const [busyShelfId, setBusyShelfId] = useState<string | null>(null);
+  const [guideHidden, setGuideHidden] = useState<boolean>(() =>
+    isQuickGuideDismissed(),
+  );
 
   const {
     result,
@@ -107,6 +155,18 @@ export function HomePage(): React.ReactElement {
       window.dispatchEvent(
         new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }),
       );
+    }
+  };
+
+  const handleCopyJoinCode = async (): Promise<void> => {
+    if (!currentClass?.joinCode || typeof navigator === 'undefined' || !navigator.clipboard) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(currentClass.joinCode);
+      toast.success(`Copied class code ${currentClass.joinCode}`);
+    } catch {
+      // Ignore clipboard write failure
     }
   };
 
@@ -212,17 +272,22 @@ export function HomePage(): React.ReactElement {
       <header className="study-masthead">
         <div className="study-masthead__top">
           <div className="study-masthead__greeting">
-            {currentClass ? (
-              <span className="study-masthead__eyebrow">
-                {`${currentClass.name} / ${currentClass.joinCode}`}
-              </span>
-            ) : null}
             <h1>{`${getTimeGreeting()}, ${firstName}`}</h1>
-            {!isLoading && !error && result && followedCount > 0 ? (
-              <p className="study-masthead__sub">{followedSummary}</p>
-            ) : (
-              <p className="study-masthead__sub">{labels.app.subtitle}</p>
-            )}
+            <div className="study-masthead__meta-row">
+              {currentClass ? (
+                <span className="study-masthead__class-tag">
+                  {`${currentClass.name} / ${currentClass.joinCode}`}
+                </span>
+              ) : null}
+              <span className="study-masthead__class-tag">
+                {studyProgram ? `${roleLabel} - ${studyProgram}` : roleLabel}
+              </span>
+              {!isLoading && !error && result && followedCount > 0 ? (
+                <p className="study-masthead__sub">{followedSummary}</p>
+              ) : (
+                <p className="study-masthead__sub">{labels.app.subtitle}</p>
+              )}
+            </div>
           </div>
 
           <div className="study-masthead__actions">
@@ -236,6 +301,16 @@ export function HomePage(): React.ReactElement {
               <span>Search workspace</span>
               <kbd className="masthead-kbd">Ctrl K</kbd>
             </button>
+            {isRep && currentClass ? (
+              <button
+                type="button"
+                className="masthead-cta"
+                onClick={() => void handleCopyJoinCode()}
+              >
+                <IconCopy size={15} />
+                <span>{`Copy ${currentClass.joinCode}`}</span>
+              </button>
+            ) : null}
             {isRep ? (
               <Link to="/manage?type=deadline" className="masthead-cta">
                 <IconPlus size={16} />
@@ -273,6 +348,21 @@ export function HomePage(): React.ReactElement {
           </div>
         ) : null}
       </header>
+
+      {!isLoading && !error && !guideHidden ? (
+        <QuickStartGuide
+          followedCount={followedCount}
+          activeDeadlineCount={activeItems.length}
+          cachedPdfCount={cachedPdfs}
+          totalPdfCount={totalPdfs}
+          isRep={Boolean(isRep)}
+          firstCourseId={displayCourses[0]?.id}
+          onDismiss={() => {
+            setQuickGuideDismissed(true);
+            setGuideHidden(true);
+          }}
+        />
+      ) : null}
 
       {isLoading ? <LoadingState message={labels.home.loading} /> : null}
 

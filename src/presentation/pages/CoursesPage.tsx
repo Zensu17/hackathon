@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { toast } from 'sonner';
+import { canManageClassContent } from '../../domain/rules';
 import {
   EmptyState,
   ErrorState,
@@ -17,7 +18,7 @@ export function CoursesPage(): React.ReactElement {
   const { session } = useAuthSession();
   const classId = session?.user.classId ?? null;
   const userId = session?.user.id ?? null;
-  const isRep = session?.user.role === 'rep';
+  const isRep = canManageClassContent(session?.user.role);
 
   const [filterMode, setFilterMode] = useState<'all' | 'following'>('all');
   const [searchFilter, setSearchFilter] = useState<string>('');
@@ -126,6 +127,8 @@ export function CoursesPage(): React.ReactElement {
                 style={{ color: 'var(--color-text-muted)', flexShrink: 0 }}
               />
               <input
+                id="courses-filter-input"
+                name="courseFilter"
                 type="search"
                 className="courses-filter-input"
                 placeholder="Filter by course code or title..."

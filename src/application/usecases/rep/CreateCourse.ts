@@ -1,13 +1,18 @@
 import type { Course, User } from '../../../domain/entities';
 import type { CourseRepository } from '../../../domain/repositories';
+import { canManageClassContent } from '../../../domain/rules';
 import type { CreateCourseInput } from '../../dto/RepDto';
 import { AppError } from '../../errors/AppError';
 
 export function assertRepRole(actor: User): string {
-  if (actor.deletedAt !== null || actor.role !== 'rep' || !actor.classId) {
+  if (
+    actor.deletedAt !== null ||
+    !canManageClassContent(actor.role) ||
+    !actor.classId
+  ) {
     throw new AppError(
       'FORBIDDEN_ROLE',
-      'Only class representatives can modify class content.',
+      'Only class representatives, lecturers, assistants, or admins can modify class content.',
     );
   }
   return actor.classId;
@@ -18,7 +23,7 @@ export function assertRepForClass(actor: User, targetClassId: string): void {
   if (actorClassId !== targetClassId) {
     throw new AppError(
       'FORBIDDEN_ROLE',
-      'Actor is not a representative of this class.',
+      'Actor is not an authorized manager of this class.',
     );
   }
 }

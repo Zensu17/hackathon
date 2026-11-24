@@ -387,4 +387,51 @@ describe('Class representative management use cases', () => {
       }),
     ).rejects.toMatchObject({ code: 'INVALID_FILE_TYPE' });
   });
+
+  it('allows lecturer, assistant, and admin roles in the matching class while blocking wrong class', async () => {
+    const repos = createFakeRepositories();
+    const createCourse = new CreateCourse(repos.courses);
+    const updateCourse = new UpdateCourse(repos.courses);
+
+    const lecturerClassA: User = { ...repClassA, id: 'lec-a', role: 'lecturer' };
+    const assistantClassA: User = { ...repClassA, id: 'ast-a', role: 'assistant' };
+    const adminClassA: User = { ...repClassA, id: 'adm-a', role: 'admin' };
+    const adminWrongClass: User = { ...repClassB, id: 'adm-b', role: 'admin' };
+
+    const courseByLecturer = await createCourse.execute({
+      actor: lecturerClassA,
+      classId: 'class-a',
+      code: 'IF2101',
+      name: 'Algorithms',
+      description: 'Graphs and trees',
+    });
+
+    const updatedByAssistant = await updateCourse.execute({
+      actor: assistantClassA,
+      courseId: courseByLecturer.id,
+      code: 'IF2101',
+      name: 'Algorithms Lab',
+      description: 'Weekly lab notes',
+    });
+    expect(updatedByAssistant.name).toBe('Algorithms Lab');
+
+    const updatedByAdmin = await updateCourse.execute({
+      actor: adminClassA,
+      courseId: courseByLecturer.id,
+      code: 'IF2101',
+      name: 'Algorithms & Lab',
+      description: 'Updated by admin',
+    });
+    expect(updatedByAdmin.description).toBe('Updated by admin');
+
+    await expect(
+      createCourse.execute({
+        actor: adminWrongClass,
+        classId: 'class-a',
+        code: 'IF9999',
+        name: 'Forbidden',
+        description: 'Wrong class',
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN_ROLE' });
+  });
 });

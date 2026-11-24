@@ -106,7 +106,7 @@ export function JoinClassPage(): React.ReactElement {
     setBusyAction('signout');
     try {
       await signOut();
-      navigate('/signin', { replace: true });
+      navigate('/login', { replace: true });
     } finally {
       setBusyAction(null);
     }

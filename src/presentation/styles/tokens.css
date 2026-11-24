@@ -1,80 +1,81 @@
-/* DESIGN.md palette, typography, spacing, radius, and Figma native local variable custom properties. */
+/* Palette, typography, spacing, radius, and light/dark theme tokens. */
 :root,
 :root[data-theme="light"] {
   color-scheme: light;
 
-  /* Figma Native Color Collection (Light) */
-  --color-bg: #F7F5F0;
-  --color-surface: #FFFFFF;
-  --color-surface-2: #EFEBE3;
-  --color-border: #E3DED3;
-  --color-text: #14213D;
-  --color-text-muted: #5B6478;
-  --color-primary: #1E3A8A;
-  --color-primary-hover: #132A4F;
+  /* Light Theme: Clean & Professional */
+  --color-bg: #FFFFFF;
+  --color-surface: #F1F5F9;
+  --color-surface-2: #F8FAFC;
+  --color-input-bg: #FFFFFF;
+  --color-border: #E2E8F0;
+  --color-text: #0F172A;
+  --color-text-muted: #475569;
+  --color-primary: #2563EB;
+  --color-primary-hover: #1D4ED8;
   --color-primary-contrast: #FFFFFF;
-  --color-accent: #875E16;
-  --color-success: #1C7449;
-  --color-warning: #926016;
-  --color-danger: #B42318;
-  --color-shadow-1: rgba(20, 33, 61, 0.08);
-  --color-shadow-2: rgba(20, 33, 61, 0.14);
+  --color-accent: #1D4ED8;
+  --color-success: #15803D;
+  --color-warning: #B45309;
+  --color-danger: #B91C1C;
+  --color-shadow-1: rgba(15, 23, 42, 0.06);
+  --color-shadow-2: rgba(15, 23, 42, 0.12);
 
-  /* Semantic Compatibility Tokens (Light: Warm Paper) */
-  --bg-page: #F7F5F0;
-  --bg-card: #FFFFFF;
-  --bg-subtle: #EFEBE3;
-  --ink-primary: #14213D;
-  --ink-secondary: #5B6478;
-  --border-subtle: #748299;
+  /* Semantic Compatibility Tokens (Light) */
+  --bg-page: #FFFFFF;
+  --bg-card: #F1F5F9;
+  --bg-subtle: #F8FAFC;
+  --ink-primary: #0F172A;
+  --ink-secondary: #475569;
+  --border-subtle: #75849A;
   --ink-on-primary: #FFFFFF;
-  --color-accent-rust: #B42318;
-  --bg-accent-rust: #FBEAE8;
-  --ink-accent-rust: #B42318;
+  --color-accent-rust: #B91C1C;
+  --bg-accent-rust: #FEF2F2;
+  --ink-accent-rust: #B91C1C;
 
-  /* Figma Course Accent Collection (Light) */
-  --course-1: #1E3A8A;
+  /* Course Accent Collection (Light) */
+  --course-1: #2563EB;
   --course-2: #0F766E;
-  --course-3: #7C3AED;
+  --course-3: #6D28D9;
   --course-4: #B45309;
   --course-5: #BE185D;
   --course-6: #475569;
 
   /* Typography Stacks */
   --font-serif: "Source Serif 4", Georgia, serif;
-  --font-sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
 
-  /* Fluid Headings and Spec Typography */
-  --text-h1: clamp(1.25rem, 1.1rem + 0.75vw, 1.625rem);
-  --text-h2: clamp(1.0625rem, 1rem + 0.3vw, 1.25rem);
-  --text-h3: 1rem;
+  /* Fluid Headings and Comfortable Reading Scale */
+  --text-h1: clamp(1.5rem, 1.3rem + 0.8vw, 1.9375rem);
+  --text-h2: clamp(1.1875rem, 1.1rem + 0.35vw, 1.375rem);
+  --text-h3: 1.0625rem;
   --text-body: 1rem;
-  --text-meta: 0.875rem;
+  --text-meta: 0.9375rem;
 
-  /* Figma Typography Collection */
-  --type-display-size: 28px;
-  --type-display-line-height: 34px;
-  --type-h1-size: 24px;
-  --type-h1-line-height: 30px;
-  --type-h2-size: 20px;
-  --type-h2-line-height: 26px;
+  /* Typography Token Scale */
+  --type-display-size: 30px;
+  --type-display-line-height: 36px;
+  --type-h1-size: 26px;
+  --type-h1-line-height: 32px;
+  --type-h2-size: 21px;
+  --type-h2-line-height: 28px;
   --type-h3-size: 17px;
   --type-h3-line-height: 24px;
   --type-body-size: 16px;
-  --type-body-line-height: 24px;
+  --type-body-line-height: 26px;
   --type-body-strong-size: 16px;
-  --type-body-strong-line-height: 24px;
+  --type-body-strong-line-height: 25px;
   --type-small-size: 14px;
-  --type-small-line-height: 20px;
-  --type-small-strong-size: 14px;
-  --type-small-strong-line-height: 20px;
-  --type-caption-size: 12px;
-  --type-caption-line-height: 16px;
-  --type-button-size: 16px;
-  --type-button-line-height: 24px;
+  --type-small-line-height: 21px;
+  --type-small-strong-size: 15px;
+  --type-small-strong-line-height: 22px;
+  --type-caption-size: 13px;
+  --type-caption-line-height: 18px;
+  --type-button-size: 15px;
+  --type-button-line-height: 22px;
 
-  /* Figma Radius Collection */
+  /* Radius Collection */
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
@@ -85,28 +86,28 @@
   --radius-control: 8px;
   --radius-chip: 999px;
 
-  /* Figma Shadows & Motion Curves */
-  --shadow-1: 0 1px 2px rgba(20, 33, 61, 0.05), 0 2px 6px rgba(20, 33, 61, 0.06);
-  --shadow-2: 0 4px 12px rgba(20, 33, 61, 0.08), 0 12px 28px rgba(20, 33, 61, 0.12);
-  --shadow-masthead: 0 10px 30px rgba(20, 33, 61, 0.16), 0 2px 6px rgba(20, 33, 61, 0.08);
-  --shadow-chrome: 0 2px 6px rgba(0, 0, 0, 0.12);
+  /* Shadows & Motion Curves */
+  --shadow-1: 0 1px 2px rgba(15, 23, 42, 0.05), 0 2px 8px rgba(15, 23, 42, 0.04);
+  --shadow-2: 0 6px 18px rgba(15, 23, 42, 0.08), 0 14px 32px rgba(15, 23, 42, 0.10);
+  --shadow-masthead: 0 8px 24px rgba(15, 23, 42, 0.16), 0 2px 6px rgba(15, 23, 42, 0.08);
+  --shadow-chrome: 0 2px 8px rgba(15, 23, 42, 0.06);
 
   /* Masthead & Editorial Surface Tokens (Light) */
-  --masthead-bg: #162B66;
-  --masthead-bg-deep: #0F1E4A;
-  --masthead-border: #2B4591;
+  --masthead-bg: #0F172A;
+  --masthead-bg-deep: #1E293B;
+  --masthead-border: #334155;
   --masthead-text: #FFFFFF;
-  --masthead-text-muted: #D5E0FA;
-  --masthead-accent: #E0B352;
-  --masthead-pill-bg: rgba(255, 255, 255, 0.12);
+  --masthead-text-muted: #CBD5E1;
+  --masthead-accent: #60A5FA;
+  --masthead-pill-bg: rgba(255, 255, 255, 0.10);
   --masthead-pill-border: rgba(255, 255, 255, 0.22);
-  --note-paper-bg: #FCFBF7;
+  --note-paper-bg: #F8FAFC;
 
-  /* Emil Kowalski Motion Curves */
+  /* Motion Curves */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 
-  /* Figma Space Collection */
+  /* Space Collection */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -116,7 +117,7 @@
   --space-12: 48px;
   --space-5: 24px;
 
-  /* Figma Dimensions & Layout */
+  /* Dimensions & Layout */
   --dimension-240: 240px;
   --dimension-360: 360px;
   --dimension-520: 520px;
@@ -126,65 +127,68 @@
 
   --tap-target-min: 44px;
   --tap-gap-min: 8px;
-  --mobile-nav-height: 64px;
-  --content-max-width: 960px;
+  --mobile-nav-height: 68px;
+  --content-max-width: 980px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
 
-    /* Pitch-Black Obsidian Color Collection (Dark) */
-    --color-bg: #050608;
-    --color-surface: #0C0E13;
-    --color-surface-2: #141821;
-    --color-border: #222733;
-    --color-text: #F8FAFC;
-    --color-text-muted: #94A3B8;
-    --color-primary: #60A5FA;
-    --color-primary-hover: #93C5FD;
-    --color-primary-contrast: #050608;
-    --color-accent: #E0B352;
-    --color-success: #34D399;
+    /* Dark Theme: Tech & Modern */
+    --color-bg: #121212;
+    --color-surface: #1E1E1E;
+    --color-surface-2: #262626;
+    --color-input-bg: #141414;
+    --color-border: #2C2C2C;
+    --color-border-strong: #444444;
+    --color-text: #F7F7F7;
+    --color-text-muted: #B0B0B0;
+    --color-primary: #1E90FF;
+    --color-primary-hover: #4BA6FF;
+    --color-primary-contrast: #0A0A0A;
+    --color-accent: #00FF85;
+    --color-success: #00FF85;
     --color-warning: #FBBF24;
-    --color-danger: #F87171;
-    --color-shadow-1: rgba(0, 0, 0, 0.35);
-    --color-shadow-2: rgba(0, 0, 0, 0.65);
+    --color-danger: #FF7B72;
+    --color-shadow-1: rgba(0, 0, 0, 0.36);
+    --color-shadow-2: rgba(0, 0, 0, 0.56);
 
-    /* Semantic Compatibility Tokens (Dark: Pitch-Black Obsidian) */
-    --bg-main: #050608;
-    --bg-page: #050608;
-    --bg-card: #0C0E13;
-    --bg-subtle: #141821;
-    --ink-primary: #F8FAFC;
-    --ink-secondary: #94A3B8;
-    --border-subtle: #687387;
-    --ink-on-primary: #050608;
-    --color-accent-rust: #F87171;
-    --bg-accent-rust: #200F12;
-    --ink-accent-rust: #F87171;
+    /* Semantic Compatibility Tokens (Dark) */
+    --bg-main: #121212;
+    --bg-page: #121212;
+    --bg-card: #1E1E1E;
+    --bg-subtle: #262626;
+    --ink-primary: #F7F7F7;
+    --ink-secondary: #B0B0B0;
+    --border-subtle: #757575;
+    --ink-on-primary: #0A0A0A;
+    --color-accent-rust: #FF7B72;
+    --bg-accent-rust: #2D1618;
+    --ink-accent-rust: #FF7B72;
 
     /* Course Accent Collection (Dark) */
-    --course-1: #60A5FA;
-    --course-2: #34D399;
+    --course-1: #1E90FF;
+    --course-2: #00FF85;
     --course-3: #A78BFA;
     --course-4: #FBBF24;
     --course-5: #F472B6;
-    --course-6: #94A3B8;
+    --course-6: #B0B0B0;
 
-    /* Masthead & Editorial Surface Tokens (Dark: Pitch-Black Obsidian) */
-    --shadow-1: 0 1px 0 rgba(255, 255, 255, 0.04);
-    --shadow-2: 0 12px 32px rgba(0, 0, 0, 0.72);
-    --shadow-masthead: 0 16px 40px rgba(0, 0, 0, 0.78), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-    --masthead-bg: #0C0F17;
-    --masthead-bg-deep: #06070B;
-    --masthead-border: #232A38;
-    --masthead-text: #F8FAFC;
-    --masthead-text-muted: #94A3B8;
-    --masthead-accent: #E0B352;
-    --masthead-pill-bg: rgba(96, 165, 250, 0.08);
-    --masthead-pill-border: rgba(148, 163, 184, 0.18);
-    --note-paper-bg: #0E1016;
+    /* Masthead & Editorial Surface Tokens (Dark) */
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    --shadow-2: 0 10px 28px rgba(0, 0, 0, 0.56), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    --shadow-masthead: 0 12px 32px rgba(0, 0, 0, 0.52), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    --shadow-chrome: 0 4px 16px rgba(0, 0, 0, 0.45);
+    --masthead-bg: #0A0A0A;
+    --masthead-bg-deep: #0A0A0A;
+    --masthead-border: #2C2C2C;
+    --masthead-text: #F7F7F7;
+    --masthead-text-muted: #B0B0B0;
+    --masthead-accent: #00FF85;
+    --masthead-pill-bg: rgba(255, 255, 255, 0.06);
+    --masthead-pill-border: #444444;
+    --note-paper-bg: #181818;
   }
 }
 
@@ -192,55 +196,58 @@
 [data-theme="dark"] {
   color-scheme: dark;
 
-  /* Pitch-Black Obsidian Color Collection (Dark) */
-  --color-bg: #050608;
-  --color-surface: #0C0E13;
-  --color-surface-2: #141821;
-  --color-border: #222733;
-  --color-text: #F8FAFC;
-  --color-text-muted: #94A3B8;
-  --color-primary: #60A5FA;
-  --color-primary-hover: #93C5FD;
-  --color-primary-contrast: #050608;
-  --color-accent: #E0B352;
-  --color-success: #34D399;
+  /* Dark Theme: Tech & Modern */
+  --color-bg: #121212;
+  --color-surface: #1E1E1E;
+  --color-surface-2: #262626;
+  --color-input-bg: #141414;
+  --color-border: #2C2C2C;
+  --color-border-strong: #444444;
+  --color-text: #F7F7F7;
+  --color-text-muted: #B0B0B0;
+  --color-primary: #1E90FF;
+  --color-primary-hover: #4BA6FF;
+  --color-primary-contrast: #0A0A0A;
+  --color-accent: #00FF85;
+  --color-success: #00FF85;
   --color-warning: #FBBF24;
-  --color-danger: #F87171;
-  --color-shadow-1: rgba(0, 0, 0, 0.35);
-  --color-shadow-2: rgba(0, 0, 0, 0.65);
+  --color-danger: #FF7B72;
+  --color-shadow-1: rgba(0, 0, 0, 0.36);
+  --color-shadow-2: rgba(0, 0, 0, 0.56);
 
-  /* Semantic Compatibility Tokens (Dark: Pitch-Black Obsidian) */
-  --bg-main: #050608;
-  --bg-page: #050608;
-  --bg-card: #0C0E13;
-  --bg-subtle: #141821;
-  --ink-primary: #F8FAFC;
-  --ink-secondary: #94A3B8;
-  --border-subtle: #687387;
-  --ink-on-primary: #050608;
-  --color-accent-rust: #F87171;
-  --bg-accent-rust: #200F12;
-  --ink-accent-rust: #F87171;
+  /* Semantic Compatibility Tokens (Dark) */
+  --bg-main: #121212;
+  --bg-page: #121212;
+  --bg-card: #1E1E1E;
+  --bg-subtle: #262626;
+  --ink-primary: #F7F7F7;
+  --ink-secondary: #B0B0B0;
+  --border-subtle: #757575;
+  --ink-on-primary: #0A0A0A;
+  --color-accent-rust: #FF7B72;
+  --bg-accent-rust: #2D1618;
+  --ink-accent-rust: #FF7B72;
 
   /* Course Accent Collection (Dark) */
-  --course-1: #60A5FA;
-  --course-2: #34D399;
+  --course-1: #1E90FF;
+  --course-2: #00FF85;
   --course-3: #A78BFA;
   --course-4: #FBBF24;
   --course-5: #F472B6;
-  --course-6: #94A3B8;
+  --course-6: #B0B0B0;
 
-  /* Masthead & Editorial Surface Tokens (Dark: Pitch-Black Obsidian) */
-  --shadow-1: 0 1px 0 rgba(255, 255, 255, 0.04);
-  --shadow-2: 0 12px 32px rgba(0, 0, 0, 0.72);
-  --shadow-masthead: 0 16px 40px rgba(0, 0, 0, 0.78), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  --masthead-bg: #0C0F17;
-  --masthead-bg-deep: #06070B;
-  --masthead-border: #232A38;
-  --masthead-text: #F8FAFC;
-  --masthead-text-muted: #94A3B8;
-  --masthead-accent: #E0B352;
-  --masthead-pill-bg: rgba(96, 165, 250, 0.08);
-  --masthead-pill-border: rgba(148, 163, 184, 0.18);
-  --note-paper-bg: #0E1016;
+  /* Masthead & Editorial Surface Tokens (Dark) */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-2: 0 10px 28px rgba(0, 0, 0, 0.56), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-masthead: 0 12px 32px rgba(0, 0, 0, 0.52), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --shadow-chrome: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --masthead-bg: #0A0A0A;
+  --masthead-bg-deep: #0A0A0A;
+  --masthead-border: #2C2C2C;
+  --masthead-text: #F7F7F7;
+  --masthead-text-muted: #B0B0B0;
+  --masthead-accent: #00FF85;
+  --masthead-pill-bg: rgba(255, 255, 255, 0.06);
+  --masthead-pill-border: #444444;
+  --note-paper-bg: #181818;
 }

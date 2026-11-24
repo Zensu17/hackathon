@@ -5,6 +5,7 @@ export type {
   JoinClassInput,
   SignInInput,
   SignUpInput,
+  UpdateProfileInput,
 } from './AuthDto';
 export type {
   AnnotatedDeadlineDto,

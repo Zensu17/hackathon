@@ -1,4 +1,4 @@
-export type UserRole = 'student' | 'rep';
+export type UserRole = 'student' | 'rep' | 'lecturer' | 'assistant' | 'admin';
 
 export interface User {
   id: string;
@@ -6,6 +6,10 @@ export interface User {
   displayName: string;
   classId: string | null;
   role: UserRole | null;
+  studyProgram?: string;
+  bio?: string;
+  avatarColor?: string;
+  avatarDataUrl?: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;

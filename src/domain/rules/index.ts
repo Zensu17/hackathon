@@ -17,6 +17,13 @@ export {
 } from './fileRules';
 export { isValidNim, isValidPassword, normalizeNim } from './nimRules';
 export {
+  canManageClassContent,
+  isAdminRole,
+  isValidUserRole,
+  MANAGEMENT_ROLES,
+  USER_ROLES,
+} from './roleRules';
+export {
   BASE_SYNC_BACKOFF_MS,
   calculateBackoffDelayMs,
   isDueForRetry,

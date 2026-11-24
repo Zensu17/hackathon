@@ -8,13 +8,13 @@
   gap: 8px;
   border-radius: var(--radius-sm);
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: var(--type-button-size);
   font-weight: 600;
   letter-spacing: -0.005em;
   line-height: 1.3;
   cursor: pointer;
   text-decoration: none;
-  padding: 0 16px;
+  padding: 0 18px;
   box-sizing: border-box;
   transition:
     background-color 150ms var(--ease-out),
@@ -32,21 +32,21 @@
 .figma-btn--size-l {
   min-height: 50px;
   height: 50px;
-  font-size: 15px;
+  font-size: 15.5px;
 }
 
 .figma-btn--primary {
   background-color: var(--color-primary);
   color: var(--color-primary-contrast);
   border: 1px solid var(--color-primary);
-  box-shadow: 0 1px 2px rgba(20, 33, 61, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  box-shadow: 0 1px 2px var(--color-shadow-1);
 }
 
 .figma-btn--secondary {
-  background-color: var(--color-surface);
+  background-color: var(--color-input-bg);
   color: var(--color-text);
   border: 1px solid var(--border-subtle);
-  box-shadow: 0 1px 2px rgba(20, 33, 61, 0.04);
+  box-shadow: 0 1px 2px var(--color-shadow-1);
 }
 
 .figma-btn--ghost {
@@ -57,7 +57,7 @@
 
 .figma-btn--danger {
   background-color: var(--color-danger);
-  color: #FFFFFF;
+  color: var(--color-primary-contrast);
   border: 1px solid var(--color-danger);
 }
 
@@ -66,7 +66,7 @@
     background-color: var(--color-primary-hover);
     border-color: var(--color-primary-hover);
     color: var(--color-primary-contrast);
-    box-shadow: 0 4px 12px rgba(20, 33, 61, 0.2);
+    box-shadow: var(--shadow-1);
   }
 
   .figma-btn--secondary:hover:not(:disabled) {
@@ -80,12 +80,12 @@
   }
 
   .figma-btn--danger:hover:not(:disabled) {
-    opacity: 0.92;
+    filter: brightness(0.92);
   }
 }
 
 .figma-btn:active:not(:disabled) {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
 .figma-btn:focus-visible {
@@ -112,15 +112,15 @@
 }
 
 .figma-chip--size-s {
-  height: 28px;
-  padding: 0 10px;
-  font-size: var(--type-caption-size);
+  height: 30px;
+  padding: 0 11px;
+  font-size: 12.5px;
   line-height: 1;
 }
 
 .figma-chip--size-m {
-  height: 36px;
-  padding: 0 12px;
+  height: 38px;
+  padding: 0 13px;
   font-size: var(--type-small-size);
   line-height: 1;
 }
@@ -132,13 +132,13 @@
 }
 
 .figma-chip--success {
-  background-color: color-mix(in srgb, var(--color-success) 13%, var(--color-surface));
+  background-color: color-mix(in srgb, var(--color-success) 12%, var(--color-surface));
   color: var(--color-success);
   border-color: color-mix(in srgb, var(--color-success) 40%, transparent);
 }
 
 .figma-chip--warning {
-  background-color: color-mix(in srgb, var(--color-warning) 13%, var(--color-surface));
+  background-color: color-mix(in srgb, var(--color-warning) 12%, var(--color-surface));
   color: var(--color-warning);
   border-color: color-mix(in srgb, var(--color-warning) 45%, transparent);
 }
@@ -150,7 +150,7 @@
 }
 
 .figma-chip--info {
-  background-color: color-mix(in srgb, var(--color-primary) 11%, var(--color-surface));
+  background-color: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
   color: var(--color-primary);
   border-color: color-mix(in srgb, var(--color-primary) 38%, transparent);
 }
@@ -160,18 +160,18 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 26px;
-  padding: 2px 9px;
+  min-height: 28px;
+  padding: 3px 10px;
   border-radius: var(--radius-full);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 600;
   border: 1px solid transparent;
 }
 
 .figma-network-status--online {
   color: var(--color-success);
-  background-color: color-mix(in srgb, var(--color-success) 11%, var(--color-surface));
-  border-color: color-mix(in srgb, var(--color-success) 32%, transparent);
+  background-color: color-mix(in srgb, var(--color-success) 12%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-success) 34%, transparent);
 }
 
 .figma-network-status--slow {
@@ -195,7 +195,7 @@
 }
 
 .figma-field__label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--color-text);
 }
@@ -207,7 +207,7 @@
   height: 48px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
-  background-color: var(--color-surface);
+  background-color: var(--color-input-bg);
   padding: 0 12px;
   gap: 8px;
   box-sizing: border-box;
@@ -216,7 +216,7 @@
 
 .figma-field__control:focus-within {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 16%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 18%, transparent);
 }
 
 .figma-field__control--error {
@@ -266,13 +266,13 @@
 }
 
 .figma-field__helper {
-  font-size: var(--type-caption-size);
+  font-size: 13px;
   color: var(--color-text-muted);
   margin: 0;
 }
 
 .figma-field__error {
-  font-size: var(--type-caption-size);
+  font-size: 13.5px;
   color: var(--color-danger);
   font-weight: 600;
   margin: 0;
@@ -282,7 +282,7 @@
 .figma-card {
   display: flex;
   flex-direction: column;
-  padding: 20px;
+  padding: 22px;
   gap: var(--space-3);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
@@ -303,7 +303,7 @@
   }
 }
 
-/* 6. Toggle (Smooth gliding thumb) */
+/* 6. Toggle */
 .figma-toggle {
   display: inline-flex;
   align-items: center;
@@ -318,7 +318,7 @@
 
 .figma-toggle__track {
   position: relative;
-  width: 46px;
+  width: 48px;
   height: 28px;
   border-radius: var(--radius-full);
   background-color: var(--border-subtle);
@@ -341,12 +341,16 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
 }
 
+.figma-toggle--on .figma-toggle__thumb {
+  background-color: var(--color-primary-contrast);
+}
+
 .figma-toggle:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-/* 7. Segmented Control (Spring sliding active pill via motion layoutId) */
+/* 7. Segmented Control */
 .figma-segmented {
   display: flex;
   align-items: center;
@@ -357,14 +361,14 @@
   border: 1px solid var(--color-border);
   width: 100%;
   box-sizing: border-box;
-  transition: background-color 280ms var(--ease-out), border-color 280ms var(--ease-out);
+  transition: background-color 240ms var(--ease-out), border-color 240ms var(--ease-out);
 }
 
 .figma-segmented__btn {
   position: relative;
   flex: 1;
-  min-height: 38px;
-  padding: 6px 10px;
+  min-height: 42px;
+  padding: 6px 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -374,7 +378,7 @@
   background: transparent;
   color: var(--color-text-muted);
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: color 160ms var(--ease-out);
@@ -409,7 +413,7 @@
 .figma-course-card {
   display: flex;
   flex-direction: column;
-  padding: 20px 18px 16px;
+  padding: 22px 20px 18px;
   gap: 12px;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
@@ -419,8 +423,8 @@
   box-shadow: var(--shadow-1);
   cursor: pointer;
   transition:
-    background-color 280ms var(--ease-out),
-    color 280ms var(--ease-out),
+    background-color 240ms var(--ease-out),
+    color 240ms var(--ease-out),
     border-color 180ms var(--ease-out),
     box-shadow 200ms var(--ease-out),
     transform 160ms var(--ease-out);
@@ -449,11 +453,11 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 2px 8px;
+  padding: 3px 9px;
   border-radius: 6px;
   background-color: var(--color-surface-2);
   border: 1px solid var(--color-border);
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--color-text-muted);
@@ -467,7 +471,7 @@
 
 .figma-course-card__meter {
   width: 100%;
-  height: 4px;
+  height: 5px;
   border-radius: var(--radius-full);
   background-color: var(--color-surface-2);
   overflow: hidden;
@@ -503,13 +507,13 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 9px;
+  padding: 4px 10px;
   border-radius: 6px;
   background-color: color-mix(in srgb, var(--course-accent, var(--color-primary)) 12%, var(--color-surface));
-  border: 1px solid color-mix(in srgb, var(--course-accent, var(--color-primary)) 28%, transparent);
+  border: 1px solid color-mix(in srgb, var(--course-accent, var(--color-primary)) 30%, transparent);
   font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 12px;
+  font-weight: 600;
+  font-size: 12.5px;
   letter-spacing: 0.03em;
   color: var(--color-text);
 }
@@ -526,10 +530,10 @@
   margin: 0;
   font-family: var(--font-serif);
   font-optical-sizing: auto;
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 600;
   letter-spacing: -0.015em;
-  line-height: 1.3;
+  line-height: 1.32;
   color: var(--color-text);
 }
 
@@ -548,8 +552,8 @@
 
 .figma-course-card__desc {
   margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.55;
   color: var(--color-text-muted);
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -563,15 +567,15 @@
   justify-content: space-between;
   gap: var(--space-2);
   margin-top: auto;
-  padding-top: 10px;
+  padding-top: 12px;
   border-top: 1px solid var(--color-border);
 }
 
 .figma-course-card__follow-wrap {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: 8px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--color-text-muted);
 }
@@ -582,44 +586,43 @@
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 13px 12px 13px 16px;
-  margin: 0 -8px;
+  padding: 14px 12px;
   border-radius: 10px;
+  border: 1px solid transparent;
   border-bottom: 1px solid var(--color-border);
-  transition: background-color 150ms var(--ease-out);
+  transition: background-color 150ms var(--ease-out), border-color 150ms var(--ease-out);
 }
 
-.figma-deadline-item::before {
-  content: '';
-  position: absolute;
-  left: 4px;
-  top: 14px;
-  bottom: 14px;
-  width: 3px;
-  border-radius: 3px;
-  background-color: var(--color-border);
+.figma-deadline-item--overdue {
+  background-color: color-mix(in srgb, var(--color-danger) 7%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-danger) 28%, var(--color-border));
+  margin-bottom: 6px;
 }
 
-.figma-deadline-item--overdue::before {
-  background-color: var(--color-danger);
-}
-
-.figma-deadline-item--due-soon::before {
-  background-color: var(--color-warning);
+.figma-deadline-item--due-soon {
+  background-color: color-mix(in srgb, var(--color-warning) 7%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-warning) 28%, var(--color-border));
+  margin-bottom: 6px;
 }
 
 .figma-deadline-item:last-child {
-  border-bottom: none;
+  border-bottom-color: transparent;
+  margin-bottom: 0;
+}
+
+.figma-deadline-item--overdue:last-child,
+.figma-deadline-item--due-soon:last-child {
+  border-bottom-color: color-mix(in srgb, var(--color-border) 100%, transparent);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .figma-deadline-item:hover {
-    background-color: color-mix(in srgb, var(--color-surface-2) 70%, transparent);
+    background-color: color-mix(in srgb, var(--color-surface-2) 72%, transparent);
   }
 }
 
 .figma-deadline-item__icon {
-  margin-top: 2px;
+  margin-top: 3px;
   flex-shrink: 0;
   color: var(--color-text-muted);
 }
@@ -642,10 +645,10 @@
 }
 
 .figma-deadline-item__title {
-  font-size: 15px;
+  font-size: 15.5px;
   font-weight: 600;
   color: var(--color-text);
-  margin: 0 0 2px;
+  margin: 0 0 3px;
 }
 
 .figma-deadline-item__title .card-title-link {
@@ -662,9 +665,9 @@
 }
 
 .figma-deadline-item__meta {
-  font-size: 12px;
+  font-size: 13.5px;
   color: var(--color-text-muted);
-  margin: 0 0 4px;
+  margin: 0 0 6px;
 }
 
 .figma-deadline-item__due-row {
@@ -675,16 +678,16 @@
 }
 
 .figma-deadline-item__due {
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
 .figma-deadline-item__relative {
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  padding: 2px 8px;
+  padding: 3px 9px;
   border-radius: var(--radius-full);
   background-color: var(--color-surface-2);
   color: var(--color-text-muted);
@@ -712,10 +715,6 @@
   color: var(--color-text-muted);
 }
 
-.figma-deadline-item--completed::before {
-  background-color: var(--color-success);
-}
-
 .figma-deadline-item--completed .figma-deadline-item__title {
   text-decoration: line-through;
   color: var(--color-text-muted);
@@ -734,14 +733,14 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 38px;
-  padding: 6px 11px;
+  min-height: 44px;
+  padding: 8px 14px;
   border-radius: 8px;
   border: 1px solid var(--color-border);
   background-color: var(--color-surface);
   color: var(--color-text-muted);
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   flex-shrink: 0;
   align-self: center;
@@ -868,12 +867,12 @@
   font-size: var(--type-h2-size);
   font-weight: 600;
   letter-spacing: -0.015em;
-  line-height: 1.3;
+  line-height: 1.32;
   color: var(--color-text);
 }
 
 .figma-week-section__meta {
-  font-size: 12px;
+  font-size: 13.5px;
   font-weight: 500;
   color: var(--color-text-muted);
 }
@@ -882,8 +881,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 8px;
   background-color: var(--color-surface-2);
   color: var(--color-text-muted);

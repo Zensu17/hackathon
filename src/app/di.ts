@@ -33,8 +33,11 @@ import {
   UpdateCourse,
   UpdateDeadline,
   UpdateMaterial,
+  UpdateUserProfile,
   UpdateWeek,
 } from '../application/usecases';
+import type { UpdateProfileInput } from '../application/dto';
+import type { User, UserRole } from '../domain/entities';
 import type { OfflineStorageStats } from '../domain/repositories';
 import type {
   NetworkStatusService,
@@ -127,6 +130,13 @@ export interface AppContainer {
   loadSampleSeedData(
     userId: string,
   ): Promise<{ classId: string; joinCode: string }>;
+  updateProfile(input: UpdateProfileInput): Promise<User>;
+  listClassMembers(classId: string): Promise<User[]>;
+  updateMemberRole(
+    actorId: string,
+    targetUserId: string,
+    nextRole: UserRole,
+  ): Promise<User>;
 }
 
 export interface CreateAppContainerOptions {
@@ -183,6 +193,7 @@ export function createAppContainer(
   const toggleDeadlineCompletionUseCase = new ToggleDeadlineCompletion(
     deadlineCompletionRepository,
   );
+  const updateUserProfileUseCase = new UpdateUserProfile(authRepository);
 
   const networkStatus = new BrowserNetworkStatusService({
     probeUrl: options.supabaseUrl?.trim() || null,
@@ -255,8 +266,15 @@ export function createAppContainer(
     }
   }
 
+  class LocalAwareSignUp extends SignUp {
+    override async execute(input: Parameters<SignUp['execute']>[0]) {
+      await initPromise;
+      return super.execute(input);
+    }
+  }
+
   const usecases: AppUseCases = {
-    signUp: new SignUp(authRepository),
+    signUp: new LocalAwareSignUp(authRepository),
     signIn: new LocalAwareSignIn(authRepository),
     signOut: new SignOut(authRepository),
     getCurrentUser: new GetCurrentUser(authRepository, classRepository),
@@ -424,6 +442,22 @@ export function createAppContainer(
         throw new AppError('VALIDATION_ERROR', 'User ID is required.');
       }
       return seedSampleClassData(db, trimmedUserId);
+    },
+    async updateProfile(input: UpdateProfileInput): Promise<User> {
+      await initPromise;
+      return updateUserProfileUseCase.execute(input);
+    },
+    async listClassMembers(classId: string): Promise<User[]> {
+      await initPromise;
+      return authRepository.listClassMembers(classId);
+    },
+    async updateMemberRole(
+      actorId: string,
+      targetUserId: string,
+      nextRole: UserRole,
+    ): Promise<User> {
+      await initPromise;
+      return authRepository.updateMemberRole(actorId, targetUserId, nextRole);
     },
   };
 }

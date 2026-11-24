@@ -99,6 +99,11 @@ export function DeadlinesPage(): React.ReactElement {
     );
   }
 
+    const progressPercent =
+    allItems.length > 0
+      ? Math.round((completedItems.length / allItems.length) * 100)
+      : 0;
+
   return (
     <div className="page-stack">
       <header className="page-header">
@@ -113,6 +118,39 @@ export function DeadlinesPage(): React.ReactElement {
           </Link>
         </div>
       </header>
+
+      {allItems.length > 0 ? (
+        <section
+          className="index-card deadline-progress-card"
+          aria-label="Study completion progress"
+        >
+          <div className="deadline-progress-card__head">
+            <span className="deadline-progress-card__title">
+              Completion across followed courses
+            </span>
+            <span className="deadline-progress-card__meta tabular-nums">
+              {`${completedItems.length} of ${allItems.length} completed (${progressPercent}%)`}
+            </span>
+          </div>
+          <div
+            className="offline-meter"
+            role="progressbar"
+            aria-valuenow={progressPercent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={`Deadlines completed ${progressPercent}%`}
+          >
+            <div
+              className={
+                progressPercent === 100
+                  ? 'offline-meter__fill offline-meter__fill--complete'
+                  : 'offline-meter__fill'
+              }
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        </section>
+      ) : null}
 
       <div className="filter-tab-bar" style={{ maxWidth: '620px' }}>
         <SegmentedControl<DeadlineFilter>

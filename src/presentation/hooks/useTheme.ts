@@ -19,6 +19,33 @@ export interface UseThemeResult {
   toggleTheme: () => Promise<void>;
 }
 
+const THEME_STORAGE_KEY = 'litelearn_theme';
+
+function readStoredLocalTheme(): ThemePreference | null {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return null;
+    }
+    const raw = window.localStorage.getItem(THEME_STORAGE_KEY);
+    if (raw === 'system' || raw === 'light' || raw === 'dark') {
+      return raw;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredLocalTheme(preference: ThemePreference): void {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(THEME_STORAGE_KEY, preference);
+    }
+  } catch {
+    // Ignore storage quota or private browsing errors.
+  }
+}
+
 function getSystemTheme(): ResolvedTheme {
   if (
     typeof window !== 'undefined' &&
@@ -35,18 +62,26 @@ function resolveTheme(preference: ThemePreference): ResolvedTheme {
 }
 
 function applyThemeToDocument(theme: ResolvedTheme): void {
-  if (typeof document !== 'undefined' && document.documentElement) {
-    document.documentElement.dataset.theme = theme;
+  if (typeof document === 'undefined' || !document.documentElement) {
+    return;
   }
+  document.documentElement.dataset.theme = theme;
+  const metas = document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]');
+  const color = theme === 'dark' ? '#121212' : '#FFFFFF';
+  metas.forEach((meta) => {
+    meta.setAttribute('content', color);
+  });
 }
 
 const ThemeContext = createContext<UseThemeResult | null>(null);
 
 function useThemeController(): UseThemeResult {
   const container = useAppContainer();
-  const [preference, setPreferenceState] = useState<ThemePreference>('system');
+  const [preference, setPreferenceState] = useState<ThemePreference>(
+    () => readStoredLocalTheme() ?? 'system',
+  );
   const [resolved, setResolved] = useState<ResolvedTheme>(() =>
-    getSystemTheme(),
+    resolveTheme(readStoredLocalTheme() ?? 'system'),
   );
 
   useEffect(() => {
@@ -59,6 +94,7 @@ function useThemeController(): UseThemeResult {
       if (!active || !stored) {
         return;
       }
+      writeStoredLocalTheme(stored);
       setPreferenceState(stored);
       const nextResolved = resolveTheme(stored);
       setResolved(nextResolved);
@@ -94,6 +130,7 @@ function useThemeController(): UseThemeResult {
 
   const setTheme = useCallback(
     async (nextTheme: ThemePreference): Promise<void> => {
+      writeStoredLocalTheme(nextTheme);
       setPreferenceState(nextTheme);
       const nextResolved = resolveTheme(nextTheme);
       setResolved(nextResolved);

@@ -6,6 +6,7 @@ export { JoinClass } from './auth/JoinClass';
 export { SignIn } from './auth/SignIn';
 export { SignOut } from './auth/SignOut';
 export { SignUp } from './auth/SignUp';
+export { UpdateUserProfile } from './auth/UpdateUserProfile';
 export { DownloadMaterialFile } from './content/DownloadMaterialFile';
 export { GetCourseWeeks } from './content/GetCourseWeeks';
 export { GetMaterial } from './content/GetMaterial';

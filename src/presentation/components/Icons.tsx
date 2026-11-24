@@ -264,20 +264,66 @@ export function IconTrash({ size = 20, className, ...props }: IconProps): React.
   );
 }
 
+export function IconUser({ size = 20, className, ...props }: IconProps): React.ReactElement {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true" {...props}>
+      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+
+export function IconUsers({ size = 20, className, ...props }: IconProps): React.ReactElement {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true" {...props}>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
+export function IconShield({ size = 20, className, ...props }: IconProps): React.ReactElement {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true" {...props}>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  );
+}
+
+export function IconCopy({ size = 20, className, ...props }: IconProps): React.ReactElement {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true" {...props}>
+      <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+    </svg>
+  );
+}
+
+export function IconCamera({ size = 20, className, ...props }: IconProps): React.ReactElement {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true" {...props}>
+      <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+      <circle cx="12" cy="13" r="3" />
+    </svg>
+  );
+}
+
 export function BrandMark({ size = 32, className, ...props }: IconProps): React.ReactElement {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" fill="none" className={className} aria-hidden="true" {...props}>
-      <rect width="64" height="64" rx="14" fill="#1E3A8A" />
-      <rect x="14" y="13" width="36" height="3.2" rx="1.6" fill="#E0B352" />
-      <rect x="14" y="19" width="16.5" height="29" rx="2.5" fill="#F7F5F0" />
-      <rect x="33.5" y="19" width="16.5" height="29" rx="2.5" fill="#F7F5F0" />
-      <rect x="30.5" y="17" width="3" height="32" rx="1.5" fill="#E0B352" />
-      <rect x="17.5" y="25" width="9.5" height="2.4" rx="1" fill="#1E3A8A" />
-      <rect x="17.5" y="31" width="9.5" height="2.4" rx="1" fill="#1E3A8A" />
-      <rect x="17.5" y="37" width="9.5" height="2.4" rx="1" fill="#1E3A8A" />
-      <rect x="37" y="25" width="9.5" height="2.4" rx="1" fill="#1E3A8A" />
-      <rect x="37" y="31" width="9.5" height="2.4" rx="1" fill="#1E3A8A" />
-      <rect x="37" y="37" width="9.5" height="2.4" rx="1" fill="#1E3A8A" />
+      <rect width="64" height="64" rx="14" fill="#2563EB" />
+      <rect x="14" y="13" width="36" height="3.2" rx="1.6" fill="#00FF85" />
+      <rect x="14" y="19" width="16.5" height="29" rx="2.5" fill="#FFFFFF" />
+      <rect x="33.5" y="19" width="16.5" height="29" rx="2.5" fill="#FFFFFF" />
+      <rect x="30.5" y="17" width="3" height="32" rx="1.5" fill="#00FF85" />
+      <rect x="17.5" y="25" width="9.5" height="2.4" rx="1" fill="#2563EB" />
+      <rect x="17.5" y="31" width="9.5" height="2.4" rx="1" fill="#2563EB" />
+      <rect x="17.5" y="37" width="9.5" height="2.4" rx="1" fill="#2563EB" />
+      <rect x="37" y="25" width="9.5" height="2.4" rx="1" fill="#2563EB" />
+      <rect x="37" y="31" width="9.5" height="2.4" rx="1" fill="#2563EB" />
+      <rect x="37" y="37" width="9.5" height="2.4" rx="1" fill="#2563EB" />
     </svg>
   );
 }

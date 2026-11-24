@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router';
+import { canManageClassContent } from '../../domain/rules';
 import { useAuthSession } from '../hooks/useAuthSession';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import { useTheme } from '../hooks/useTheme';
@@ -21,7 +22,8 @@ import {
 } from './Icons';
 import { NetworkStatus } from './FigmaComponents';
 import { QuickSearchModal } from './QuickSearchModal';
-import { formatDateTime, getInitials } from '../utils/formatters';
+import { UserAvatar } from './UserAvatar';
+import { formatDateTime, getRoleLabel } from '../utils/formatters';
 import './AppLayout.css';
 
 function ThemeQuickSwitch({ compact = false }: { compact?: boolean }): React.ReactElement {
@@ -145,10 +147,10 @@ export function AppLayout(): React.ReactElement {
   const navigate = useNavigate();
   const [isQuickSearchOpen, setIsQuickSearchOpen] = useState<boolean>(false);
 
-  const isRep = session?.user.role === 'rep';
+  const isManager = canManageClassContent(session?.user.role);
   const currentClass = session?.currentClass ?? null;
-  const roleLabel = isRep ? labels.app.roleRep : labels.app.roleStudent;
-  const displayName = session?.user.displayName ?? 'Student';
+  const roleLabel = getRoleLabel(session?.user.role);
+  const displayName = session?.user.displayName ?? 'Member';
 
   useEffect(() => {
     const handleGlobalKeyDown = (event: KeyboardEvent): void => {
@@ -168,7 +170,7 @@ export function AppLayout(): React.ReactElement {
 
   const handleSignOut = async (): Promise<void> => {
     await signOut();
-    navigate('/signin');
+    navigate('/login');
   };
 
   return (
@@ -256,7 +258,7 @@ export function AppLayout(): React.ReactElement {
                 <span>Deadlines</span>
               </NavLink>
             </li>
-            {isRep ? (
+            {isManager ? (
               <li>
                 <NavLink
                   to="/manage"
@@ -288,15 +290,23 @@ export function AppLayout(): React.ReactElement {
         </nav>
 
         <div className="figma-sidenav__footer">
-          <div className="figma-sidenav__profile">
-            <span className="user-avatar" aria-hidden="true">
-              {getInitials(displayName)}
-            </span>
+          <Link
+            to="/profile"
+            className="figma-sidenav__profile"
+            aria-label="Customize profile"
+            title="Open profile customization"
+          >
+            <UserAvatar
+              displayName={displayName}
+              avatarColor={session?.user.avatarColor}
+              avatarDataUrl={session?.user.avatarDataUrl}
+              size="md"
+            />
             <div className="figma-sidenav__user-info">
               <span className="figma-sidenav__user-name">{displayName}</span>
               <span className="figma-sidenav__user-role">{roleLabel}</span>
             </div>
-          </div>
+          </Link>
           <div className="figma-sidenav__actions">
             <ThemeQuickSwitch compact />
             <button
@@ -341,6 +351,19 @@ export function AppLayout(): React.ReactElement {
                 <span>Search</span>
               </button>
               <ThemeQuickSwitch compact />
+              <Link
+                to="/profile"
+                className="mobile-profile-btn"
+                aria-label="Customize profile"
+                title="Customize profile"
+              >
+                <UserAvatar
+                  displayName={displayName}
+                  avatarColor={session?.user.avatarColor}
+                  avatarDataUrl={session?.user.avatarDataUrl}
+                  size="sm"
+                />
+              </Link>
             </div>
           </div>
         </header>
@@ -436,7 +459,7 @@ export function AppLayout(): React.ReactElement {
                 <span>Deadlines</span>
               </NavLink>
             </li>
-            {isRep ? (
+            {isManager ? (
               <li className="figma-bottom-nav__item">
                 <NavLink
                   to="/manage"
@@ -485,7 +508,7 @@ export function AppLayout(): React.ReactElement {
         onClose={() => setIsQuickSearchOpen(false)}
         classId={session?.user.classId ?? null}
         userId={session?.user.id ?? null}
-        isRep={Boolean(isRep)}
+        isRep={Boolean(isManager)}
       />
     </div>
   );

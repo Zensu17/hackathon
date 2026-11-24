@@ -35,6 +35,7 @@ import type {
   UpdateCourseRecordInput,
   UpdateDeadlineRecordInput,
   UpdateMaterialRecordInput,
+  UpdateProfileRecordInput,
   UpdateWeekRecordInput,
   UpsertNoteRecordInput,
   WeekRepository,
@@ -84,7 +85,7 @@ export class FakeAuthRepository implements AuthRepository {
       nim: normalizedNim,
       displayName: input.displayName,
       classId: matchedClass?.id ?? null,
-      role: matchedClass ? 'student' : null,
+      role: input.role ?? (matchedClass ? 'student' : null),
       createdAt: now,
       updatedAt: now,
       deletedAt: null,
@@ -132,6 +133,31 @@ export class FakeAuthRepository implements AuthRepository {
       return null;
     }
     return { ...user };
+  }
+
+  async updateProfile(input: UpdateProfileRecordInput): Promise<User> {
+    const existing = this.users.get(input.userId);
+    if (!existing || existing.deletedAt !== null) {
+      throw new AppError('NOT_FOUND', 'User account not found.');
+    }
+    const updated: User = {
+      ...existing,
+      displayName: input.displayName,
+      ...(input.studyProgram !== undefined
+        ? { studyProgram: input.studyProgram }
+        : {}),
+      ...(input.bio !== undefined ? { bio: input.bio } : {}),
+      ...(input.avatarColor !== undefined
+        ? { avatarColor: input.avatarColor }
+        : {}),
+      ...(input.avatarDataUrl !== undefined
+        ? { avatarDataUrl: input.avatarDataUrl }
+        : {}),
+      ...(input.role !== undefined ? { role: input.role } : {}),
+      updatedAt: '2026-11-04T09:00:00.000Z',
+    };
+    this.users.set(updated.id, updated);
+    return { ...updated };
   }
 }
 

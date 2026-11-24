@@ -7,6 +7,7 @@ import {
   SignIn,
   SignOut,
   SignUp,
+  UpdateUserProfile,
 } from '../../application/usecases';
 import { createFakeRepositories } from './fakes/FakeRepositories';
 
@@ -380,5 +381,62 @@ describe('Auth and class onboarding use cases', () => {
     expect(joined.user.role).toBe('student');
     expect(joined.user.classId).toBe(createdClass.currentClass.id);
     expect(joined.currentClass.joinCode).toBe('IF-2026');
+  });
+
+  it('supports signing up with lecturer/admin roles and customizing user profiles via UpdateUserProfile', async () => {
+    const repos = createFakeRepositories();
+    const createClass = new CreateClass(repos.classes);
+    const signUp = new SignUp(repos.auth);
+    const updateProfile = new UpdateUserProfile(repos.auth);
+
+    repos.users.set('setup-admin', {
+      id: 'setup-admin',
+      nim: '00A00001',
+      displayName: 'Setup Admin',
+      classId: null,
+      role: null,
+      createdAt: '2026-11-04T08:00:00.000Z',
+      updatedAt: '2026-11-04T08:00:00.000Z',
+      deletedAt: null,
+    });
+    await createClass.execute({
+      userId: 'setup-admin',
+      name: 'Class A',
+      joinCode: 'CLASSA',
+    });
+
+    const lecturer = await signUp.execute({
+      nim: '01D10001',
+      displayName: 'Dr. Hendra Situmorang',
+      password: 'password123',
+      confirmPassword: 'password123',
+      classCode: 'CLASSA',
+      role: 'lecturer',
+    });
+    expect(lecturer.role).toBe('lecturer');
+
+    await expect(
+      updateProfile.execute({
+        userId: lecturer.id,
+        displayName: 'Dr. Hendra S.',
+        avatarColor: 'not-a-hex',
+      }),
+    ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+
+    const updated = await updateProfile.execute({
+      userId: lecturer.id,
+      displayName: 'Dr. Hendra Situmorang',
+      studyProgram: 'Faculty of Informatics',
+      bio: 'Algorithms and Data Structures coordinator',
+      avatarColor: '#0F766E',
+      avatarDataUrl: 'data:image/png;base64,iVBORw0KGgo=',
+      role: 'admin',
+    });
+
+    expect(updated.studyProgram).toBe('Faculty of Informatics');
+    expect(updated.bio).toBe('Algorithms and Data Structures coordinator');
+    expect(updated.avatarColor).toBe('#0F766E');
+    expect(updated.avatarDataUrl).toBe('data:image/png;base64,iVBORw0KGgo=');
+    expect(updated.role).toBe('admin');
   });
 });

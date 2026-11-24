@@ -12,6 +12,7 @@ import {
   IconNote,
   IconSearch,
   IconSettings,
+  IconUser,
 } from './Icons';
 
 export interface QuickSearchModalProps {
@@ -75,6 +76,14 @@ export function QuickSearchModal({
         to: '/deadlines',
       },
       {
+        id: 'nav-profile',
+        category: 'Quick navigation',
+        badge: 'PROFILE',
+        title: 'Customize profile',
+        subtitle: 'Edit your display name, study program, bio, role, and avatar',
+        to: '/profile',
+      },
+      {
         id: 'nav-settings',
         category: 'Quick navigation',
         badge: 'SCREEN',
@@ -87,9 +96,9 @@ export function QuickSearchModal({
       base.splice(3, 0, {
         id: 'nav-manage',
         category: 'Quick navigation',
-        badge: 'REP',
-        title: 'Publish class update',
-        subtitle: 'Add or edit courses, weeks, materials, and deadlines',
+        badge: 'MANAGE',
+        title: 'Publish class update & members',
+        subtitle: 'Add or edit courses, weeks, materials, deadlines, and member roles',
         to: '/manage',
       });
     }
@@ -238,7 +247,8 @@ export function QuickSearchModal({
     }
   };
 
-  const renderCategoryIcon = (category: string): React.ReactNode => {
+  const renderCategoryIcon = (itemId: string, category: string): React.ReactNode => {
+    if (itemId === 'nav-profile') return <IconUser size={16} />;
     if (category === 'Courses') return <IconBook size={16} />;
     if (category === 'Materials') return <IconNote size={16} />;
     if (category === 'Deadlines') return <IconCalendarCheck size={16} />;
@@ -281,6 +291,8 @@ export function QuickSearchModal({
               />
               <input
                 ref={inputRef}
+                id="quick-search-input"
+                name="quickSearch"
                 type="search"
                 className="quick-search-dialog__input"
                 placeholder={labels.home.searchPlaceholder}
@@ -351,7 +363,7 @@ export function QuickSearchModal({
                             onClick={() => handleSelect(item.to)}
                           >
                             <span className="quick-search-item__icon" aria-hidden="true">
-                              {renderCategoryIcon(item.category)}
+                              {renderCategoryIcon(item.id, item.category)}
                             </span>
                             <span className="quick-search-item__content">
                               <span className="quick-search-item__top">

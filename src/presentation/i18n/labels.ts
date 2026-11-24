@@ -4,11 +4,14 @@ export const labels = {
     subtitle: 'Offline-first study index for IT Del dormitory classes',
     skipToMain: 'Skip to main content',
     localModeNotice:
-      'Running in local IndexedDB mode on this device because Supabase credentials are not configured.',
+      'Your courses, notes, and downloaded PDFs are stored locally on this device so they open without an internet connection.',
     footerUnauthenticated: 'IT Del dormitory study index',
     footerClassMemberPrefix: 'Class:',
     roleStudent: 'Student',
-    roleRep: 'Class representative',
+    roleRep: 'Class Representative',
+    roleLecturer: 'Lecturer (Dosen)',
+    roleAssistant: 'Teaching Assistant',
+    roleAdmin: 'Admin',
     roleUnassigned: 'No class joined yet',
   },
   nav: {
@@ -37,41 +40,53 @@ export const labels = {
   },
   auth: {
     signInHeading: 'Sign in to LiteLearn',
-    signUpHeading: 'Create student account',
+    signUpHeading: 'Create your account',
     modeSignInTab: 'Sign in',
     modeSignUpTab: 'Create account',
     tagline: 'Your courses, even without signal.',
     intro:
-      'Open your class courses, weekly materials, and deadlines from local device storage.',
-    nimLabel: 'NIM',
+      'Open weekly summaries, track upcoming deadlines, and save lecture PDFs locally on your device.',
+    nimLabel: 'Campus ID / NIM',
     nimPlaceholder: '11S22001',
-    nimHint: 'Enter your 8-character IT Del student ID (e.g. 11S22001).',
-    displayNameLabel: 'Display name',
+    nimHint:
+      'Enter your 8-character ID: 2 digits, 1 letter, and 5 digits (e.g. 11S22001).',
+    roleLabel: 'Account role',
+    roleHint:
+      'Students follow courses and take private notes. Class Reps, Lecturers, Assistants, and Admins publish updates and deadlines.',
+    displayNameLabel: 'Full name',
     displayNamePlaceholder: 'Your full name',
     passwordLabel: 'Password',
     passwordPlaceholder: 'At least 8 characters',
     confirmPasswordLabel: 'Confirm password',
     confirmPasswordPlaceholder: 'Re-enter your password',
     classCodeLabel: 'Class code',
-    classCodePlaceholder: 'IF2026',
+    classCodePlaceholder: 'CLASSA',
     classCodeHint: 'Obtain this code from your class representative.',
+    classCodeHintOnline:
+      'Enter the class code shared by your class representative.',
+    classCodeHintLocal:
+      'Use CLASSA to join the sample class, or enter a new code (3 to 16 letters/numbers) to create your own class.',
     showPasswordAria: 'Show password in plain text',
     hidePasswordAria: 'Hide password',
-    signInCta: 'Sign in to LiteLearn',
+    signInCta: 'Sign in',
     signInSubmitting: 'Signing in...',
-    signUpCta: 'Create student account',
+    signUpCta: 'Create account',
     signUpSubmitting: 'Creating account...',
     errors: {
       missingFields: 'Enter your NIM and password to continue.',
-      missingDisplayName: 'Enter your display name to create an account.',
+      missingDisplayName: 'Enter your full name to create an account.',
       shortPassword: 'Password must be at least 8 characters.',
       passwordMismatch: 'Passwords do not match.',
       invalidNim: 'Enter a valid IT Del NIM (e.g. 11S22001).',
       duplicateNim: 'This NIM is already registered. Try signing in.',
       missingClassCode: 'Enter your class code to create an account.',
-      offlineSignUp: 'Sign up requires a network connection. Connect and try again.',
+      invalidClassCode:
+        'Class code must be 3 to 16 letters, digits, or hyphens.',
+      offlineSignUp:
+        'Sign up requires a network connection. Connect and try again.',
       authFailed: 'NIM or password is incorrect.',
-      unexpected: 'Could not complete authentication. Check your input and try again.',
+      unexpected:
+        'Could not complete authentication. Check your input and try again.',
     },
   },
   joinClass: {
@@ -94,10 +109,10 @@ export const labels = {
     customJoinCodePlaceholder: 'Leave blank to generate a 6-character code',
     createCta: 'Create class as representative',
     creating: 'Creating class...',
-    demoCardTitle: 'Local demo data (clearly fake sample)',
+    demoCardTitle: 'Sample class workspace (Class A)',
     demoCardDescription:
-      'Populate local IndexedDB with fake Class A, Course A, and Course B records to inspect deadlines and weekly materials offline.',
-    loadSeedCta: 'Load sample seed data (Class A)',
+      'Load sample Class A courses, weekly outlines, and deadlines onto this device to test offline study features.',
+    loadSeedCta: 'Load Class A sample courses',
     loadingSeed: 'Loading sample data...',
     errors: {
       missingJoinCode: 'Enter a class join code before submitting.',
@@ -108,7 +123,8 @@ export const labels = {
         'That join code is already used by another class. Pick a different code or leave it blank.',
       invalidCustomJoinCode:
         'Custom join code must be 3 to 16 letters, digits, or internal hyphens.',
-      seedUnavailable: 'Sample seed data is only available in local fallback mode.',
+      seedUnavailable:
+        'Sample seed data is only available in local fallback mode.',
       unexpected: 'Could not update class membership. Try again.',
     },
   },
@@ -138,14 +154,18 @@ export const labels = {
     scheduledSectionHeading: 'Scheduled upcoming deadlines',
     allScheduledNotice: 'All followed deadlines are scheduled comfortably ahead.',
     openCourseCta: 'Open course',
-    searchPlaceholder: 'Search saved courses, materials, deadlines, or announcements...',
+    searchPlaceholder:
+      'Search saved courses, materials, deadlines, or announcements...',
     searchAriaLabel: 'Search offline workspace',
     searchClear: 'Clear',
-    searchNoResults: 'No local records matched that query. Try a shorter keyword or course code.',
+    searchNoResults:
+      'No local records matched that query. Try a shorter keyword or course code.',
     offlineReadinessHeading: 'Offline readiness',
-    offlineReadinessEmpty: 'Follow a course to track locally saved weeks and PDF files.',
+    offlineReadinessEmpty:
+      'Follow a course to track locally saved weeks and PDF files.',
     latestAnnouncementsHeading: 'Latest announcements',
-    latestAnnouncementsEmpty: 'No announcements posted yet for your followed courses.',
+    latestAnnouncementsEmpty:
+      'No announcements posted yet for your followed courses.',
     savedOnDeviceFootnote: 'Reading directly from IndexedDB on this device.',
   },
   deadlines: {
@@ -165,7 +185,8 @@ export const labels = {
     emptyTitle: 'No deadlines match this filter',
     emptyBody: 'No deadlines are recorded for your followed courses.',
     emptyFilteredBody: 'Try another filter to see more deadlines.',
-    emptyCompletedBody: 'Check off deadlines as you finish them to track your progress here.',
+    emptyCompletedBody:
+      'Check off deadlines as you finish them to track your progress here.',
     loading: 'Loading deadlines from local storage...',
     errorTitle: 'Could not load deadlines from local storage',
   },
@@ -214,7 +235,8 @@ export const labels = {
     courseDeadlinesHeading: 'Course deadlines',
     announcementsHeading: 'Course announcements',
     postedPrefix: 'Posted:',
-    loading: 'Loading course weeks, materials, and announcements from local storage...',
+    loading:
+      'Loading course weeks, materials, and announcements from local storage...',
     emptyUnfollowedTitle: 'Follow this course to store weekly content',
     emptyUnfollowedBody:
       'Weekly materials, deadlines, and announcements are kept locally only for courses you follow.',
@@ -246,12 +268,16 @@ export const labels = {
     openOfflinePdfCta: 'Open PDF offline',
     removeOfflinePdfCta: 'Remove download',
     savedOfflineBadge: 'Available offline',
-    savedOfflineNotice: 'Stored in IndexedDB on this device. Opens with zero signal.',
-    notDownloadedNotice: 'Not downloaded yet. LiteLearn never downloads PDFs automatically when Data Saver is on.',
+    savedOfflineNotice:
+      'Stored in IndexedDB on this device. Opens with zero signal.',
+    notDownloadedNotice:
+      'Not downloaded yet. LiteLearn never downloads PDFs automatically when Data Saver is on.',
     openOnlinePdfPrefix: 'Open PDF online',
     privateNotesHeading: 'Private notes',
-    privateNotesPlaceholder: 'Write personal study notes for this material. Saved locally on your device first.',
-    privateNotesHint: 'Private to your account. Saved locally in IndexedDB and queued for sync.',
+    privateNotesPlaceholder:
+      'Write personal study notes for this material. Saved locally on your device first.',
+    privateNotesHint:
+      'Private to your account. Saved locally in IndexedDB and queued for sync.',
     saveNoteCta: 'Save note',
     savingNoteCta: 'Saving note...',
     noteSavedStatus: 'Saved on this device',
@@ -264,8 +290,9 @@ export const labels = {
   repForm: {
     createHeading: 'Publish class update',
     editHeading: 'Edit class item',
-    forbiddenTitle: 'Representative access required',
-    forbiddenBody: 'Only class representatives can add or edit course content',
+    forbiddenTitle: 'Editor access required',
+    forbiddenBody:
+      'Only Class Representatives, Lecturers, Teaching Assistants, or Admins can add or edit course content.',
     returnHomeCta: 'Return to Home',
     typeSelectorLabel: 'Content type',
     types: {
@@ -290,13 +317,15 @@ export const labels = {
       courseNameLabel: 'Course title',
       courseNamePlaceholder: 'Discrete Mathematics',
       courseDescriptionLabel: 'Short course description',
-      courseDescriptionPlaceholder: 'Core topics, lecturer name, and room schedule.',
+      courseDescriptionPlaceholder:
+        'Core topics, lecturer name, and room schedule.',
       weekNumberLabel: 'Week number',
       weekNumberPlaceholder: '1',
       weekTitleLabel: 'Week title',
       weekTitlePlaceholder: 'Week 1: Propositional Logic',
       weekSummaryLabel: 'Week summary',
-      weekSummaryPlaceholder: 'Key chapters and tutorial tasks covered this week.',
+      weekSummaryPlaceholder:
+        'Key chapters and tutorial tasks covered this week.',
       materialTitleLabel: 'Material title',
       materialTitlePlaceholder: 'Lecture 1 Handout and Practice Problems',
       materialDescriptionLabel: 'Material text summary',
@@ -310,7 +339,8 @@ export const labels = {
       deadlineTitleLabel: 'Deadline title',
       deadlineTitlePlaceholder: 'Problem Set 1 Submission',
       deadlineDescriptionLabel: 'Submission notes',
-      deadlineDescriptionPlaceholder: 'Submit PDF via class folder before 23:59.',
+      deadlineDescriptionPlaceholder:
+        'Submit PDF via class folder before 23:59.',
       deadlineDueAtLabel: 'Due date and time',
       announcementTitleLabel: 'Announcement title',
       announcementTitlePlaceholder: 'Friday tutorial moved to Room GD-512',
@@ -330,8 +360,7 @@ export const labels = {
       sectionHint:
         'Removing this item hides it from students right away and queues deletion when syncing.',
       triggerCta: 'Delete item',
-      confirmPrompt:
-        'Confirm removal of this item from the class workspace?',
+      confirmPrompt: 'Confirm removal of this item from the class workspace?',
       confirmCta: 'Confirm delete',
       deleting: 'Deleting...',
       deletedToast: 'Removed from this device. Will sync later.',
@@ -341,19 +370,50 @@ export const labels = {
     errors: {
       validation: 'Complete all required fields before saving.',
       invalidUrl: 'External URL must start with http:// or https://.',
-      fileTooLarge: 'PDF exceeds the 5 MB limit. Compress or split the file first.',
+      fileTooLarge:
+        'PDF exceeds the 5 MB limit. Compress or split the file first.',
       invalidFileType: 'Only PDF files (.pdf) up to 5 MB are accepted.',
-      emptyFile: 'Selected PDF file is empty (0 bytes). Choose a valid PDF.',
-      forbidden: 'Only class representatives of this class can save changes.',
+      emptyFile:
+        'Selected PDF file is empty (0 bytes). Choose a valid PDF.',
+      forbidden:
+        'Only an authorized representative, lecturer, assistant, or admin of this class can save changes.',
       notFound: 'The item being edited could not be found in local storage.',
-      storageFailed: 'Could not save changes right now. Check your connection and try again.',
+      storageFailed:
+        'Could not save changes right now. Check your connection and try again.',
     },
+  },
+  profile: {
+    heading: 'Customize profile',
+    intro:
+      'Set your display name, study program, short bio, role, and avatar style.',
+    previewHeading: 'Profile preview',
+    formHeading: 'Personal details',
+    displayNameLabel: 'Display name',
+    displayNamePlaceholder: 'Your full name',
+    studyProgramLabel: 'Study program / Department',
+    studyProgramPlaceholder: 'e.g. S1 Informatika',
+    bioLabel: 'Short bio / Study focus',
+    bioPlaceholder: 'Courses you focus on, lab group, or contact hours...',
+    avatarColorLabel: 'Avatar accent color',
+    avatarPhotoLabel: 'Profile photo',
+    uploadPhotoCta: 'Upload photo',
+    removePhotoCta: 'Remove photo',
+    photoHint:
+      'Resized automatically to 160x160 pixels on your device so IndexedDB storage stays compact.',
+    roleLabel: 'Workspace role',
+    roleLocalHint:
+      'In local mode, you can switch roles here to preview Student, Class Rep, Lecturer, Teaching Assistant, or Admin views.',
+    roleRemoteHint:
+      'Role assignments are managed by your class administrator in online mode.',
+    saveCta: 'Save profile changes',
+    savingCta: 'Saving profile...',
+    savedToast: 'Profile updated.',
   },
   settings: {
     heading: 'Settings',
     themeCardTitle: 'Appearance',
     themeCardDescription:
-      'Follow your device theme or lock warm paper light mode or deep-slate dark mode.',
+      'Follow your device appearance or switch between Clean Light (#FFFFFF) and Tech Dark (#121212).',
     systemModeButton: 'System',
     lightModeButton: 'Light',
     darkModeButton: 'Dark',
@@ -361,7 +421,8 @@ export const labels = {
     dataStorageCardTitle: 'Data & storage',
     dataSaverLabel: 'Data saver',
     dataSaverOnHint: 'On. Download PDF files only when you choose.',
-    dataSaverOffHint: 'Off. Sync may prefetch PDFs under 1 MB for followed courses.',
+    dataSaverOffHint:
+      'Off. Sync may prefetch PDFs under 1 MB for followed courses.',
     syncNowCta: 'Sync now',
     syncingCta: 'Syncing...',
     lastUpdatedPrefix: 'Last updated:',
@@ -370,7 +431,8 @@ export const labels = {
     clearDownloadsCta: 'Clear downloaded PDFs',
     clearingDownloadsCta: 'Clearing...',
     installAppTitle: 'Install LiteLearn',
-    installAppDescription: 'Add LiteLearn to your home screen for fast offline launch.',
+    installAppDescription:
+      'Add LiteLearn to your home screen for fast offline launch.',
     installAppCta: 'Install app',
     installedBadge: 'Installed on device',
     profileCardTitle: 'Student profile',

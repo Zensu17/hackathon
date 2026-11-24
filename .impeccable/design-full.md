@@ -2,46 +2,46 @@
 name: LiteLearn
 description: Calm, low-bandwidth academic design system for offline-first study.
 colors:
-  academic-navy: "#1E3A8A"
-  ivory-paper: "#F7F5F0"
+  academic-navy: "#1D3E8A"
+  ivory-paper: "#F6F4EE"
   clean-sheet: "#FFFFFF"
-  warm-linen: "#EFEBE3"
-  paper-rule: "#E3DED3"
-  control-slate: "#748299"
-  ink-navy: "#14213D"
-  muted-slate: "#5B6478"
-  academic-gold: "#875E16"
-  offline-emerald: "#1C7449"
-  due-soon-ochre: "#926016"
+  warm-linen: "#EDE9DF"
+  paper-rule: "#DFD9CC"
+  control-slate: "#6B788E"
+  ink-navy: "#13203B"
+  muted-slate: "#515B70"
+  academic-gold: "#855A10"
+  offline-emerald: "#166E45"
+  due-soon-ochre: "#8F5B10"
   overdue-crimson: "#B42318"
 typography:
   display:
     fontFamily: Source Serif 4
-    fontSize: 28px
+    fontSize: 30px
     fontWeight: 600
-    lineHeight: 34px
+    lineHeight: 36px
   headline:
     fontFamily: Source Serif 4
-    fontSize: 24px
+    fontSize: 26px
     fontWeight: 600
-    lineHeight: 30px
+    lineHeight: 32px
   title:
     fontFamily: Source Serif 4
-    fontSize: 20px
+    fontSize: 21px
     fontWeight: 600
-    lineHeight: 26px
+    lineHeight: 28px
   body:
-    fontFamily: Inter
+    fontFamily: Plus Jakarta Sans
     fontSize: 16px
     fontWeight: 400
-    lineHeight: 24px
+    lineHeight: 26px
   label:
-    fontFamily: Inter
+    fontFamily: Plus Jakarta Sans
     fontSize: 14px
     fontWeight: 600
-    lineHeight: 20px
+    lineHeight: 21px
   mono:
-    fontFamily: ui-monospace
+    fontFamily: JetBrains Mono
     fontSize: 14px
     fontWeight: 500
     lineHeight: 20px
@@ -64,34 +64,34 @@ components:
     textColor: "{colors.clean-sheet}"
     typography: "{typography.label}"
     rounded: "{rounded.sm}"
-    padding: 0 16px
+    padding: 0 18px
     height: 44px
   button-secondary:
     backgroundColor: "{colors.clean-sheet}"
     textColor: "{colors.ink-navy}"
     typography: "{typography.label}"
     rounded: "{rounded.sm}"
-    padding: 0 16px
+    padding: 0 18px
     height: 44px
   card-surface:
     backgroundColor: "{colors.clean-sheet}"
     textColor: "{colors.ink-navy}"
     rounded: "{rounded.md}"
-    padding: 16px
+    padding: 22px
   input-default:
     backgroundColor: "{colors.clean-sheet}"
     textColor: "{colors.ink-navy}"
     typography: "{typography.body}"
     rounded: "{rounded.sm}"
-    padding: 0 12px
-    height: 52px
+    padding: 11px 14px
+    height: 48px
   chip-success:
     backgroundColor: "{colors.warm-linen}"
     textColor: "{colors.offline-emerald}"
     typography: "{typography.label}"
     rounded: "{rounded.full}"
-    padding: 0 8px
-    height: 32px
+    padding: 0 11px
+    height: 30px
 ---
 
 # Design System: LiteLearn
@@ -103,9 +103,9 @@ components:
 > **Creative North Star: "The Dormitory Study Index"**
 > Offline-first workspace for IT Del students on 360px phones during network drops. Calm restraint (Energy 1, Rhythm 1, Motion 1) answers what is due next, what opens offline, and what is synced.
 
-- **Warm Paper & Slate:** Light ivory and dark slate passing WCAG 2.2 AA (44 pairings).
-- **Editorial-Technical Type:** `Source Serif 4` headings, `Inter` body, tabular `ui-monospace`.
-- **Vector-Only Shell:** 24x24 SVG icons (`1.75-2px` stroke), zero decorative shell images.
+- **Warm Paper & Midnight Slate:** Soft warm paper light (`#F6F4EE`) and comfortable midnight study slate dark (`#0F141F`) passing WCAG 2.2 AA across all pairings.
+- **Editorial-Technical Type:** `Source Serif 4` headings, `Plus Jakarta Sans` UI & body (`16px` / `26px`), tabular `JetBrains Mono`.
+- **Vector-Only Shell:** 24x24 SVG icons (`2px` stroke), zero decorative shell images.
 - **Honest Offline States:** `Available offline`, `Following`, `Queued`, `Synced` stay distinct.
 - **One-Thumb Ergonomics:** `44px` tap targets from 360px bottom bar to 1280px sidebar.
 
@@ -113,22 +113,22 @@ components:
 
 Tokens in [tokens.css](src/presentation/styles/tokens.css) (`>= 4.5:1` text, `>= 3.0:1` UI).
 
-| Role | Light | Dark (Obsidian) | AA (L/D) | Usage |
-|---|---|---|---|---|
-| Canvas | `#F7F5F0` | `#050608` | Base | Backdrop |
-| Surface | `#FFFFFF` | `#0C0E13` | Base | Cards, inputs |
-| Surface 2 | `#EFEBE3` | `#141821` | Step | Active pills |
-| Hairline | `#E3DED3` | `#222733` | Line | Card borders |
-| Control | `#748299` | `#687387` | >= 3.0 | Control borders |
-| Primary Ink | `#14213D` | `#F8FAFC` | 15.97/18.42 | Headings, body |
-| Muted Ink | `#5B6478` | `#94A3B8` | 5.93/7.74 | Metadata, dates |
-| Primary | `#1E3A8A` | `#60A5FA` | 10.36/7.82 | CTA, focus ring |
-| Accent | `#875E16` | `#E0B352` | 5.83/10.21 | Small marks |
-| Success | `#1C7449` | `#34D399` | 5.65/10.58 | Offline, Online |
-| Warning | `#926016` | `#FBBF24` | 5.42/11.73 | Due 24h, Slow |
-| Danger | `#B42318` | `#F87171` | 6.23/6.92 | Overdue, errors |
+| Role | Light | Dark (Midnight Slate) | Usage |
+|---|---|---|---|
+| Canvas | `#F6F4EE` | `#0F141F` | Backdrop |
+| Surface | `#FFFFFF` | `#161D2B` | Cards, inputs |
+| Surface 2 | `#EDE9DF` | `#1F283A` | Active pills |
+| Hairline | `#DFD9CC` | `#2C374D` | Card borders |
+| Control | `#6B788E` | `#7A8BA6` | Control borders (`>= 3.0`) |
+| Primary Ink | `#13203B` | `#EDF2F9` | Headings, body |
+| Muted Ink | `#515B70` | `#9FB0C8` | Metadata, dates |
+| Primary | `#1D3E8A` | `#7CB3FF` | CTA, focus ring |
+| Accent | `#855A10` | `#E6BA5A` | Small marks |
+| Success | `#166E45` | `#4ADE9F` | Offline, Online |
+| Warning | `#8F5B10` | `#F5C14E` | Due 24h, Slow |
+| Danger | `#B42318` | `#FF8585` | Overdue, errors |
 
-**Course Strips (`4px`):** `#1E3A8A`, `#0F766E`, `#7C3AED`, `#B45309`, `#BE185D`, `#475569`. **Overdue Wash:** `#FBEAE8`.
+**Course Strips (`4px`):** `#1D3E8A`, `#0F766E`, `#6D28D9`, `#B45309`, `#BE185D`, `#475569`. **Overdue Wash:** `#FDF0EE` (light) / `#2A1519` (dark).
 
 - **The Icon-Plus-Text Status Rule.** Never signal status by color alone; pair an SVG icon with text.
 - **The Subject-Not-Urgency Rule.** Course accents mark subjects only; urgency uses Ochre or Crimson.
@@ -138,13 +138,13 @@ Tokens in [tokens.css](src/presentation/styles/tokens.css) (`>= 4.5:1` text, `>=
 
 | Scale | Family | Size / LH | Wt | Usage |
 |---|---|---|---|---|
-| Display | `Source Serif 4` | 28 / 34px | 600 | Greetings, landmarks |
-| Headline | `Source Serif 4` | 24 / 30px | 600 | Screen titles, wordmark |
-| Title | `Source Serif 4` | 20 / 26px | 600 | Section headers |
-| Body | `Inter` | 16 / 24px | 400 | Summaries, notes (`65-75ch`) |
-| Label | `Inter` | 14 / 20px | 600 | Buttons, inputs, tabs |
-| Caption | `Inter` | 12 / 16px | 500 | Timestamps, chips, hints |
-| Mono | `ui-monospace` | 14 / 20px | 500 | NIM, codes, byte sizes |
+| Display | `Source Serif 4` | 30 / 36px | 600 | Greetings, landmarks |
+| Headline | `Source Serif 4` | 26 / 32px | 600 | Screen titles, wordmark |
+| Title | `Source Serif 4` | 21 / 28px | 600 | Section headers |
+| Body | `Plus Jakarta Sans` | 16 / 26px | 400 | Summaries, notes (`65-75ch`) |
+| Label | `Plus Jakarta Sans` | 14 / 21px | 600 | Buttons, inputs, tabs |
+| Caption | `Plus Jakarta Sans` | 13 / 18px | 500 | Timestamps, chips, hints |
+| Mono | `JetBrains Mono` | 14 / 20px | 500 | NIM, codes, byte sizes |
 
 - **The Zero-Em-Dash Rule.** Never use em or en dashes in UI copy; use periods, commas, colons, or hyphens.
 - **The Tabular Data Rule.** Apply `font-variant-numeric: tabular-nums` to dates, NIMs, byte sizes, and counts.
@@ -155,9 +155,9 @@ Tokens in [tokens.css](src/presentation/styles/tokens.css) (`>= 4.5:1` text, `>=
 
 | Viewport | Nav | Workspace | Pad |
 |---|---|---|---|
-| Mobile (`360-1023px`) | Sticky header + `64px` `BottomNav` | `100%` | `16px` |
-| Laptop (`>= 1024px`) | `240px` `SideNav` | `976px` (`616`+`336px`, `24px` gap) | `32px` |
-| Focused Views | Shared shell | Auth `420px`, Settings `640px` | `16-32px` |
+| Mobile (`360-1023px`) | Sticky solid header + `68px` `BottomNav` | `100%` | `16px` |
+| Laptop (`>= 1024px`) | `264px` `SideNav` | `980px` | `28-36px` |
+| Focused Views | Shared shell | Auth split (`980px`), Settings (`680px`) | `16-32px` |
 
 - **The One-Thumb Mobile Rule.** Below `480px`, primary CTAs span `100%`; targets stay `>= 44x44px` (`8px` gap).
 
@@ -165,10 +165,10 @@ Tokens in [tokens.css](src/presentation/styles/tokens.css) (`>= 4.5:1` text, `>=
 
 | Token | Light | Dark | Usage |
 |---|---|---|---|
-| `--shadow-1` | `0 1px 3px rgba(20,33,61,.08)` | `none` | Cards, active tab |
-| `--shadow-2` | `0 8px 24px rgba(20,33,61,.14)` | `0 8px 24px rgba(0,0,0,.45)` | Modals, hover |
+| `--shadow-1` | `0 1px 2px rgba(19,32,59,.05), 0 2px 8px rgba(19,32,59,.05)` | `0 1px 2px rgba(4,8,16,.28), inset 0 1px 0 rgba(255,255,255,.04)` | Cards, active tab |
+| `--shadow-2` | `0 6px 18px rgba(19,32,59,.08), 0 14px 32px rgba(19,32,59,.10)` | `0 10px 28px rgba(4,8,16,.48), inset 0 1px 0 rgba(255,255,255,.06)` | Modals, hover |
 
-- **The Calm Surface Rule.** Keep static panels matte with `1px` `--color-border` hairlines; no heavy shadows, glows, or blur.
+- **The Calm Surface Rule.** Keep static panels matte with `1px` `--color-border` hairlines; no heavy shadows, glows, or blur stacks.
 
 ## Shapes
 
@@ -185,11 +185,11 @@ Borders: `1px var(--color-border)` hairlines, `var(--border-subtle)` controls; f
 
 | Component | Tokens | Behavior |
 |---|---|---|
-| Buttons | `8px`, `44px` M or `52px` L, `150ms` | Primary, Secondary, Ghost, Danger; `1px` press |
-| Chips | `999px`, `32px` S or `40px` M, `12%` tint | `14px` SVG icon + text |
-| Cards | `12px`, `16px` pad, `1px` hairline | Urgent `#FBEAE8`+`3px` bar; `CourseCard` `4px` strip |
-| Inputs | `8px`, `44-52px`, `--border-subtle` | Persistent label, `role="alert"`, `44px` toggle |
-| Navigation | `BottomNav` Warm Linen; `SideNav` `240px` | `hug` join code, live `NetworkStatus` |
+| Buttons | `8px`, `44px` M or `50px` L, `150ms` | Primary, Secondary, Ghost, Danger |
+| Chips | `999px`, `30px` S or `38px` M, `12%` tint | `14px` SVG icon + text |
+| Cards | `12px`, `22px` pad, `1px` hairline | Urgent wash; `CourseCard` `4px` top strip |
+| Inputs | `8px`, `48px`, `--border-subtle` | Persistent label, `role="alert"`, `44px` toggle |
+| Navigation | Solid `BottomNav` / `264px` `SideNav` | `hug` join code, live `NetworkStatus` |
 | Study UI | `DeadlineItem`, `SegmentedControl`, `Toggle` | IndexedDB PDFs, `Private notes`, `Data saver` |
 
 ## Do's and Don'ts

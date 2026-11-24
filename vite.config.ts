@@ -15,8 +15,8 @@ export default defineConfig({
         short_name: 'LiteLearn',
         description:
           'Low-bandwidth, offline-first study index for IT Del dormitory students.',
-        theme_color: '#1E3A8A',
-        background_color: '#F7F5F0',
+        theme_color: '#2563EB',
+        background_color: '#FFFFFF',
         display: 'standalone',
         scope: '/',
         start_url: '/',

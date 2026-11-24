@@ -1,3 +1,6 @@
+import type { UserRole } from '../../domain/entities';
+import { labels } from '../i18n/labels';
+
 const MONTH_NAMES = [
   'Jan',
   'Feb',
@@ -92,4 +95,29 @@ export function getInitials(displayName: string): string {
   if (parts.length === 0) return 'ST';
   if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
   return `${parts[0]![0] ?? ''}${parts[parts.length - 1]![0] ?? ''}`.toUpperCase();
+}
+
+export function getRoleLabel(role: UserRole | null | undefined): string {
+  if (role === 'admin') return labels.app.roleAdmin;
+  if (role === 'lecturer') return labels.app.roleLecturer;
+  if (role === 'assistant') return labels.app.roleAssistant;
+  if (role === 'rep') return labels.app.roleRep;
+  if (role === 'student') return labels.app.roleStudent;
+  return labels.app.roleUnassigned;
+}
+
+export function getRoleSummary(role: UserRole): string {
+  if (role === 'student') {
+    return 'Follow courses, download PDFs offline, check deadlines, and write private study notes.';
+  }
+  if (role === 'rep') {
+    return 'Coordinate your cohort by publishing courses, weekly outlines, deadlines, and announcements.';
+  }
+  if (role === 'lecturer') {
+    return 'Publish lecture syllabi, weekly materials, PDF handouts, assignments, and announcements.';
+  }
+  if (role === 'assistant') {
+    return 'Maintain lab modules, tutorial schedules, deadline updates, and announcements.';
+  }
+  return 'Manage class courses, content updates, and class member role permissions.';
 }

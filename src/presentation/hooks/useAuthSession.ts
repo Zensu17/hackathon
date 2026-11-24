@@ -11,6 +11,7 @@ import type {
   AuthSessionDto,
   SignInInput,
   SignUpInput,
+  UpdateProfileInput,
 } from '../../application/dto';
 import { isAppError } from '../../application/errors/AppError';
 import { labels } from '../i18n/labels';
@@ -27,6 +28,9 @@ export interface UseAuthSessionResult {
   signOut: (options?: { clearLocalData?: boolean }) => Promise<void>;
   joinClass: (joinCode: string) => Promise<AuthSessionDto>;
   createClass: (name: string, joinCode?: string) => Promise<AuthSessionDto>;
+  updateProfile: (
+    input: Omit<UpdateProfileInput, 'userId'>,
+  ) => Promise<AuthSessionDto>;
   loadSampleSeed: () => Promise<AuthSessionDto>;
 }
 
@@ -64,6 +68,9 @@ export function mapAuthError(
         return labels.auth.errors.shortPassword;
       }
       if (msg.includes('class code')) {
+        if (msg.includes('3 to 16')) {
+          return labels.auth.errors.invalidClassCode;
+        }
         return labels.auth.errors.missingClassCode;
       }
       if (msg.includes('nim')) {
@@ -72,7 +79,7 @@ export function mapAuthError(
       if (msg.includes('password')) {
         return labels.auth.errors.missingFields;
       }
-      return labels.auth.errors.unexpected;
+      return error.message || labels.auth.errors.unexpected;
     }
   }
   return labels.auth.errors.unexpected;
@@ -100,7 +107,7 @@ export function mapOnboardingError(error: unknown): string {
       if (msg.includes('3 to 16')) {
         return labels.joinClass.errors.invalidCustomJoinCode;
       }
-      return labels.joinClass.errors.unexpected;
+      return error.message || labels.joinClass.errors.unexpected;
     }
   }
   return labels.joinClass.errors.unexpected;
@@ -250,6 +257,37 @@ function useAuthSessionState(): UseAuthSessionResult {
     [container, refreshSession, session],
   );
 
+  const updateProfile = useCallback(
+    async (
+      input: Omit<UpdateProfileInput, 'userId'>,
+    ): Promise<AuthSessionDto> => {
+      setError(null);
+      if (!session) {
+        const message = labels.auth.errors.unexpected;
+        setError(message);
+        throw new Error(message);
+      }
+      try {
+        await container.updateProfile({
+          ...input,
+          userId: session.user.id,
+        });
+        const current = await refreshSession();
+        if (!current) {
+          throw new Error('Session unavailable after updating profile.');
+        }
+        return current;
+      } catch (err) {
+        const message = isAppError(err)
+          ? err.message
+          : labels.auth.errors.unexpected;
+        setError(message);
+        throw new Error(message);
+      }
+    },
+    [container, refreshSession, session],
+  );
+
   const loadSampleSeed = useCallback(async (): Promise<AuthSessionDto> => {
     setError(null);
     if (!session) {
@@ -284,6 +322,7 @@ function useAuthSessionState(): UseAuthSessionResult {
       signOut,
       joinClass,
       createClass,
+      updateProfile,
       loadSampleSeed,
     }),
     [
@@ -298,6 +337,7 @@ function useAuthSessionState(): UseAuthSessionResult {
       signOut,
       joinClass,
       createClass,
+      updateProfile,
       loadSampleSeed,
     ],
   );
