@@ -46,8 +46,14 @@ npm run build      # Production build + Workbox service worker + Web App Manifes
 npm run preview    # Verify offline reload in DevTools > Application > Service Workers > Offline
 ```
 
-## Supabase Setup (Optional Live Cloud Sync)
+## Supabase PostgreSQL Setup (Live Cloud Sync)
 
-1. Copy `.env.example` to `.env` and fill `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
-2. Run `supabase/migrations/001_initial_schema.sql` and `supabase/migrations/002_nim_auth.sql` in the Supabase SQL Editor.
-3. Deploy the static `dist/` build to Vercel (`vercel.json` is preconfigured for SPA rewrites and PWA cache headers).
+1. Copy `.env.example` to `.env` and fill `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (leave both blank to run in Local Demo Mode using IndexedDB only).
+2. In Supabase Dashboard (**Authentication -> Providers -> Email**), turn **Confirm email** OFF (NIM auth maps to `<nim>@nim.litelearn.local`).
+3. Run all four migrations in order inside the Supabase SQL Editor:
+   - `supabase/migrations/001_initial_schema.sql`
+   - `supabase/migrations/002_nim_auth.sql`
+   - `supabase/migrations/003_sync_and_rls_hardening.sql`
+   - `supabase/migrations/004_security_and_sync_fixes.sql`
+4. Verify connectivity and migrations with `npm run db:check`, and see [docs/SUPABASE-POSTGRES-SETUP.md](docs/SUPABASE-POSTGRES-SETUP.md) for the full Indonesian guide (including bootstrapping the first Class Rep and join code).
+5. Deploy the static `dist/` build to Vercel (`vercel.json` is preconfigured for SPA rewrites and PWA cache headers).
