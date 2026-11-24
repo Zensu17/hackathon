@@ -622,6 +622,7 @@ export function RepFormPage(): React.ReactElement {
     });
 
     setSelectedFile(file);
+    setRemoveAttachment(false);
 
     if (!check.valid) {
       const reasonMessage =
@@ -729,7 +730,7 @@ export function RepFormPage(): React.ReactElement {
           description: materialDescription,
           externalUrl,
           file: selectedFile,
-          removeAttachment,
+          removeAttachment: selectedFile ? false : removeAttachment,
           editId: isEditMode ? editId : undefined,
         });
         toast.success('Material saved on this device.');

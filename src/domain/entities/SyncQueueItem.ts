@@ -11,6 +11,7 @@ export type SyncOperation = 'upsert' | 'delete';
 
 export interface SyncQueueItem {
   id: string;
+  userId?: string | null;
   entityType: SyncEntityType;
   entityId: string;
   operation: SyncOperation;

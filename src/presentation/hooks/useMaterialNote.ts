@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAppContainer } from '../../app/di';
 import type { Note } from '../../domain/entities';
 
@@ -30,17 +30,69 @@ export function useMaterialNote(
   );
   const [error, setError] = useState<string | null>(null);
 
+  const activeTargetRef = useRef<{
+    userId: string | null;
+    materialId: string | undefined;
+  }>({ userId, materialId });
+  const latestDraftRef = useRef<{
+    userId: string | null;
+    materialId: string | undefined;
+    draft: string;
+    isDirty: boolean;
+  }>({
+    userId,
+    materialId,
+    draft: '',
+    isDirty: false,
+  });
+  const saveSeqRef = useRef<number>(0);
+  const isSavingRef = useRef<boolean>(false);
+
+  const isDirty = draft !== (note?.body ?? '');
+
+  latestDraftRef.current = {
+    userId,
+    materialId,
+    draft,
+    isDirty,
+  };
+
+  // Flush dirty note draft when switching materials or unmounting, and reset state immediately to prevent cross-material leakage.
   useEffect(() => {
+    const prev = activeTargetRef.current;
+    const prevSnapshot = latestDraftRef.current;
+    if (
+      prevSnapshot.isDirty &&
+      prev.userId &&
+      prev.materialId &&
+      (prev.userId !== userId || prev.materialId !== materialId)
+    ) {
+      void container.usecases.saveMaterialNote
+        .execute({
+          userId: prev.userId,
+          materialId: prev.materialId,
+          body: prevSnapshot.draft,
+        })
+        .catch(() => undefined);
+    }
+
+    activeTargetRef.current = { userId, materialId };
+    saveSeqRef.current += 1;
+    isSavingRef.current = false;
+
     let active = true;
+    setNote(null);
+    setDraftState('');
+    setSaveStatus('idle');
+    setError(null);
+    setIsSaving(false);
+
     if (!userId || !materialId) {
-      setNote(null);
-      setDraftState('');
       setIsLoading(false);
-      return;
+      return undefined;
     }
 
     setIsLoading(true);
-    setError(null);
     void container.usecases.getMaterialNote
       .execute({ userId, materialId })
       .then((loaded) => {
@@ -51,6 +103,8 @@ export function useMaterialNote(
       })
       .catch((err: unknown) => {
         if (!active) return;
+        setNote(null);
+        setDraftState('');
         setError(
           err instanceof Error
             ? err.message
@@ -68,6 +122,22 @@ export function useMaterialNote(
     };
   }, [container, materialId, userId]);
 
+  // Flush any remaining dirty draft when the component unmounts cleanly.
+  useEffect(() => {
+    return () => {
+      const snapshot = latestDraftRef.current;
+      if (snapshot.isDirty && snapshot.userId && snapshot.materialId) {
+        void container.usecases.saveMaterialNote
+          .execute({
+            userId: snapshot.userId,
+            materialId: snapshot.materialId,
+            body: snapshot.draft,
+          })
+          .catch(() => undefined);
+      }
+    };
+  }, [container]);
+
   const setDraft = useCallback((value: string) => {
     setDraftState(value);
     setSaveStatus('idle');
@@ -75,34 +145,59 @@ export function useMaterialNote(
   }, []);
 
   const save = useCallback(async (): Promise<boolean> => {
-    if (!userId || !materialId) {
+    const targetUserId = userId;
+    const targetMaterialId = materialId;
+    if (!targetUserId || !targetMaterialId || isSavingRef.current) {
       return false;
     }
+
+    const seq = ++saveSeqRef.current;
+    isSavingRef.current = true;
     setIsSaving(true);
     setError(null);
     try {
       const saved = await container.usecases.saveMaterialNote.execute({
-        userId,
-        materialId,
+        userId: targetUserId,
+        materialId: targetMaterialId,
         body: draft,
       });
-      setNote(saved);
-      setSaveStatus('saved');
+      const current = activeTargetRef.current;
+      if (
+        current.userId === targetUserId &&
+        current.materialId === targetMaterialId &&
+        seq === saveSeqRef.current
+      ) {
+        setNote(saved);
+        setSaveStatus('saved');
+      }
       return true;
     } catch (err) {
-      setSaveStatus('error');
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Could not save private note right now.',
-      );
+      const current = activeTargetRef.current;
+      if (
+        current.userId === targetUserId &&
+        current.materialId === targetMaterialId &&
+        seq === saveSeqRef.current
+      ) {
+        setSaveStatus('error');
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Could not save private note right now.',
+        );
+      }
       return false;
     } finally {
-      setIsSaving(false);
+      const current = activeTargetRef.current;
+      if (
+        current.userId === targetUserId &&
+        current.materialId === targetMaterialId &&
+        seq === saveSeqRef.current
+      ) {
+        isSavingRef.current = false;
+        setIsSaving(false);
+      }
     }
   }, [container, draft, materialId, userId]);
-
-  const isDirty = draft !== (note?.body ?? '');
 
   // Debounced auto-save so students never lose notes while studying offline.
   useEffect(() => {

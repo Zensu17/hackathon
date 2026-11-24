@@ -27,10 +27,15 @@ export class DexieNoteRepository implements NoteRepository {
 
   async upsert(input: UpsertNoteRecordInput): Promise<Note> {
     return this.db.transaction('rw', this.db.notes, async () => {
-      const existing = await this.db.notes
+      const matches = await this.db.notes
         .where('[userId+materialId]')
         .equals([input.userId, input.materialId])
-        .first();
+        .toArray();
+      matches.sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+      const existing = matches[0];
+      if (matches.length > 1) {
+        await this.db.notes.bulkDelete(matches.slice(1).map((row) => row.id));
+      }
       const nowIso = new Date().toISOString();
 
       if (existing) {

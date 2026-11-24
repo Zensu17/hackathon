@@ -4,11 +4,11 @@ import type {
   SyncQueueRepository,
 } from '../../domain/repositories';
 import type { LiteLearnDb } from '../local/LiteLearnDb';
+import { localSyncItemToDomain } from '../mappers/syncMapper';
 import {
-  domainSyncItemToLocal,
-  localSyncItemToDomain,
-} from '../mappers/syncMapper';
-import { generateUuid } from './HybridAuthRepository';
+  coalesceSyncQueueRow,
+  resolveActiveSessionUserId,
+} from './syncQueueHelpers';
 
 export class DexieSyncQueueRepository implements SyncQueueRepository {
   constructor(private readonly db: LiteLearnDb) {}
@@ -36,19 +36,60 @@ export class DexieSyncQueueRepository implements SyncQueueRepository {
   }
 
   async enqueue(input: EnqueueSyncItemInput): Promise<SyncQueueItem> {
-    const item: SyncQueueItem = {
-      id: generateUuid(),
-      entityType: input.entityType,
-      entityId: input.entityId,
-      operation: input.operation,
-      payloadJson: input.payloadJson,
-      attempts: 0,
-      lastError: null,
-      nextRetryAt: null,
-      createdAt: new Date().toISOString(),
-    };
-    await this.db.syncQueue.put(domainSyncItemToLocal(item));
-    return item;
+    const resolvedUserId =
+      input.userId !== undefined
+        ? input.userId
+        : await resolveActiveSessionUserId(this.db);
+
+    const row = await this.db.transaction('rw', this.db.syncQueue, async () => {
+      // Also coalesce pending note entries targeting the same (userId, materialId) even if note UUID changed.
+      if (input.entityType === 'note') {
+        try {
+          const nextNote = JSON.parse(input.payloadJson) as {
+            userId?: string;
+            materialId?: string;
+          };
+          if (nextNote.userId && nextNote.materialId) {
+            const allRows = await this.db.syncQueue.toArray();
+            const duplicateNoteIds: string[] = [];
+            for (const existing of allRows) {
+              if (existing.entityType !== 'note') {
+                continue;
+              }
+              try {
+                const parsed = JSON.parse(existing.payloadJson) as {
+                  userId?: string;
+                  materialId?: string;
+                };
+                if (
+                  parsed.userId === nextNote.userId &&
+                  parsed.materialId === nextNote.materialId
+                ) {
+                  duplicateNoteIds.push(existing.id);
+                }
+              } catch {
+                // Ignore malformed payload.
+              }
+            }
+            if (duplicateNoteIds.length > 0) {
+              await this.db.syncQueue.bulkDelete(duplicateNoteIds);
+            }
+          }
+        } catch {
+          // Fall through to standard (entityType, entityId) coalescing.
+        }
+      }
+
+      return coalesceSyncQueueRow(this.db, {
+        userId: resolvedUserId,
+        entityType: input.entityType,
+        entityId: input.entityId,
+        operation: input.operation,
+        payloadJson: input.payloadJson,
+      });
+    });
+
+    return localSyncItemToDomain(row);
   }
 
   async markFailed(

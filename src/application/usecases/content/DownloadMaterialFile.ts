@@ -1,6 +1,9 @@
 import type { Material } from '../../../domain/entities';
 import type { MaterialRepository } from '../../../domain/repositories';
-import { MAX_MATERIAL_FILE_BYTES } from '../../../domain/rules';
+import {
+  hasPdfMagicHeader,
+  MAX_MATERIAL_FILE_BYTES,
+} from '../../../domain/rules';
 import type { DownloadMaterialFileInput } from '../../dto';
 import { AppError } from '../../errors/AppError';
 
@@ -52,11 +55,17 @@ export class DownloadMaterialFile {
         'Downloaded PDF exceeds the 5 MB limit.',
       );
     }
+    if (!hasPdfMagicHeader(downloaded.bytes)) {
+      throw new AppError(
+        'INVALID_FILE_TYPE',
+        'Downloaded file is not a valid PDF document.',
+      );
+    }
 
     return this.materialRepository.saveOfflineFile(
       material.id,
       downloaded.bytes,
-      downloaded.mimeType || 'application/pdf',
+      'application/pdf',
     );
   }
 }

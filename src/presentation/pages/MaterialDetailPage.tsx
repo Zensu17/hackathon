@@ -29,6 +29,7 @@ import {
   formatWeekCode,
   isSafeHttpUrl,
 } from '../utils/formatters';
+import { openOfflinePdfBlob } from '../utils/openOfflinePdf';
 
 export function MaterialDetailPage(): React.ReactElement {
   const { materialId } = useParams<{ materialId: string }>();
@@ -103,20 +104,7 @@ export function MaterialDetailPage(): React.ReactElement {
         return;
       }
 
-      const bytesCopy = new Uint8Array(stored.bytes.byteLength);
-      bytesCopy.set(stored.bytes);
-      const pdfBlob = new Blob([bytesCopy], {
-        type: stored.mimeType || 'application/pdf',
-      });
-      const blobUrl = URL.createObjectURL(pdfBlob);
-      const opened = window.open(blobUrl, '_blank', 'noopener,noreferrer');
-      if (!opened) {
-        const anchor = document.createElement('a');
-        anchor.href = blobUrl;
-        anchor.download = stored.fileName;
-        anchor.click();
-      }
-      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+      openOfflinePdfBlob(stored.bytes, stored.fileName);
     } catch (err) {
       setPdfError(
         err instanceof Error
@@ -531,7 +519,9 @@ export function MaterialDetailPage(): React.ReactElement {
                         event.key.toLowerCase() === 's'
                       ) {
                         event.preventDefault();
-                        void handleSaveNote();
+                        if (!privateNote.isSaving && privateNote.isDirty) {
+                          void handleSaveNote();
+                        }
                       }
                     }}
                   />

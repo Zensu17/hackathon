@@ -30,6 +30,7 @@ export class SaveMaterialNote {
     });
 
     await this.syncQueueRepository.enqueue({
+      userId,
       entityType: 'note',
       entityId: saved.id,
       operation: 'upsert',

@@ -24,6 +24,7 @@ import {
   localUserToDomain,
 } from '../mappers/userMapper';
 import type { SupabaseRemoteDataSource } from '../remote/SupabaseRemoteDataSource';
+import { getPendingBlobMaterialIds } from './syncQueueHelpers';
 
 export function generateUuid(): string {
   if (
@@ -188,21 +189,35 @@ export class HybridAuthRepository implements AuthRepository {
     const nowIso = new Date().toISOString();
 
     if (this.remote !== null) {
-      const user = await this.remote.signUp({
+      const { user, currentClass } = await this.remote.signUp({
         nim: normalizedNim,
         password: input.password,
         displayName: input.displayName,
         classCode: input.classCode,
       });
 
-      await this.db.transaction('rw', [this.db.users, this.db.sessions], async () => {
-        await this.db.users.put(domainUserToLocal(user));
-        await this.db.sessions.put({
-          id: 'current',
-          userId: user.id,
-          updatedAt: nowIso,
-        });
-      });
+      const remoteCourses = currentClass
+        ? await this.remote.fetchCoursesByClassId(currentClass.id)
+        : [];
+
+      await this.db.transaction(
+        'rw',
+        [this.db.users, this.db.sessions, this.db.classes, this.db.courses],
+        async () => {
+          await this.db.users.put(domainUserToLocal(user));
+          await this.db.sessions.put({
+            id: 'current',
+            userId: user.id,
+            updatedAt: nowIso,
+          });
+          if (currentClass) {
+            await this.db.classes.put(domainClassToLocal(currentClass));
+          }
+          if (remoteCourses.length > 0) {
+            await this.db.courses.bulkPut(remoteCourses.map(domainCourseToLocal));
+          }
+        },
+      );
 
       return user;
     }
@@ -313,8 +328,10 @@ export class HybridAuthRepository implements AuthRepository {
         ]);
 
       const followedCourseIds = remoteFollows.map((follow) => follow.courseId);
-      const hydratedContent =
-        await this.remote.fetchFollowedCoursesContent(followedCourseIds);
+      const [hydratedContent, pendingBlobIds] = await Promise.all([
+        this.remote.fetchFollowedCoursesContent(followedCourseIds),
+        getPendingBlobMaterialIds(this.db),
+      ]);
 
       await this.db.transaction(
         'rw',
@@ -361,23 +378,55 @@ export class HybridAuthRepository implements AuthRepository {
           }
 
           if (hydratedContent.materials.length > 0) {
+            const existingLocalMaterials = await this.db.materials
+              .where('id')
+              .anyOf(hydratedContent.materials.map((m) => m.id))
+              .toArray();
+            const existingById = new Map(
+              existingLocalMaterials.map((row) => [row.id, row]),
+            );
             const cachedBlobIds = new Set(
-              (
-                await this.db.materialBlobs
-                  .where('materialId')
-                  .anyOf(hydratedContent.materials.map((m) => m.id))
-                  .primaryKeys()
-              ),
+              await this.db.materialBlobs
+                .where('materialId')
+                .anyOf(hydratedContent.materials.map((m) => m.id))
+                .primaryKeys(),
             );
+            const staleBlobIds: string[] = [];
 
-            await this.db.materials.bulkPut(
-              hydratedContent.materials.map((material) =>
-                domainMaterialToLocal({
-                  ...material,
-                  isAvailableOffline: cachedBlobIds.has(material.id),
-                }),
-              ),
-            );
+            const nextMaterials = hydratedContent.materials.map((material) => {
+              const localRow = existingById.get(material.id);
+              const attachmentChanged =
+                material.deletedAt !== null ||
+                material.attachment === null ||
+                (localRow !== undefined &&
+                  (localRow.attachmentStoragePath !==
+                    material.attachment.storagePath ||
+                    localRow.attachmentSizeBytes !==
+                      material.attachment.sizeBytes ||
+                    localRow.attachmentName !== material.attachment.name));
+
+              if (
+                attachmentChanged &&
+                cachedBlobIds.has(material.id) &&
+                !pendingBlobIds.has(material.id)
+              ) {
+                staleBlobIds.push(material.id);
+                cachedBlobIds.delete(material.id);
+              }
+
+              return domainMaterialToLocal({
+                ...material,
+                isAvailableOffline:
+                  material.deletedAt === null &&
+                  material.attachment !== null &&
+                  cachedBlobIds.has(material.id),
+              });
+            });
+
+            if (staleBlobIds.length > 0) {
+              await this.db.materialBlobs.bulkDelete(staleBlobIds);
+            }
+            await this.db.materials.bulkPut(nextMaterials);
           }
 
           if (hydratedContent.deadlines.length > 0) {
@@ -392,8 +441,19 @@ export class HybridAuthRepository implements AuthRepository {
             );
           }
 
-          if (remoteNotes.length > 0) {
-            await this.db.notes.bulkPut(remoteNotes.map(domainNoteToLocal));
+          // Reconcile remote notes by [userId+materialId] so mismatched local UUIDs never duplicate rows.
+          for (const remoteNote of remoteNotes) {
+            const existingNotes = await this.db.notes
+              .where('[userId+materialId]')
+              .equals([remoteNote.userId, remoteNote.materialId])
+              .toArray();
+            const staleIds = existingNotes
+              .map((row) => row.id)
+              .filter((id) => id !== remoteNote.id);
+            if (staleIds.length > 0) {
+              await this.db.notes.bulkDelete(staleIds);
+            }
+            await this.db.notes.put(domainNoteToLocal(remoteNote));
           }
         },
       );
@@ -433,6 +493,23 @@ export class HybridAuthRepository implements AuthRepository {
         // Clear local session even if remote sign-out fails while offline.
       }
     }
+
+    const activeSession = await this.db.sessions.get('current');
+    if (activeSession && !options?.clearLocalData) {
+      // Tag any legacy unscoped queue items with the outgoing userId so they never replay under another user.
+      const queuedRows = await this.db.syncQueue.toArray();
+      const unscopedRows = queuedRows.filter((row) => !row.userId);
+      if (unscopedRows.length > 0) {
+        await this.db.syncQueue.bulkPut(
+          unscopedRows.map((row) => ({ ...row, userId: activeSession.userId })),
+        );
+      }
+      if (this.db.meta && typeof this.db.meta.delete === 'function') {
+        await this.db.meta.delete('last_sync_at');
+        await this.db.meta.delete('last_sync_user_id');
+      }
+    }
+
     await this.db.sessions.delete('current');
 
     if (options?.clearLocalData) {

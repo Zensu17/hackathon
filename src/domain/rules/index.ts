@@ -6,6 +6,7 @@ export {
 } from './deadlineRules';
 export {
   formatByteSize,
+  hasPdfMagicHeader,
   MAX_MATERIAL_FILE_BYTES,
   shouldAutoDownloadMaterial,
   SUB_ONE_MB_BYTES,

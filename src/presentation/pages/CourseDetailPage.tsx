@@ -25,6 +25,7 @@ import {
   formatRelativeDue,
   formatWeekCode,
 } from '../utils/formatters';
+import { openOfflinePdfBlob } from '../utils/openOfflinePdf';
 
 export function CourseDetailPage(): React.ReactElement {
   const { courseId } = useParams<{ courseId: string }>();
@@ -99,24 +100,13 @@ export function CourseDetailPage(): React.ReactElement {
         materialId,
       });
       if (!stored) {
-        toast.error('Offline PDF not found. Downloading again...');
+        toast.error(
+          'Offline PDF was not found on this device. Download it again while online.',
+        );
         await reload();
         return;
       }
-      const bytesCopy = new Uint8Array(stored.bytes.byteLength);
-      bytesCopy.set(stored.bytes);
-      const pdfBlob = new Blob([bytesCopy], {
-        type: stored.mimeType || 'application/pdf',
-      });
-      const blobUrl = URL.createObjectURL(pdfBlob);
-      const opened = window.open(blobUrl, '_blank', 'noopener,noreferrer');
-      if (!opened) {
-        const anchor = document.createElement('a');
-        anchor.href = blobUrl;
-        anchor.download = stored.fileName;
-        anchor.click();
-      }
-      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+      openOfflinePdfBlob(stored.bytes, stored.fileName);
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : 'Could not open offline PDF.',

@@ -144,10 +144,26 @@ export class SupabaseRemoteDataSource {
     return this.clientSource;
   }
 
-  async signUp(input: SignUpCredentials): Promise<User> {
+  async signUp(
+    input: SignUpCredentials,
+  ): Promise<{ user: User; currentClass: Class | null }> {
     const normalizedNim = input.nim.trim().toUpperCase();
+    const trimmedClassCode = input.classCode?.trim() ?? '';
+    const client = await this.getClient();
+
+    // Pre-validate join code before creating an auth account so typos do not orphan accounts.
+    if (trimmedClassCode.length > 0) {
+      const { data: codeExists, error: codeCheckError } = await client.rpc(
+        'check_class_join_code',
+        { p_join_code: trimmedClassCode },
+      );
+      if (!codeCheckError && codeExists === false) {
+        throw new AppError('NOT_FOUND', 'No class matched that class code.');
+      }
+    }
+
     const hiddenEmail = nimToHiddenAuthEmail(normalizedNim);
-    const { data, error } = await (await this.getClient()).auth.signUp({
+    const { data, error } = await client.auth.signUp({
       email: hiddenEmail,
       password: input.password,
       options: {
@@ -168,29 +184,44 @@ export class SupabaseRemoteDataSource {
           'This NIM is already registered. Try signing in.',
         );
       }
-      throw mapRemoteError(error ?? new Error('Account creation failed.'), 'AUTH_ERROR');
+      throw mapRemoteError(
+        error ?? new Error('Account creation failed.'),
+        'AUTH_ERROR',
+      );
     }
 
-    if (input.classCode && input.classCode.trim().length > 0) {
-      const onboarding = await this.joinClassByCode(input.classCode);
-      return onboarding.user;
+    if (trimmedClassCode.length > 0) {
+      if (!data.session) {
+        throw new AppError(
+          'AUTH_ERROR',
+          'Account created, but session confirmation is required before joining a class.',
+        );
+      }
+      const onboarding = await this.joinClassByCode(trimmedClassCode);
+      return {
+        user: onboarding.user,
+        currentClass: onboarding.currentClass,
+      };
     }
 
     const profile = await this.fetchProfileById(data.user.id);
     if (profile) {
-      return profile;
+      return { user: profile, currentClass: null };
     }
 
     const now = new Date().toISOString();
     return {
-      id: data.user.id,
-      nim: normalizedNim,
-      displayName: input.displayName,
-      classId: null,
-      role: null,
-      createdAt: data.user.created_at ?? now,
-      updatedAt: now,
-      deletedAt: null,
+      user: {
+        id: data.user.id,
+        nim: normalizedNim,
+        displayName: input.displayName,
+        classId: null,
+        role: null,
+        createdAt: data.user.created_at ?? now,
+        updatedAt: now,
+        deletedAt: null,
+      },
+      currentClass: null,
     };
   }
 
@@ -622,7 +653,10 @@ export class SupabaseRemoteDataSource {
 
     return remoteMaterialToDomain(data as RemoteMaterialRow, {
       remoteUrl,
-      isAvailableOffline: params.existing.isAvailableOffline,
+      isAvailableOffline:
+        params.input.removeAttachment || params.input.file
+          ? false
+          : params.existing.isAvailableOffline,
     });
   }
 
@@ -814,13 +848,14 @@ export class SupabaseRemoteDataSource {
     userId: string;
     materialId: string;
     body: string;
+    updatedAt?: string;
   }): Promise<void> {
     const { error } = await (await this.getClient()).from('notes').upsert(
       {
         user_id: input.userId,
         material_id: input.materialId,
         body: input.body,
-        updated_at: new Date().toISOString(),
+        updated_at: input.updatedAt ?? new Date().toISOString(),
         deleted_at: null,
       },
       { onConflict: 'user_id,material_id' },
@@ -906,16 +941,16 @@ export class SupabaseRemoteDataSource {
       deleted_at: payload.deletedAt ?? null,
     };
 
-    if (payload.removeAttachment === true) {
-      row.attachment_name = null;
-      row.attachment_size_bytes = null;
-      row.attachment_mime_type = null;
-      row.attachment_storage_path = null;
-    } else if (payload.attachmentStoragePath) {
+    if (payload.attachmentStoragePath) {
       row.attachment_name = payload.attachmentName ?? null;
       row.attachment_size_bytes = payload.attachmentSizeBytes ?? null;
       row.attachment_mime_type = payload.attachmentMimeType ?? 'application/pdf';
       row.attachment_storage_path = payload.attachmentStoragePath;
+    } else if (payload.removeAttachment === true) {
+      row.attachment_name = null;
+      row.attachment_size_bytes = null;
+      row.attachment_mime_type = null;
+      row.attachment_storage_path = null;
     }
 
     const { error } = await (await this.getClient()).from('materials').upsert(row);

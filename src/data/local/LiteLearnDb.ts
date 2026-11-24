@@ -128,6 +128,7 @@ export interface LocalNoteRow {
 
 export interface LocalSyncQueueRow {
   id: string;
+  userId?: string | null;
   entityType: SyncEntityType;
   entityId: string;
   operation: SyncOperation;
@@ -275,26 +276,22 @@ export class LiteLearnDb extends Dexie {
   }
 
   override open(): ReturnType<Dexie['open']> {
-    return super.open().catch(async (error: unknown) => {
+    return super.open().catch((error: unknown) => {
       const errorName =
         typeof error === 'object' && error !== null && 'name' in error
           ? String((error as { name?: unknown }).name ?? '')
           : '';
-      const isSchemaMismatch =
+      if (
         errorName === 'UpgradeError' ||
         errorName === 'VersionError' ||
-        errorName === 'SchemaError';
-
-      if (!isSchemaMismatch) {
-        throw error;
+        errorName === 'SchemaError'
+      ) {
+        console.error(
+          'LiteLearnDb schema mismatch detected. Reload the latest app version without wiping offline data.',
+          error,
+        );
       }
-
-      console.warn(
-        'LiteLearnDb schema mismatch detected. Resetting local cache for schema migration...',
-        error,
-      );
-      await this.delete();
-      return super.open();
+      throw error;
     }) as ReturnType<Dexie['open']>;
   }
 }

@@ -20,6 +20,11 @@ import {
 } from '../mappers/courseMapper';
 import type { SupabaseRemoteDataSource } from '../remote/SupabaseRemoteDataSource';
 import { generateUuid } from './HybridAuthRepository';
+import {
+  coalesceSyncQueueRow,
+  getPendingBlobMaterialIds,
+  resolveActiveSessionUserId,
+} from './syncQueueHelpers';
 
 function isNetworkFailure(error: unknown): boolean {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
@@ -74,6 +79,7 @@ export class HybridCourseRepository implements CourseRepository {
       try {
         const follow = await this.remote.insertCourseFollow(userId, courseId);
         const content = await this.remote.fetchFollowedCoursesContent([courseId]);
+        const pendingBlobIds = await getPendingBlobMaterialIds(this.db);
 
         await this.db.transaction(
           'rw',
@@ -97,20 +103,54 @@ export class HybridCourseRepository implements CourseRepository {
             }
 
             if (content.materials.length > 0) {
+              const existingLocalRows = await this.db.materials
+                .where('id')
+                .anyOf(content.materials.map((m) => m.id))
+                .toArray();
+              const existingById = new Map(
+                existingLocalRows.map((row) => [row.id, row]),
+              );
               const cachedBlobIds = new Set(
                 await this.db.materialBlobs
                   .where('materialId')
                   .anyOf(content.materials.map((m) => m.id))
                   .primaryKeys(),
               );
-              await this.db.materials.bulkPut(
-                content.materials.map((material) =>
-                  domainMaterialToLocal({
-                    ...material,
-                    isAvailableOffline: cachedBlobIds.has(material.id),
-                  }),
-                ),
-              );
+              const staleBlobIds: string[] = [];
+              const nextRows = content.materials.map((material) => {
+                const localRow = existingById.get(material.id);
+                const attachmentChanged =
+                  material.deletedAt !== null ||
+                  material.attachment === null ||
+                  (localRow !== undefined &&
+                    (localRow.attachmentStoragePath !==
+                      material.attachment.storagePath ||
+                      localRow.attachmentSizeBytes !==
+                        material.attachment.sizeBytes ||
+                      localRow.attachmentName !== material.attachment.name));
+
+                if (
+                  attachmentChanged &&
+                  cachedBlobIds.has(material.id) &&
+                  !pendingBlobIds.has(material.id)
+                ) {
+                  staleBlobIds.push(material.id);
+                  cachedBlobIds.delete(material.id);
+                }
+
+                return domainMaterialToLocal({
+                  ...material,
+                  isAvailableOffline:
+                    material.deletedAt === null &&
+                    material.attachment !== null &&
+                    cachedBlobIds.has(material.id),
+                });
+              });
+
+              if (staleBlobIds.length > 0) {
+                await this.db.materialBlobs.bulkDelete(staleBlobIds);
+              }
+              await this.db.materials.bulkPut(nextRows);
             }
 
             if (content.deadlines.length > 0) {
@@ -159,23 +199,12 @@ export class HybridCourseRepository implements CourseRepository {
 
         if (this.remote !== null) {
           const entityId = `${userId}:${courseId}`;
-          const stale = await this.db.syncQueue
-            .where('entityId')
-            .equals(entityId)
-            .and((row) => row.entityType === 'course_follow')
-            .primaryKeys();
-          if (stale.length > 0) {
-            await this.db.syncQueue.bulkDelete(stale);
-          }
-          await this.db.syncQueue.put({
-            id: generateUuid(),
+          await coalesceSyncQueueRow(this.db, {
+            userId,
             entityType: 'course_follow',
             entityId,
             operation: 'upsert',
             payloadJson: JSON.stringify({ userId, courseId }),
-            attempts: 0,
-            lastError: null,
-            nextRetryAt: null,
             createdAt: nowIso,
           });
         }
@@ -210,23 +239,12 @@ export class HybridCourseRepository implements CourseRepository {
 
         if (queuedForSync) {
           const entityId = `${userId}:${courseId}`;
-          const stale = await this.db.syncQueue
-            .where('entityId')
-            .equals(entityId)
-            .and((row) => row.entityType === 'course_follow')
-            .primaryKeys();
-          if (stale.length > 0) {
-            await this.db.syncQueue.bulkDelete(stale);
-          }
-          await this.db.syncQueue.put({
-            id: generateUuid(),
+          await coalesceSyncQueueRow(this.db, {
+            userId,
             entityType: 'course_follow',
             entityId,
             operation: 'delete',
             payloadJson: JSON.stringify({ userId, courseId }),
-            attempts: 0,
-            lastError: null,
-            nextRetryAt: null,
             createdAt: nowIso,
           });
         }
@@ -258,20 +276,18 @@ export class HybridCourseRepository implements CourseRepository {
       updatedAt: nowIso,
       deletedAt: null,
     };
+    const activeUserId = await resolveActiveSessionUserId(this.db);
     await this.db.transaction(
       'rw',
       [this.db.courses, this.db.syncQueue],
       async () => {
         await this.db.courses.put(domainCourseToLocal(created));
-        await this.db.syncQueue.put({
-          id: generateUuid(),
+        await coalesceSyncQueueRow(this.db, {
+          userId: activeUserId,
           entityType: 'course',
           entityId: created.id,
           operation: 'upsert',
           payloadJson: JSON.stringify(created),
-          attempts: 0,
-          lastError: null,
-          nextRetryAt: null,
           createdAt: nowIso,
         });
       },
@@ -307,21 +323,19 @@ export class HybridCourseRepository implements CourseRepository {
         input.deletedAt !== undefined ? input.deletedAt : existingRow.deletedAt,
       updatedAt: nowIso,
     };
+    const activeUserId = await resolveActiveSessionUserId(this.db);
 
     await this.db.transaction(
       'rw',
       [this.db.courses, this.db.syncQueue],
       async () => {
         await this.db.courses.put(domainCourseToLocal(updated));
-        await this.db.syncQueue.put({
-          id: generateUuid(),
+        await coalesceSyncQueueRow(this.db, {
+          userId: activeUserId,
           entityType: 'course',
           entityId: updated.id,
           operation: updated.deletedAt ? 'delete' : 'upsert',
           payloadJson: JSON.stringify(updated),
-          attempts: 0,
-          lastError: null,
-          nextRetryAt: null,
           createdAt: nowIso,
         });
       },

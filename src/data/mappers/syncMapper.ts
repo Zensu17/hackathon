@@ -4,6 +4,7 @@ import type { LocalSyncQueueRow } from '../local/LiteLearnDb';
 export function localSyncItemToDomain(row: LocalSyncQueueRow): SyncQueueItem {
   return {
     id: row.id,
+    userId: row.userId ?? null,
     entityType: row.entityType,
     entityId: row.entityId,
     operation: row.operation,
@@ -18,6 +19,7 @@ export function localSyncItemToDomain(row: LocalSyncQueueRow): SyncQueueItem {
 export function domainSyncItemToLocal(item: SyncQueueItem): LocalSyncQueueRow {
   return {
     id: item.id,
+    userId: item.userId ?? null,
     entityType: item.entityType,
     entityId: item.entityId,
     operation: item.operation,

@@ -44,8 +44,9 @@ export function useSyncStatus(): SyncStatus {
     setState((prev) => ({ ...prev, isSyncing: true, lastError: null }));
     try {
       const next = await container.usecases.runSync.execute({ userId });
-      setState(next);
-      return next;
+      const normalized = { ...next, isSyncing: false };
+      setState(normalized);
+      return normalized;
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Sync failed. Local data is safe.';
@@ -55,17 +56,26 @@ export function useSyncStatus(): SyncStatus {
   }, [container, reload, userId]);
 
   const retry = useCallback(async (): Promise<void> => {
-    if (!userId) {
-      await container.retrySync();
-      await reload();
-      return;
-    }
     setState((prev) => ({ ...prev, isSyncing: true, lastError: null }));
-    const next = await container.usecases.runSync.execute({
-      userId,
-      retryFailed: true,
-    });
-    setState(next);
+    try {
+      if (!userId) {
+        await container.retrySync();
+        await reload();
+        setState((prev) => ({ ...prev, isSyncing: false }));
+        return;
+      }
+      const next = await container.usecases.runSync.execute({
+        userId,
+        retryFailed: true,
+      });
+      setState({ ...next, isSyncing: false });
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Sync retry failed. Local data is safe.';
+      setState((prev) => ({ ...prev, isSyncing: false, lastError: message }));
+    }
   }, [container, reload, userId]);
 
   useEffect(() => {

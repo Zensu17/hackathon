@@ -5,6 +5,7 @@ import type {
 } from '../entities/SyncQueueItem';
 
 export interface EnqueueSyncItemInput {
+  userId?: string | null;
   entityType: SyncEntityType;
   entityId: string;
   operation: SyncOperation;

@@ -12,6 +12,10 @@ import {
 } from '../mappers/contentMapper';
 import type { SupabaseRemoteDataSource } from '../remote/SupabaseRemoteDataSource';
 import { generateUuid } from './HybridAuthRepository';
+import {
+  coalesceSyncQueueRow,
+  resolveActiveSessionUserId,
+} from './syncQueueHelpers';
 
 function isNetworkFailure(error: unknown): boolean {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
@@ -89,20 +93,19 @@ export class HybridAnnouncementRepository implements AnnouncementRepository {
       deletedAt: null,
     };
 
+    const activeUserId = await resolveActiveSessionUserId(this.db);
+
     await this.db.transaction(
       'rw',
       [this.db.announcements, this.db.syncQueue],
       async () => {
         await this.db.announcements.put(domainAnnouncementToLocal(created));
-        await this.db.syncQueue.put({
-          id: generateUuid(),
+        await coalesceSyncQueueRow(this.db, {
+          userId: activeUserId,
           entityType: 'announcement',
           entityId: created.id,
           operation: 'upsert',
           payloadJson: JSON.stringify(created),
-          attempts: 0,
-          lastError: null,
-          nextRetryAt: null,
           createdAt: nowIso,
         });
       },
@@ -142,21 +145,19 @@ export class HybridAnnouncementRepository implements AnnouncementRepository {
         input.deletedAt !== undefined ? input.deletedAt : existingRow.deletedAt,
       updatedAt: nowIso,
     };
+    const activeUserId = await resolveActiveSessionUserId(this.db);
 
     await this.db.transaction(
       'rw',
       [this.db.announcements, this.db.syncQueue],
       async () => {
         await this.db.announcements.put(domainAnnouncementToLocal(updated));
-        await this.db.syncQueue.put({
-          id: generateUuid(),
+        await coalesceSyncQueueRow(this.db, {
+          userId: activeUserId,
           entityType: 'announcement',
           entityId: updated.id,
           operation: updated.deletedAt ? 'delete' : 'upsert',
           payloadJson: JSON.stringify(updated),
-          attempts: 0,
-          lastError: null,
-          nextRetryAt: null,
           createdAt: nowIso,
         });
       },

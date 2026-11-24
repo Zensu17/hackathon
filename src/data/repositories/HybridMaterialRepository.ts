@@ -7,6 +7,7 @@ import type {
   OfflineStorageStats,
   UpdateMaterialRecordInput,
 } from '../../domain/repositories';
+import { hasPdfMagicHeader } from '../../domain/rules';
 import type { LiteLearnDb } from '../local/LiteLearnDb';
 import { buildSampleStudyPdf } from '../local/samplePdf';
 import {
@@ -18,6 +19,11 @@ import {
   type SupabaseRemoteDataSource,
 } from '../remote/SupabaseRemoteDataSource';
 import { generateUuid } from './HybridAuthRepository';
+import {
+  coalesceSyncQueueRow,
+  getPendingBlobMaterialIds,
+  resolveActiveSessionUserId,
+} from './syncQueueHelpers';
 
 function isNetworkFailure(error: unknown): boolean {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
@@ -133,6 +139,8 @@ export class HybridMaterialRepository implements MaterialRepository {
       deletedAt: null,
     };
 
+    const activeUserId = await resolveActiveSessionUserId(this.db);
+
     await this.db.transaction(
       'rw',
       [this.db.materials, this.db.materialBlobs, this.db.syncQueue],
@@ -146,8 +154,8 @@ export class HybridMaterialRepository implements MaterialRepository {
             savedAt: nowIso,
           });
         }
-        await this.db.syncQueue.put({
-          id: generateUuid(),
+        await coalesceSyncQueueRow(this.db, {
+          userId: activeUserId,
           entityType: 'material',
           entityId: created.id,
           operation: 'upsert',
@@ -166,9 +174,6 @@ export class HybridMaterialRepository implements MaterialRepository {
             hasPendingBlob: Boolean(input.file && input.file.bytes.byteLength > 0),
             updatedAt: created.updatedAt,
           }),
-          attempts: 0,
-          lastError: null,
-          nextRetryAt: null,
           createdAt: nowIso,
         });
       },
@@ -189,16 +194,67 @@ export class HybridMaterialRepository implements MaterialRepository {
       throw new AppError('NOT_FOUND', 'Course not found.');
     }
 
+    const effectiveRemoveAttachment =
+      Boolean(input.removeAttachment) && !input.file;
+    const normalizedInput: UpdateMaterialRecordInput = {
+      ...input,
+      removeAttachment: effectiveRemoveAttachment,
+    };
+
     if (this.remote !== null) {
       try {
         const updated = await this.remote.updateMaterial({
           id,
           classId: courseRow.classId,
           existing,
-          input,
+          input: normalizedInput,
         });
-        await this.db.materials.put(domainMaterialToLocal(updated));
-        return updated;
+        const nowIso = new Date().toISOString();
+        let nextIsAvailableOffline = false;
+
+        await this.db.transaction(
+          'rw',
+          [this.db.materials, this.db.materialBlobs],
+          async () => {
+            if (updated.deletedAt !== null || effectiveRemoveAttachment) {
+              await this.db.materialBlobs.delete(id);
+              nextIsAvailableOffline = false;
+            } else if (input.file && input.file.bytes.byteLength > 0) {
+              await this.db.materialBlobs.put({
+                materialId: id,
+                blob: input.file.bytes,
+                mimeType: 'application/pdf',
+                savedAt: nowIso,
+              });
+              nextIsAvailableOffline = true;
+            } else {
+              const cached = await this.db.materialBlobs.get(id);
+              nextIsAvailableOffline = Boolean(cached && updated.attachment);
+            }
+
+            await this.db.materials.put(
+              domainMaterialToLocal({
+                ...updated,
+                isAvailableOffline: nextIsAvailableOffline,
+              }),
+            );
+          },
+        );
+
+        const prevPath = existing.attachment?.storagePath ?? null;
+        const nextPath = updated.attachment?.storagePath ?? null;
+        if (
+          prevPath &&
+          (effectiveRemoveAttachment || Boolean(input.file)) &&
+          prevPath !== nextPath
+        ) {
+          await this.remote.deleteMaterialPdf(prevPath);
+        }
+
+        return {
+          ...updated,
+          isAvailableOffline: nextIsAvailableOffline,
+        };
       } catch (err) {
         if (!isNetworkFailure(err)) {
           throw err;
@@ -209,7 +265,7 @@ export class HybridMaterialRepository implements MaterialRepository {
     const nowIso = new Date().toISOString();
     let attachment = existing.attachment;
     let isAvailableOffline = existing.isAvailableOffline;
-    if (input.removeAttachment) {
+    if (effectiveRemoveAttachment) {
       attachment = null;
       isAvailableOffline = false;
     }
@@ -223,6 +279,9 @@ export class HybridMaterialRepository implements MaterialRepository {
         remoteUrl: null,
       };
       isAvailableOffline = input.file.bytes.byteLength > 0;
+    }
+    if (input.deletedAt) {
+      isAvailableOffline = false;
     }
 
     const updated: Material = {
@@ -238,15 +297,21 @@ export class HybridMaterialRepository implements MaterialRepository {
       updatedAt: nowIso,
     };
 
+    const activeUserId = await resolveActiveSessionUserId(this.db);
+
     await this.db.transaction(
       'rw',
       [this.db.materials, this.db.materialBlobs, this.db.syncQueue],
       async () => {
         await this.db.materials.put(domainMaterialToLocal(updated));
-        if (input.removeAttachment) {
+        if (effectiveRemoveAttachment || updated.deletedAt !== null) {
           await this.db.materialBlobs.delete(id);
         }
-        if (input.file && input.file.bytes.byteLength > 0) {
+        if (
+          updated.deletedAt === null &&
+          input.file &&
+          input.file.bytes.byteLength > 0
+        ) {
           await this.db.materialBlobs.put({
             materialId: id,
             blob: input.file.bytes,
@@ -254,8 +319,8 @@ export class HybridMaterialRepository implements MaterialRepository {
             savedAt: nowIso,
           });
         }
-        await this.db.syncQueue.put({
-          id: generateUuid(),
+        await coalesceSyncQueueRow(this.db, {
+          userId: activeUserId,
           entityType: 'material',
           entityId: updated.id,
           operation: updated.deletedAt ? 'delete' : 'upsert',
@@ -272,14 +337,15 @@ export class HybridMaterialRepository implements MaterialRepository {
             attachmentMimeType: updated.attachment?.mimeType ?? null,
             attachmentStoragePath: updated.attachment?.storagePath ?? null,
             previousStoragePath: existing.attachment?.storagePath ?? null,
-            hasPendingBlob: Boolean(input.file && input.file.bytes.byteLength > 0),
-            removeAttachment: Boolean(input.removeAttachment),
+            hasPendingBlob: Boolean(
+              updated.deletedAt === null &&
+                input.file &&
+                input.file.bytes.byteLength > 0,
+            ),
+            removeAttachment: effectiveRemoveAttachment,
             deletedAt: updated.deletedAt,
             updatedAt: updated.updatedAt,
           }),
-          attempts: 0,
-          lastError: null,
-          nextRetryAt: null,
           createdAt: nowIso,
         });
       },
@@ -303,7 +369,7 @@ export class HybridMaterialRepository implements MaterialRepository {
       if (existingBlob) {
         return {
           bytes: existingBlob.blob,
-          mimeType: existingBlob.mimeType,
+          mimeType: 'application/pdf',
         };
       }
       throw new AppError(
@@ -334,10 +400,25 @@ export class HybridMaterialRepository implements MaterialRepository {
             `PDF download failed with HTTP ${response.status}.`,
           );
         }
-        const buffer = await response.arrayBuffer();
+        const rawContentType = (response.headers.get('content-type') ?? '')
+          .split(';')[0]
+          ?.trim()
+          .toLowerCase();
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        if (
+          (rawContentType &&
+            rawContentType !== 'application/pdf' &&
+            rawContentType !== 'application/octet-stream') ||
+          !hasPdfMagicHeader(bytes)
+        ) {
+          throw new AppError(
+            'INVALID_FILE_TYPE',
+            'Downloaded file is not a valid PDF document.',
+          );
+        }
         return {
-          bytes: new Uint8Array(buffer),
-          mimeType: response.headers.get('content-type') || 'application/pdf',
+          bytes,
+          mimeType: 'application/pdf',
         };
       } catch (err) {
         if (err instanceof AppError) {
@@ -356,7 +437,7 @@ export class HybridMaterialRepository implements MaterialRepository {
     if (existingBlob) {
       return {
         bytes: existingBlob.blob,
-        mimeType: existingBlob.mimeType,
+        mimeType: 'application/pdf',
       };
     }
 
@@ -377,8 +458,15 @@ export class HybridMaterialRepository implements MaterialRepository {
   async saveOfflineFile(
     materialId: string,
     bytes: Uint8Array,
-    mimeType: string,
+    _mimeType: string,
   ): Promise<Material> {
+    if (!hasPdfMagicHeader(bytes)) {
+      throw new AppError(
+        'INVALID_FILE_TYPE',
+        'Offline file is not a valid PDF document.',
+      );
+    }
+
     const existingRow = await this.db.materials.get(materialId);
     if (!existingRow || existingRow.deletedAt !== null) {
       throw new AppError('NOT_FOUND', 'Material not found.');
@@ -390,7 +478,6 @@ export class HybridMaterialRepository implements MaterialRepository {
       attachmentSizeBytes:
         existingRow.attachmentSizeBytes ?? bytes.byteLength,
       isAvailableOffline: true,
-      updatedAt: nowIso,
     };
 
     await this.db.transaction(
@@ -400,7 +487,7 @@ export class HybridMaterialRepository implements MaterialRepository {
         await this.db.materialBlobs.put({
           materialId,
           blob: bytes,
-          mimeType: mimeType || 'application/pdf',
+          mimeType: 'application/pdf',
           savedAt: nowIso,
         });
         await this.db.materials.put(updatedRow);
@@ -416,15 +503,15 @@ export class HybridMaterialRepository implements MaterialRepository {
       this.db.materials.get(materialId),
     ]);
 
-    if (!blobRow) {
+    if (!blobRow || !materialRow || materialRow.deletedAt !== null) {
       return null;
     }
 
     return {
       materialId,
-      fileName: materialRow?.attachmentName ?? 'material.pdf',
+      fileName: materialRow.attachmentName ?? 'material.pdf',
       bytes: blobRow.blob,
-      mimeType: blobRow.mimeType || 'application/pdf',
+      mimeType: 'application/pdf',
       savedAt: blobRow.savedAt,
     };
   }
@@ -435,10 +522,17 @@ export class HybridMaterialRepository implements MaterialRepository {
       throw new AppError('NOT_FOUND', 'Material not found.');
     }
 
+    const pendingBlobIds = await getPendingBlobMaterialIds(this.db);
+    if (pendingBlobIds.has(materialId)) {
+      throw new AppError(
+        'VALIDATION_ERROR',
+        'This PDF is waiting to sync. Sync changes before removing its offline copy.',
+      );
+    }
+
     const updatedRow = {
       ...existingRow,
       isAvailableOffline: false,
-      updatedAt: new Date().toISOString(),
     };
 
     await this.db.transaction(
@@ -466,14 +560,27 @@ export class HybridMaterialRepository implements MaterialRepository {
   }
 
   async clearAllOfflineFiles(): Promise<void> {
+    const pendingBlobIds = await getPendingBlobMaterialIds(this.db);
     await this.db.transaction(
       'rw',
       [this.db.materialBlobs, this.db.materials],
       async () => {
-        await this.db.materialBlobs.clear();
+        if (pendingBlobIds.size === 0) {
+          await this.db.materialBlobs.clear();
+        } else {
+          const allBlobs = await this.db.materialBlobs.toArray();
+          const removableIds = allBlobs
+            .map((row) => row.materialId)
+            .filter((id) => !pendingBlobIds.has(id));
+          if (removableIds.length > 0) {
+            await this.db.materialBlobs.bulkDelete(removableIds);
+          }
+        }
         const materials = await this.db.materials.toArray();
         const updated = materials
-          .filter((row) => row.isAvailableOffline)
+          .filter(
+            (row) => row.isAvailableOffline && !pendingBlobIds.has(row.id),
+          )
           .map((row) => ({ ...row, isAvailableOffline: false }));
         if (updated.length > 0) {
           await this.db.materials.bulkPut(updated);
