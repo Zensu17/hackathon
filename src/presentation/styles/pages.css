@@ -1414,6 +1414,14 @@
 }
 
 /* Home Study Shelf & Compact Masthead Kbd */
+.desktop-only-hint {
+  display: inline;
+}
+
+.pdf-action-btn {
+  flex: 1 1 160px;
+}
+
 .masthead-kbd {
   display: inline-flex;
   align-items: center;
@@ -1426,6 +1434,13 @@
   font-family: var(--font-mono);
   font-size: 11.5px;
   font-weight: 600;
+}
+
+@media (max-width: 767px), (hover: none) {
+  .masthead-kbd,
+  .desktop-only-hint {
+    display: none;
+  }
 }
 
 .study-shelf-grid {
@@ -1639,8 +1654,10 @@
 /* Mobile-only full-width primary CTA inside action rows (<= 479px). */
 @media (max-width: 479px) {
   .action-row > .figma-btn--primary,
-  .action-row > .btn-primary {
+  .action-row > .btn-primary,
+  .study-dock-card .action-row > .figma-btn {
     width: 100%;
+    flex: 1 1 100%;
   }
 
   .masthead-stats {

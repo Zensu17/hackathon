@@ -49,7 +49,7 @@ describe('Role rules, role formatters, and UpdateUserProfile', () => {
     // Arrange / Act / Assert
     expect(getRoleLabel('student')).toBe('Student');
     expect(getRoleLabel('rep')).toBe('Class Representative');
-    expect(getRoleLabel('lecturer')).toBe('Lecturer (Dosen)');
+    expect(getRoleLabel('lecturer')).toBe('Lecturer');
     expect(getRoleLabel('assistant')).toBe('Teaching Assistant');
     expect(getRoleLabel('admin')).toBe('Admin');
     expect(getRoleLabel(null)).toBe('No class joined yet');

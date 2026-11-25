@@ -524,4 +524,156 @@ describe('Phase 1 Backend Hardening: Sync, Offline PDFs, Notes Pull, Delta Pull 
       globalThis.fetch = originalFetch;
     }
   });
+
+  it('refreshes expired JWT via ensureFreshSession before pushing queued offline notes', async () => {
+    const db = createFakeDb();
+    await db.users.put({
+      id: 'user-1',
+      classId: 'class-1',
+      nim: '11S22001',
+      displayName: 'Student',
+      role: 'student',
+      createdAt: '2026-11-20T00:00:00.000Z',
+      updatedAt: '2026-11-20T00:00:00.000Z',
+      deletedAt: null,
+    });
+    await db.syncQueue.put({
+      id: 'q-note-1',
+      userId: 'user-1',
+      entityType: 'note',
+      entityId: 'mat-1',
+      operation: 'upsert',
+      payloadJson: JSON.stringify({
+        userId: 'user-1',
+        materialId: 'mat-1',
+        body: 'Offline study note saved for 48h without Wi-Fi',
+        updatedAt: '2026-11-25T10:00:00.000Z',
+      }),
+      attempts: 0,
+      lastError: null,
+      nextRetryAt: null,
+      createdAt: '2026-11-25T10:00:00.000Z',
+    });
+
+    const callOrder: string[] = [];
+    const ensureFreshSession = vi.fn(async () => {
+      callOrder.push('refresh');
+    });
+    const upsertNote = vi.fn(async () => {
+      callOrder.push('upsertNote');
+    });
+
+    const fakeRemote = {
+      ensureFreshSession,
+      upsertNote,
+      fetchCoursesByClassId: vi.fn(async () => []),
+      fetchFollowedCoursesContent: vi.fn(async () => ({
+        weeks: [],
+        materials: [],
+        deadlines: [],
+        announcements: [],
+      })),
+      fetchUserNotes: vi.fn(async () => []),
+    } as unknown as SupabaseRemoteDataSource;
+
+    const materialRepo = new HybridMaterialRepository(
+      db as unknown as LiteLearnDb,
+      fakeRemote,
+    );
+    const syncQueueRepo = {
+      listPending: async () =>
+        (await db.syncQueue.toArray()) as unknown as SyncQueueItem[],
+      remove: async (id: string) => db.syncQueue.delete(id),
+      markFailed: vi.fn(),
+      clearFailureState: vi.fn(),
+    } as unknown as DexieSyncQueueRepository;
+
+    const syncService = new LiteLearnSyncService(
+      db as unknown as LiteLearnDb,
+      syncQueueRepo,
+      materialRepo,
+      fakeRemote,
+    );
+
+    const state = await syncService.syncNow('user-1');
+    expect(ensureFreshSession).toHaveBeenCalledTimes(1);
+    expect(upsertNote).toHaveBeenCalledTimes(1);
+    expect(callOrder).toEqual(['refresh', 'upsertNote']);
+    expect(state.pendingCount).toBe(0);
+    expect(state.lastError).toBeNull();
+  });
+
+  it('preserves queued offline notes in syncQueue when session refresh or push fails with 401', async () => {
+    const db = createFakeDb();
+    await db.users.put({
+      id: 'user-1',
+      classId: 'class-1',
+      nim: '11S22001',
+      displayName: 'Student',
+      role: 'student',
+      createdAt: '2026-11-20T00:00:00.000Z',
+      updatedAt: '2026-11-20T00:00:00.000Z',
+      deletedAt: null,
+    });
+    await db.syncQueue.put({
+      id: 'q-note-401',
+      userId: 'user-1',
+      entityType: 'note',
+      entityId: 'mat-1',
+      operation: 'upsert',
+      payloadJson: JSON.stringify({
+        userId: 'user-1',
+        materialId: 'mat-1',
+        body: 'Critical exam note written offline',
+        updatedAt: '2026-11-25T10:00:00.000Z',
+      }),
+      attempts: 0,
+      lastError: null,
+      nextRetryAt: null,
+      createdAt: '2026-11-25T10:00:00.000Z',
+    });
+
+    const upsertNote = vi.fn();
+    const fakeRemote = {
+      ensureFreshSession: vi.fn(async () => {
+        throw new Error(
+          'Session expired while offline. Sign in again to sync queued changes without losing local notes.',
+        );
+      }),
+      upsertNote,
+      fetchCoursesByClassId: vi.fn(async () => []),
+      fetchFollowedCoursesContent: vi.fn(async () => ({
+        weeks: [],
+        materials: [],
+        deadlines: [],
+        announcements: [],
+      })),
+      fetchUserNotes: vi.fn(async () => []),
+    } as unknown as SupabaseRemoteDataSource;
+
+    const materialRepo = new HybridMaterialRepository(
+      db as unknown as LiteLearnDb,
+      fakeRemote,
+    );
+    const syncQueueRepo = {
+      listPending: async () =>
+        (await db.syncQueue.toArray()) as unknown as SyncQueueItem[],
+      remove: async (id: string) => db.syncQueue.delete(id),
+      markFailed: vi.fn(),
+      clearFailureState: vi.fn(),
+    } as unknown as DexieSyncQueueRepository;
+
+    const syncService = new LiteLearnSyncService(
+      db as unknown as LiteLearnDb,
+      syncQueueRepo,
+      materialRepo,
+      fakeRemote,
+    );
+
+    const state = await syncService.syncNow('user-1');
+    expect(upsertNote).not.toHaveBeenCalled();
+    expect(state.pendingCount).toBe(1);
+    expect(state.lastError).toContain('Session expired while offline');
+    expect(await db.syncQueue.toArray()).toHaveLength(1);
+  });
 });

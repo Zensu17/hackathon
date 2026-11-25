@@ -52,23 +52,27 @@ npm run preview    # Verify offline reload in DevTools > Application > Service W
 
 1. Copy `.env.example` to `.env` and fill `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (leave both blank to run in Local Demo Mode using IndexedDB only).
 2. In Supabase Dashboard (**Authentication -> Providers -> Email**), turn **Confirm email** OFF (NIM auth maps to `<nim>@nim.litelearn.local`).
-3. Run all five migrations in order inside the Supabase SQL Editor:
+3. Run all six migrations in order inside the Supabase SQL Editor:
    - `supabase/migrations/001_initial_schema.sql`
    - `supabase/migrations/002_nim_auth.sql`
    - `supabase/migrations/003_sync_and_rls_hardening.sql`
    - `supabase/migrations/004_security_and_sync_fixes.sql`
    - `supabase/migrations/005_roles_and_profile_customization.sql`
+   - `supabase/migrations/006_admin_user_management.sql`
 4. Verify connectivity and migrations with `npm run db:check`, and see [docs/SUPABASE-POSTGRES-SETUP.md](docs/SUPABASE-POSTGRES-SETUP.md) for the full Indonesian guide (including bootstrapping the first Class Rep and join code).
 5. Deploy the static `dist/` build to Vercel (`vercel.json` is preconfigured for SPA rewrites and PWA cache headers).
 
 ## Known Limitations & Final Day Security Mitigation
 
-- **Current pilot limits:** A NIM is not secret, so the class join code serves as the main guard against unauthorized class registration. There is no email-based password reset (passwords are reset manually by the team during the pilot). Any signed-in user can currently create a class and become its class representative (`rep`).
-- **Planned Final Day mitigation (Section 5.4):** Class Access Control UI (verified coordinator class creation, one-tap join-code rotation/expiry, and member caps enforced by Postgres Row Level Security) plus top pilot usability fixes, alongside a `"What changed"` offline digest & visual Storage Manager (`navigator.storage.persist` and quota-full handling), and bulk weekly paste-import with co-editor invites.
+- **Implemented auth & offline sync protections:** `handle_new_auth_user()` derives NIM authoritatively from the auth identifier, enforces the IT Del NIM regex (`^[0-9]{2}[A-Z][0-9]{5}$`), and ignores spoofed client metadata; `check_class_join_code()` validates class join codes before account creation; self-registration is strictly `student`-only; Admin RPCs allow rapid account deactivation or reassignment if a NIM is squatted; `LiteLearnSyncService` calls `ensureFreshSession()` before pushing queued edits after prolonged offline periods and never drops `syncQueue` items on `401` or network failures; and `openOfflinePdfBlob()` includes an automatic `<a download>` fallback alongside `window.open()` for standalone PWA / iOS Safari compatibility.
+- **Current pilot limits:** A NIM is not secret, so the class join code serves as the primary registration gate (no email-based password reset; passwords are reset by an Admin during the pilot). Physical testing so far is on Android Chrome; iOS Safari 7-day non-PWA storage eviction requires guiding iOS users to Add to Home Screen.
+- **Planned Final Day mitigation (Section 5.4):** Class Access Control UI (verified coordinator class creation, one-tap join-code rotation/expiry, member caps, and optional NIM roster allow-listing enforced by Postgres RLS) plus top pilot usability fixes; `"What changed"` offline digest & visual Storage Manager (`navigator.storage.persist()` and quota-full handling); and bulk weekly paste-import with co-editor invites backed by entity-level optimistic concurrency.
 
 ## Material AI Assistance
 
-- **Claude (Anthropic):** helped us draft and edit the abstract, design the survey questions, outline the pilot measures, draft the product requirement documents, and draft the semifinal proposal. The survey responses are real and were collected by the team. Claude did not provide any data or results.
-- **Antigravity / Gemini (Google):** helped scaffold Clean Architecture modules, implement offline sync and security hardening fixes, run code reviews, and write Vitest unit and integration tests under the team's direction using our requirement documents (directed, reviewed, and verified by Gilbert Gultom and Albert Damian Sitorus).
+All core engineering decisions and substantive deliverables were led and executed by the team: problem discovery and the 44-student dormitory survey (Zaki), 4-layer Clean Architecture design, PostgreSQL schema/RLS security rules, and sync hardening (Gilbert), React UI/UX, Dexie IndexedDB integration, Workbox PWA setup, and physical device debugging (Albert), plus manual integration and verification across the team.
 
-Every member reviews the code and text, runs the tests, and can explain the design decisions.
+- **Claude (Anthropic):** Assisted with English editorial polishing, structuring survey wording, and drafting/tightening sections of our product requirements and semifinal proposal text. All survey responses, Speedtest readings, and phone test results are real measurements collected by the team; Claude supplied no data or results.
+- **Antigravity / Gemini (Google):** Assisted with boilerplate module scaffolding, initial Vitest test drafts, and code-review/linting checks based on our team-authored specifications. Every generated snippet was reviewed, debugged, modified where needed, and manually verified against the 126-test Vitest suite and physical devices by Gilbert Gultom and Albert Damian Sitorus.
+
+Every member runs the local test suite, participates in internal architecture walkthroughs, and can explain the design decisions.

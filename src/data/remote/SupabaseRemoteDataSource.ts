@@ -262,6 +262,31 @@ export class SupabaseRemoteDataSource {
     return data.session?.user.id ?? null;
   }
 
+  // Refresh an expired or soon-to-expire JWT after prolonged offline study before pushing queued edits.
+  async ensureFreshSession(): Promise<void> {
+    const client = await this.getClient();
+    const { data, error } = await client.auth.getSession();
+    if (error) {
+      throw mapRemoteError(error, 'AUTH_ERROR');
+    }
+    const session = data.session;
+    if (!session) {
+      return;
+    }
+    if (
+      typeof session.expires_at === 'number' &&
+      session.expires_at * 1000 <= Date.now() + 60_000
+    ) {
+      const { error: refreshError } = await client.auth.refreshSession();
+      if (refreshError) {
+        throw new AppError(
+          'AUTH_ERROR',
+          'Session expired while offline. Sign in again to sync queued changes without losing local notes.',
+        );
+      }
+    }
+  }
+
   async fetchProfileById(userId: string): Promise<User | null> {
     const { data, error } = await (await this.getClient())
       .from('profiles')

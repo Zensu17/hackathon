@@ -298,7 +298,7 @@ describe('Presentation formatters and safe offline PDF opening', () => {
       '11S22001,"\'=CMD(""calc"")",Student,"Informatics 22, Class A",DEL22A,\'+Informatika,Active,2026-11-02T00:00:00.000Z',
     );
     expect(lines[2]).toBe(
-      '01D10001,"\'@Lecturer ""Quoted""",Lecturer (Dosen),Unassigned,,\'-Faculty,Inactive,2026-11-03T00:00:00.000Z',
+      '01D10001,"\'@Lecturer ""Quoted""",Lecturer,Unassigned,,\'-Faculty,Inactive,2026-11-03T00:00:00.000Z',
     );
   });
 });

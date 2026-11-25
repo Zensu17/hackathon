@@ -389,14 +389,14 @@ export function QuickSearchModal({
         </div>
 
         <footer className="quick-search-dialog__footer">
-          <span>
+          <span className="quick-search-dialog__kbd-hint">
             <kbd className="kbd-badge">Up</kbd>{' '}
             <kbd className="kbd-badge">Down</kbd> to navigate
           </span>
-          <span>
+          <span className="quick-search-dialog__kbd-hint">
             <kbd className="kbd-badge">Enter</kbd> to open
           </span>
-          <span>
+          <span className="quick-search-dialog__kbd-hint">
             <kbd className="kbd-badge">Esc</kbd> to close
           </span>
           <span className="quick-search-dialog__offline-tag">

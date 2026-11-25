@@ -444,7 +444,8 @@ export function SettingsPage(): React.ReactElement {
             <div className="settings-item__info">
               <p className="settings-item__title">Workspace guide &amp; shortcuts</p>
               <p className="settings-item__desc">
-                Press Ctrl+K (or Cmd+K on Mac) anytime to jump to courses, materials, or deadlines.
+                Tap Search anytime to jump to courses, materials, or deadlines.
+                <span className="desktop-only-hint"> On desktop, press Ctrl+K (or Cmd+K on Mac).</span>
               </p>
             </div>
             {guideHidden ? (

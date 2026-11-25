@@ -795,3 +795,9 @@
   font-size: 12px;
   font-weight: 600;
 }
+
+@media (max-width: 767px), (hover: none) {
+  .quick-search-dialog__kbd-hint {
+    display: none;
+  }
+}

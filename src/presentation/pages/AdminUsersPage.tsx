@@ -751,7 +751,7 @@ export function AdminUsersPage(): React.ReactElement {
                   id="admin-class-name"
                   type="text"
                   className="field-input"
-                  placeholder="S1 Informatika 2026"
+                  placeholder="B.Sc. Informatics 2026"
                   value={classNameInput}
                   onChange={(e) => setClassNameInput(e.target.value)}
                   disabled={isCreatingClass}
@@ -1100,7 +1100,7 @@ export function AdminUsersPage(): React.ReactElement {
                           type="text"
                           maxLength={80}
                           className="field-input"
-                          placeholder="e.g. S1 Informatika"
+                          placeholder="e.g. B.Sc. Informatics"
                           value={editStudyProgram}
                           onChange={(e) => setEditStudyProgram(e.target.value)}
                           disabled={isBusy}

@@ -9,7 +9,7 @@ export const labels = {
     footerClassMemberPrefix: 'Class:',
     roleStudent: 'Student',
     roleRep: 'Class Representative',
-    roleLecturer: 'Lecturer (Dosen)',
+    roleLecturer: 'Lecturer',
     roleAssistant: 'Teaching Assistant',
     roleAdmin: 'Admin',
     roleUnassigned: 'No class joined yet',
@@ -55,7 +55,7 @@ export const labels = {
     roleHint:
       'Every new registration starts with the Student role. An Administrator assigns Class Rep, Lecturer, Assistant, or Admin roles later.',
     studentDefaultNotice:
-      'New accounts start with the Student role. An Administrator can promote your account to Class Representative, Lecturer (Dosen), Teaching Assistant, or Admin after registration.',
+      'New accounts start with the Student role. An Administrator can promote your account to Class Representative, Lecturer, Teaching Assistant, or Admin after registration.',
     displayNameLabel: 'Full name',
     displayNamePlaceholder: 'Your full name',
     passwordLabel: 'Password',
@@ -107,7 +107,7 @@ export const labels = {
     createCardDescription:
       'Start a class workspace for your cohort. Your account will receive class representative permissions to post courses, weeks, and deadlines.',
     classNameLabel: 'Class name',
-    classNamePlaceholder: 'D3 Teknologi Informasi 2026',
+    classNamePlaceholder: 'B.Sc. Informatics 2026',
     customJoinCodeLabel: 'Custom join code (optional)',
     customJoinCodePlaceholder: 'Leave blank to generate a 6-character code',
     createCta: 'Create class as representative',
@@ -394,7 +394,7 @@ export const labels = {
     displayNameLabel: 'Display name',
     displayNamePlaceholder: 'Your full name',
     studyProgramLabel: 'Study program / Department',
-    studyProgramPlaceholder: 'e.g. S1 Informatika',
+    studyProgramPlaceholder: 'e.g. B.Sc. Informatics',
     bioLabel: 'Short bio / Study focus',
     bioPlaceholder: 'Courses you focus on, lab group, or contact hours...',
     avatarColorLabel: 'Avatar accent color',

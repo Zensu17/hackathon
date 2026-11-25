@@ -231,6 +231,10 @@ export class LiteLearnSyncService implements SyncService {
         return await this.getSyncState(userId);
       }
 
+      if (typeof this.remote.ensureFreshSession === 'function') {
+        await this.remote.ensureFreshSession();
+      }
+
       const persistedHydrationIds = await this.loadCoursesNeedingFullHydration(
         userId,
       );

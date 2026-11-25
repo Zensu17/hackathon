@@ -387,8 +387,7 @@ export function MaterialDetailPage(): React.ReactElement {
                   <>
                     <button
                       type="button"
-                      className="figma-btn figma-btn--primary figma-btn--size-m"
-                      style={{ flex: 1 }}
+                      className="figma-btn figma-btn--primary figma-btn--size-m pdf-action-btn"
                       onClick={() => void handleOpenOfflinePdf()}
                     >
                       <IconCloudCheck size={16} />
@@ -396,7 +395,7 @@ export function MaterialDetailPage(): React.ReactElement {
                     </button>
                     <button
                       type="button"
-                      className="figma-btn figma-btn--secondary figma-btn--size-m"
+                      className="figma-btn figma-btn--secondary figma-btn--size-m pdf-action-btn"
                       disabled={isRemoving}
                       onClick={() => void handleRemoveOfflinePdf()}
                     >
@@ -481,7 +480,8 @@ export function MaterialDetailPage(): React.ReactElement {
             </div>
 
             <p className="meta-text" style={{ fontSize: '12px', margin: 0 }}>
-              Auto-saves to IndexedDB as you type. Press Ctrl+S to save anytime.
+              Auto-saves to IndexedDB as you type.
+              <span className="desktop-only-hint"> Press Ctrl+S to save anytime.</span>
             </p>
 
             {/* Quick Study Prompt Chips */}
