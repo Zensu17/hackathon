@@ -64,7 +64,7 @@ npm run preview    # Verify offline reload in DevTools > Application > Service W
 ## Known Limitations & Final Day Security Mitigation
 
 - **Current pilot limits:** A NIM is not secret, so the class join code serves as the main guard against unauthorized class registration. There is no email-based password reset (passwords are reset manually by the team during the pilot). Any signed-in user can currently create a class and become its class representative (`rep`).
-- **Planned Final Day mitigation (Section 5.4):** Restrict class creation to verified coordinator invite codes with Postgres Row Level Security enforcement and rotatable/expiring join codes with security tests, alongside a `"What changed"` offline digest, Storage resilience / Storage Manager (`navigator.storage.persist` and quota-full handling), and a bulk weekly import with co-editor workflow.
+- **Planned Final Day mitigation (Section 5.4):** Class Access Control UI (verified coordinator class creation, one-tap join-code rotation/expiry, and member caps enforced by Postgres Row Level Security) plus top pilot usability fixes, alongside a `"What changed"` offline digest & visual Storage Manager (`navigator.storage.persist` and quota-full handling), and bulk weekly paste-import with co-editor invites.
 
 ## Material AI Assistance
 
