@@ -50,10 +50,23 @@ npm run preview    # Verify offline reload in DevTools > Application > Service W
 
 1. Copy `.env.example` to `.env` and fill `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (leave both blank to run in Local Demo Mode using IndexedDB only).
 2. In Supabase Dashboard (**Authentication -> Providers -> Email**), turn **Confirm email** OFF (NIM auth maps to `<nim>@nim.litelearn.local`).
-3. Run all four migrations in order inside the Supabase SQL Editor:
+3. Run all five migrations in order inside the Supabase SQL Editor:
    - `supabase/migrations/001_initial_schema.sql`
    - `supabase/migrations/002_nim_auth.sql`
    - `supabase/migrations/003_sync_and_rls_hardening.sql`
    - `supabase/migrations/004_security_and_sync_fixes.sql`
+   - `supabase/migrations/005_roles_and_profile_customization.sql`
 4. Verify connectivity and migrations with `npm run db:check`, and see [docs/SUPABASE-POSTGRES-SETUP.md](docs/SUPABASE-POSTGRES-SETUP.md) for the full Indonesian guide (including bootstrapping the first Class Rep and join code).
 5. Deploy the static `dist/` build to Vercel (`vercel.json` is preconfigured for SPA rewrites and PWA cache headers).
+
+## Known Limitations & Final Day Security Mitigation
+
+- **Current pilot limits:** A NIM is not secret, so the class join code serves as the main guard against unauthorized class registration. There is no email-based password reset (passwords are reset manually by the team during the pilot). Any signed-in user can currently create a class and become its class representative (`rep`).
+- **Planned Final Day mitigation (Section 5.4):** Restrict class creation to verified coordinator invite codes with Postgres Row Level Security enforcement and security tests, alongside Storage resilience / Storage Manager (`navigator.storage.persist` and quota-full handling) and a bulk weekly import with co-editor workflow.
+
+## Material AI Assistance
+
+- **Claude (Anthropic):** helped us draft and edit the abstract, design the survey questions, outline the pilot measures, draft the product requirement documents, and draft the semifinal proposal. The survey responses are real and were collected by the team. Claude did not provide any data or results.
+- **Antigravity / Gemini (Google):** helped scaffold Clean Architecture modules, implement offline sync and security hardening fixes, run code reviews, and write Vitest unit and integration tests under the team's direction using our requirement documents (directed, reviewed, and verified by Gilbert Gultom and Albert Damian Sitorus).
+
+Every member reviews the code and text, runs the tests, and can explain the design decisions.
