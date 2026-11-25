@@ -283,126 +283,126 @@ export function QuickSearchModal({
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
-            <h2 id={dialogTitleId} className="sr-only">
-              Quick search offline workspace
-            </h2>
+        <h2 id={dialogTitleId} className="sr-only">
+          Quick search offline workspace
+        </h2>
 
-            <div className="quick-search-dialog__header">
-              <IconSearch
-                size={18}
-                style={{ color: 'var(--color-text-muted)', flexShrink: 0 }}
-              />
-              <input
-                ref={inputRef}
-                id="quick-search-input"
-                name="quickSearch"
-                type="search"
-                className="quick-search-dialog__input"
-                placeholder={labels.home.searchPlaceholder}
-                aria-label={labels.home.searchAriaLabel}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-              {query.trim().length > 0 ? (
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-compact"
-                  onClick={() => {
-                    clear();
-                    inputRef.current?.focus();
-                  }}
-                >
-                  {labels.home.searchClear}
-                </button>
-              ) : null}
-              <button
-                type="button"
-                className="quick-search-dialog__esc"
-                onClick={onClose}
-                aria-label="Close quick search"
-              >
-                ESC
-              </button>
-            </div>
+        <div className="quick-search-dialog__header">
+          <IconSearch
+            size={18}
+            style={{ color: 'var(--color-text-muted)', flexShrink: 0 }}
+          />
+          <input
+            ref={inputRef}
+            id="quick-search-input"
+            name="quickSearch"
+            type="search"
+            className="quick-search-dialog__input"
+            placeholder={labels.home.searchPlaceholder}
+            aria-label={labels.home.searchAriaLabel}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          {query.trim().length > 0 ? (
+            <button
+              type="button"
+              className="btn btn-secondary btn-compact"
+              onClick={() => {
+                clear();
+                inputRef.current?.focus();
+              }}
+            >
+              {labels.home.searchClear}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="quick-search-dialog__esc"
+            onClick={onClose}
+            aria-label="Close quick search"
+          >
+            ESC
+          </button>
+        </div>
 
-            <div className="quick-search-dialog__body" role="listbox" aria-label="Search results">
-              {isSearching ? (
-                <p className="quick-search-dialog__status">
-                  Searching saved local records in IndexedDB...
-                </p>
-              ) : error ? (
-                <p className="field-error" role="alert">
-                  {error}
-                </p>
-              ) : query.trim().length > 0 && flatItems.length === 0 ? (
-                <p className="quick-search-dialog__status">
-                  {labels.home.searchNoResults}
-                </p>
-              ) : (
-                <ul className="quick-search-dialog__list">
-                  {flatItems.map((item, idx) => {
-                    const isSelected = idx === activeIndex;
-                    const prevCategory = idx > 0 ? flatItems[idx - 1]?.category : null;
-                    const showCategoryHeader = item.category !== prevCategory;
+        <div className="quick-search-dialog__body" role="listbox" aria-label="Search results">
+          {isSearching ? (
+            <p className="quick-search-dialog__status">
+              Searching saved local records in IndexedDB...
+            </p>
+          ) : error ? (
+            <p className="field-error" role="alert">
+              {error}
+            </p>
+          ) : query.trim().length > 0 && flatItems.length === 0 ? (
+            <p className="quick-search-dialog__status">
+              {labels.home.searchNoResults}
+            </p>
+          ) : (
+            <ul className="quick-search-dialog__list">
+              {flatItems.map((item, idx) => {
+                const isSelected = idx === activeIndex;
+                const prevCategory = idx > 0 ? flatItems[idx - 1]?.category : null;
+                const showCategoryHeader = item.category !== prevCategory;
 
-                    return (
-                      <React.Fragment key={item.id}>
-                        {showCategoryHeader ? (
-                          <li className="quick-search-dialog__group-label" aria-hidden="true">
-                            {item.category}
-                          </li>
-                        ) : null}
-                        <li>
-                          <button
-                            type="button"
-                            role="option"
-                            aria-selected={isSelected}
-                            className={
-                              isSelected
-                                ? 'quick-search-item quick-search-item--active'
-                                : 'quick-search-item'
-                            }
-                            onMouseEnter={() => setActiveIndex(idx)}
-                            onClick={() => handleSelect(item.to)}
-                          >
-                            <span className="quick-search-item__icon" aria-hidden="true">
-                              {renderCategoryIcon(item.id, item.category)}
-                            </span>
-                            <span className="quick-search-item__content">
-                              <span className="quick-search-item__top">
-                                <span className="card-tab-code">{item.badge}</span>
-                                <span className="quick-search-item__title">{item.title}</span>
-                              </span>
-                              <span className="quick-search-item__sub">{item.subtitle}</span>
-                            </span>
-                            <IconChevronRight
-                              size={16}
-                              className="quick-search-item__arrow"
-                            />
-                          </button>
-                        </li>
-                      </React.Fragment>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
+                return (
+                  <React.Fragment key={item.id}>
+                    {showCategoryHeader ? (
+                      <li className="quick-search-dialog__group-label" aria-hidden="true">
+                        {item.category}
+                      </li>
+                    ) : null}
+                    <li>
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={isSelected}
+                        className={
+                          isSelected
+                            ? 'quick-search-item quick-search-item--active'
+                            : 'quick-search-item'
+                        }
+                        onMouseEnter={() => setActiveIndex(idx)}
+                        onClick={() => handleSelect(item.to)}
+                      >
+                        <span className="quick-search-item__icon" aria-hidden="true">
+                          {renderCategoryIcon(item.id, item.category)}
+                        </span>
+                        <span className="quick-search-item__content">
+                          <span className="quick-search-item__top">
+                            <span className="card-tab-code">{item.badge}</span>
+                            <span className="quick-search-item__title">{item.title}</span>
+                          </span>
+                          <span className="quick-search-item__sub">{item.subtitle}</span>
+                        </span>
+                        <IconChevronRight
+                          size={16}
+                          className="quick-search-item__arrow"
+                        />
+                      </button>
+                    </li>
+                  </React.Fragment>
+                );
+              })}
+            </ul>
+          )}
+        </div>
 
-            <footer className="quick-search-dialog__footer">
-              <span>
-                <kbd className="kbd-badge">Up</kbd>{' '}
-                <kbd className="kbd-badge">Down</kbd> to navigate
-              </span>
-              <span>
-                <kbd className="kbd-badge">Enter</kbd> to open
-              </span>
-              <span>
-                <kbd className="kbd-badge">Esc</kbd> to close
-              </span>
-              <span className="quick-search-dialog__offline-tag">
-                100% local IndexedDB
-              </span>
-            </footer>
+        <footer className="quick-search-dialog__footer">
+          <span>
+            <kbd className="kbd-badge">Up</kbd>{' '}
+            <kbd className="kbd-badge">Down</kbd> to navigate
+          </span>
+          <span>
+            <kbd className="kbd-badge">Enter</kbd> to open
+          </span>
+          <span>
+            <kbd className="kbd-badge">Esc</kbd> to close
+          </span>
+          <span className="quick-search-dialog__offline-tag">
+            100% local IndexedDB
+          </span>
+        </footer>
       </div>
     </div>
   ) : null;
