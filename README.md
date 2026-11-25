@@ -2,6 +2,8 @@
 
 Low-bandwidth, offline-first study workspace PWA built by **Team ITD boys** (Institut Teknologi Del) for **STACK 2026 (GDGoC ITB, Case 1: Smarter Campus and Learning)**.
 
+**Live App:** https://hackathon-liart-delta.vercel.app/
+
 ## Problem Statement
 
 Institut Teknologi Del (IT Del) houses ~1,600 students across 8 mandatory on-campus dormitory buildings (90–400 residents per hall) sharing campus dorm Wi-Fi that frequently drops or stalls ("connected but no internet"), especially in the evening. From our anonymous survey of 44 dorm students (self-reported perceptions):
