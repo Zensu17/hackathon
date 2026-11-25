@@ -1,6 +1,5 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router';
-import { LazyMotion, MotionConfig, domAnimation } from 'motion/react';
 import { Toaster } from 'sonner';
 import { AppLayout, OnboardingLayout } from '../presentation/components/AppLayout';
 import { AppErrorBoundary } from '../presentation/components/ErrorBoundary';
@@ -242,18 +241,14 @@ function AppToaster(): React.ReactElement {
 export function AppRouter(): React.ReactElement {
   return (
     <ThemeProvider>
-      <LazyMotion features={domAnimation} strict>
-        <MotionConfig reducedMotion="user">
-          <AppErrorBoundary>
-            <AuthSessionProvider>
-              <BrowserRouter>
-                <AppRoutes />
-              </BrowserRouter>
-              <AppToaster />
-            </AuthSessionProvider>
-          </AppErrorBoundary>
-        </MotionConfig>
-      </LazyMotion>
+      <AppErrorBoundary>
+        <AuthSessionProvider>
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+          <AppToaster />
+        </AuthSessionProvider>
+      </AppErrorBoundary>
     </ThemeProvider>
   );
 }

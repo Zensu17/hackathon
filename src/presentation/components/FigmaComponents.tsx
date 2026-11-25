@@ -1,6 +1,5 @@
-import React, { useId, useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { AnimatePresence, m } from 'motion/react';
 import {
   IconAlertCircle,
   IconCalendarCheck,
@@ -273,12 +272,7 @@ export function Toggle({
       }}
     >
       <span className="figma-toggle__track">
-        <m.span
-          className="figma-toggle__thumb"
-          initial={false}
-          animate={{ x: checked ? 18 : 0 }}
-          transition={{ type: 'spring', stiffness: 520, damping: 34 }}
-        />
+        <span className="figma-toggle__thumb" />
       </span>
     </button>
   );
@@ -298,8 +292,6 @@ export function SegmentedControl<T extends string>({
   onChange,
   labelsMap,
 }: SegmentedControlProps<T>): React.ReactElement {
-  const pillGroupId = useId();
-
   return (
     <div className="figma-segmented" role="tablist">
       {options.map((opt) => {
@@ -315,12 +307,7 @@ export function SegmentedControl<T extends string>({
             onClick={() => onChange(opt)}
           >
             {isActive ? (
-              <m.span
-                layoutId={`segmented-pill-${pillGroupId}`}
-                className="figma-segmented__pill"
-                transition={{ type: 'spring', stiffness: 460, damping: 36 }}
-                aria-hidden="true"
-              />
+              <span className="figma-segmented__pill" aria-hidden="true" />
             ) : null}
             <span className="figma-segmented__label">{displayLabel}</span>
           </button>
@@ -725,28 +712,15 @@ export function WeekSection({
             <span className="figma-week-section__meta tabular-nums">{meta}</span>
           ) : null}
         </div>
-        <m.span
-          className="figma-week-section__chevron"
-          animate={{ rotate: expanded ? 180 : 0 }}
-          transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+        <span
+          className={`figma-week-section__chevron${expanded ? ' figma-week-section__chevron--open' : ''}`}
         >
           <IconChevronDown size={18} />
-        </m.span>
+        </span>
       </button>
-      <AnimatePresence initial={false}>
-        {expanded ? (
-          <m.div
-            key="week-body"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
-            style={{ overflow: 'hidden' }}
-          >
-            <div className="figma-week-section__body">{children}</div>
-          </m.div>
-        ) : null}
-      </AnimatePresence>
+      {expanded ? (
+        <div className="figma-week-section__body">{children}</div>
+      ) : null}
     </section>
   );
 }

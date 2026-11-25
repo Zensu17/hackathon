@@ -4,7 +4,7 @@ Low-bandwidth, offline-first study workspace PWA built by **Team ITD boys** (Ins
 
 ## Problem Statement
 
-Around 300 dormitory students at IT Del share a campus network that frequently drops or stalls ("connected but no internet"), especially in the evening. From our anonymous survey of 44 dorm students (self-reported perceptions):
+Institut Teknologi Del (IT Del) houses ~1,600 students across 8 mandatory on-campus dormitory buildings (90–400 residents per hall) sharing campus dorm Wi-Fi that frequently drops or stalls ("connected but no internet"), especially in the evening. From our anonymous survey of 44 dorm students (self-reported perceptions):
 
 - **73%** (32/44) often or almost daily have trouble opening e-learning due to dorm network instability.
 - **93%** (41/44) could not open study materials when needed this semester.
@@ -62,7 +62,7 @@ npm run preview    # Verify offline reload in DevTools > Application > Service W
 ## Known Limitations & Final Day Security Mitigation
 
 - **Current pilot limits:** A NIM is not secret, so the class join code serves as the main guard against unauthorized class registration. There is no email-based password reset (passwords are reset manually by the team during the pilot). Any signed-in user can currently create a class and become its class representative (`rep`).
-- **Planned Final Day mitigation (Section 5.4):** Restrict class creation to verified coordinator invite codes with Postgres Row Level Security enforcement and security tests, alongside Storage resilience / Storage Manager (`navigator.storage.persist` and quota-full handling) and a bulk weekly import with co-editor workflow.
+- **Planned Final Day mitigation (Section 5.4):** Restrict class creation to verified coordinator invite codes with Postgres Row Level Security enforcement and rotatable/expiring join codes with security tests, alongside a `"What changed"` offline digest, Storage resilience / Storage Manager (`navigator.storage.persist` and quota-full handling), and a bulk weekly import with co-editor workflow.
 
 ## Material AI Assistance
 

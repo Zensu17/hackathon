@@ -75,12 +75,8 @@ export default defineConfig({
           if (id.includes('node_modules/dexie')) {
             return 'vendor-dexie';
           }
-          if (
-            id.includes('node_modules/motion') ||
-            id.includes('node_modules/framer-motion') ||
-            id.includes('node_modules/sonner')
-          ) {
-            return 'vendor-motion';
+          if (id.includes('node_modules/sonner')) {
+            return 'vendor-sonner';
           }
           if (
             id.includes('node_modules/react/') ||

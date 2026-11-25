@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { m } from 'motion/react';
 import { toast } from 'sonner';
 import { useAppContainer } from '../../app/di';
 import {
@@ -731,15 +730,13 @@ export function HomePage(): React.ReactElement {
                             aria-valuemax={100}
                             aria-label={`${entry.courseName} offline cache ${percent}%`}
                           >
-                            <m.div
+                            <div
                               className={
                                 isComplete
                                   ? 'offline-meter__fill offline-meter__fill--complete'
                                   : 'offline-meter__fill'
                               }
-                              initial={{ width: 0 }}
-                              animate={{ width: `${percent}%` }}
-                              transition={{ duration: 0.45, ease: [0.23, 1, 0.32, 1] }}
+                              style={{ width: `${percent}%` }}
                             />
                           </div>
                         </div>

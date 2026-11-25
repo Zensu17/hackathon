@@ -339,10 +339,12 @@
   border-radius: var(--radius-full);
   background-color: #FFFFFF;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+  transition: transform 200ms var(--ease-out), background-color 180ms var(--ease-out);
 }
 
 .figma-toggle--on .figma-toggle__thumb {
   background-color: var(--color-primary-contrast);
+  transform: translateX(18px);
 }
 
 .figma-toggle:disabled {
@@ -887,6 +889,20 @@
   background-color: var(--color-surface-2);
   color: var(--color-text-muted);
   flex-shrink: 0;
+  transition: transform 200ms var(--ease-out);
+}
+
+.figma-week-section__chevron--open {
+  transform: rotate(180deg);
+}
+
+@keyframes figma-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .figma-week-section__body {
@@ -895,6 +911,7 @@
   flex-direction: column;
   gap: 14px;
   border-top: 1px solid var(--color-border);
+  animation: figma-fade-in 180ms var(--ease-out);
 }
 
 /* 12. Toast */

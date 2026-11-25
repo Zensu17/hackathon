@@ -1,6 +1,5 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { AnimatePresence, m } from 'motion/react';
 import { useWorkspaceSearch } from '../hooks/useWorkspaceSearch';
 import { labels } from '../i18n/labels';
 import { formatDateTime } from '../utils/formatters';
@@ -41,7 +40,7 @@ export function QuickSearchModal({
   userId,
   isRep,
   isAdmin = false,
-}: QuickSearchModalProps): React.ReactElement {
+}: QuickSearchModalProps): React.ReactElement | null {
   const navigate = useNavigate();
   const dialogTitleId = useId();
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -270,30 +269,20 @@ export function QuickSearchModal({
     return <IconSettings size={16} />;
   };
 
-  return (
-    <AnimatePresence>
-      {isOpen ? (
-        <m.div
-          className="quick-search-backdrop"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.16, ease: [0.23, 1, 0.32, 1] }}
-          onClick={onClose}
-        >
-          <m.div
-            ref={dialogRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={dialogTitleId}
-            className="quick-search-dialog"
-            initial={{ opacity: 0, y: -10, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={handleKeyDown}
-          >
+  return isOpen ? (
+    <div
+      className="quick-search-backdrop"
+      onClick={onClose}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={dialogTitleId}
+        className="quick-search-dialog"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={handleKeyDown}
+      >
             <h2 id={dialogTitleId} className="sr-only">
               Quick search offline workspace
             </h2>
@@ -414,9 +403,7 @@ export function QuickSearchModal({
                 100% local IndexedDB
               </span>
             </footer>
-          </m.div>
-        </m.div>
-      ) : null}
-    </AnimatePresence>
-  );
+      </div>
+    </div>
+  ) : null;
 }
