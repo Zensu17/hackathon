@@ -8,7 +8,7 @@ import {
   ErrorState,
   LoadingState,
 } from '../components/StateViews';
-import { DeadlineItem, WeekSection } from '../components/FigmaComponents';
+import { Chip, DeadlineItem, WeekSection } from '../components/FigmaComponents';
 import {
   IconArrowLeft,
   IconCloudCheck,
@@ -36,6 +36,9 @@ export function CourseDetailPage(): React.ReactElement {
   const isRep = canManageClassContent(session?.user.role);
   const [expandedWeekIds, setExpandedWeekIds] = useState<string[]>([]);
   const [busyMaterialId, setBusyMaterialId] = useState<string | null>(null);
+  const [isBatchDownloadingPdfs, setIsBatchDownloadingPdfs] =
+    useState<boolean>(false);
+  const [batchDownloadLabel, setBatchDownloadLabel] = useState<string>('');
 
   const navToast = (location.state as { toast?: string } | null)?.toast ?? null;
 
@@ -187,6 +190,55 @@ export function CourseDetailPage(): React.ReactElement {
 
   const { course, isFollowed, weeks, unassignedDeadlines } = courseWeeks;
 
+  const materialsWithPdf = weeks.flatMap((week) =>
+    week.materials.filter((material) => material.attachment !== null),
+  );
+  const missingOfflinePdfs = materialsWithPdf.filter(
+    (material) => !material.isAvailableOffline,
+  );
+  const savedOfflinePdfCount =
+    materialsWithPdf.length - missingOfflinePdfs.length;
+  const allPdfsOffline =
+    materialsWithPdf.length > 0 && missingOfflinePdfs.length === 0;
+
+  const handleBatchDownloadPdfs = async (): Promise<void> => {
+    if (missingOfflinePdfs.length === 0) {
+      return;
+    }
+    setIsBatchDownloadingPdfs(true);
+    let savedCount = 0;
+    let failedCount = 0;
+    try {
+      for (let index = 0; index < missingOfflinePdfs.length; index += 1) {
+        const material = missingOfflinePdfs[index]!;
+        setBatchDownloadLabel(
+          `Saving ${index + 1}/${missingOfflinePdfs.length}...`,
+        );
+        try {
+          await container.usecases.downloadMaterialFile.execute({
+            materialId: material.id,
+          });
+          savedCount += 1;
+        } catch {
+          failedCount += 1;
+        }
+      }
+      await reload();
+      if (failedCount === 0) {
+        toast.success(
+          `Saved ${savedCount} PDF${savedCount === 1 ? '' : 's'} for offline study.`,
+        );
+      } else {
+        toast.warning(
+          `Saved ${savedCount} PDF${savedCount === 1 ? '' : 's'}; ${failedCount} could not be downloaded right now.`,
+        );
+      }
+    } finally {
+      setIsBatchDownloadingPdfs(false);
+      setBatchDownloadLabel('');
+    }
+  };
+
   return (
     <div className="page-stack">
       <div className="breadcrumb-row">
@@ -223,6 +275,24 @@ export function CourseDetailPage(): React.ReactElement {
           <span className="status-chip tabular-nums">
             {`${weeks.reduce((sum, w) => sum + w.deadlines.length, 0) + unassignedDeadlines.length} deadline${weeks.reduce((sum, w) => sum + w.deadlines.length, 0) + unassignedDeadlines.length === 1 ? '' : 's'}`}
           </span>
+          {materialsWithPdf.length > 0 ? (
+            <Chip
+              type={allPdfsOffline ? 'success' : 'neutral'}
+              size="S"
+              icon={
+                allPdfsOffline ? (
+                  <IconCloudCheck size={13} />
+                ) : (
+                  <IconCloudDownload size={13} />
+                )
+              }
+              label={
+                allPdfsOffline
+                  ? 'All PDFs offline'
+                  : `${savedOfflinePdfCount}/${materialsWithPdf.length} PDFs offline`
+              }
+            />
+          ) : null}
         </div>
 
         <div className="action-row">
@@ -235,6 +305,26 @@ export function CourseDetailPage(): React.ReactElement {
           >
             {isFollowed ? labels.courses.followingLabel : labels.courses.followCta}
           </button>
+
+          {isFollowed && missingOfflinePdfs.length > 0 ? (
+            <button
+              type="button"
+              className="btn btn-secondary btn-compact"
+              disabled={isBatchDownloadingPdfs || busyMaterialId !== null}
+              onClick={() => void handleBatchDownloadPdfs()}
+            >
+              {isBatchDownloadingPdfs ? (
+                <IconRefresh size={15} className="anim-spin" />
+              ) : (
+                <IconCloudDownload size={15} />
+              )}
+              <span>
+                {isBatchDownloadingPdfs && batchDownloadLabel
+                  ? batchDownloadLabel
+                  : `Save all PDFs offline (${missingOfflinePdfs.length})`}
+              </span>
+            </button>
+          ) : null}
 
           {isRep ? (
             <>

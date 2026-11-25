@@ -2,11 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { toast } from 'sonner';
 import { DeadlineItem, SegmentedControl } from '../components/FigmaComponents';
-import { IconArrowLeft } from '../components/Icons';
+import { IconArrowLeft, IconDownload } from '../components/Icons';
 import { EmptyState, ErrorState, LoadingState } from '../components/StateViews';
 import { useAuthSession } from '../hooks/useAuthSession';
 import { useUpcomingDeadlines } from '../hooks/useUpcomingDeadlines';
 import { labels } from '../i18n/labels';
+import { buildDeadlinesIcs, triggerTextDownload } from '../utils/exportUtils';
 import { formatDateTime, formatRelativeDue } from '../utils/formatters';
 
 type DeadlineFilter = 'all' | 'week' | 'overdue' | 'completed';
@@ -27,19 +28,49 @@ export function DeadlinesPage(): React.ReactElement {
     reload,
   } = useUpcomingDeadlines(session?.user.id ?? null);
   const [filter, setFilter] = useState<DeadlineFilter>('all');
+  const [courseFilter, setCourseFilter] = useState<string>('all');
 
   useEffect(() => {
     document.title = `${labels.deadlines.heading} | ${labels.app.name}`;
   }, []);
 
   const allItems = result?.items ?? [];
+  const courseOptions = useMemo(() => {
+    const byId = new Map<
+      string,
+      { courseId: string; courseCode: string; courseName: string }
+    >();
+    for (const item of allItems) {
+      if (!byId.has(item.courseId)) {
+        byId.set(item.courseId, {
+          courseId: item.courseId,
+          courseCode: item.courseCode,
+          courseName: item.courseName,
+        });
+      }
+    }
+    return Array.from(byId.values()).sort((a, b) =>
+      a.courseCode.localeCompare(b.courseCode),
+    );
+  }, [allItems]);
+
+  const courseScopedItems = useMemo(() => {
+    if (courseFilter === 'all') {
+      return allItems;
+    }
+    const exists = allItems.some((item) => item.courseId === courseFilter);
+    return exists
+      ? allItems.filter((item) => item.courseId === courseFilter)
+      : allItems;
+  }, [allItems, courseFilter]);
+
   const activeItems = useMemo(
-    () => allItems.filter((item) => !completedIds.has(item.id)),
-    [allItems, completedIds],
+    () => courseScopedItems.filter((item) => !completedIds.has(item.id)),
+    [completedIds, courseScopedItems],
   );
   const completedItems = useMemo(
-    () => allItems.filter((item) => completedIds.has(item.id)),
-    [allItems, completedIds],
+    () => courseScopedItems.filter((item) => completedIds.has(item.id)),
+    [completedIds, courseScopedItems],
   );
   const weekCount = useMemo(
     () => activeItems.filter((item) => isWithinSevenDays(item.dueAt)).length,
@@ -57,6 +88,28 @@ export function DeadlinesPage(): React.ReactElement {
       return activeItems.filter((item) => isWithinSevenDays(item.dueAt));
     return activeItems;
   }, [activeItems, completedItems, filter]);
+
+  const handleExportIcs = (): void => {
+    const exportTarget = items.length > 0 ? items : activeItems;
+    if (exportTarget.length === 0) {
+      toast.info('No deadlines available to export.');
+      return;
+    }
+    const selectedCourse = courseOptions.find(
+      (c) => c.courseId === courseFilter,
+    );
+    const slug = selectedCourse
+      ? `-${selectedCourse.courseCode.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+      : '';
+    triggerTextDownload(
+      `litelearn-deadlines${slug}.ics`,
+      buildDeadlinesIcs(exportTarget),
+      'text/calendar;charset=utf-8',
+    );
+    toast.success(
+      `Exported ${exportTarget.length} deadline${exportTarget.length === 1 ? '' : 's'} to calendar (.ics).`,
+    );
+  };
 
   const grouped = useMemo(() => {
     const overdue = items.filter((item) => item.isOverdue);
@@ -99,9 +152,12 @@ export function DeadlinesPage(): React.ReactElement {
     );
   }
 
-    const progressPercent =
+  const totalCompletedCount = allItems.filter((item) =>
+    completedIds.has(item.id),
+  ).length;
+  const progressPercent =
     allItems.length > 0
-      ? Math.round((completedItems.length / allItems.length) * 100)
+      ? Math.round((totalCompletedCount / allItems.length) * 100)
       : 0;
 
   return (
@@ -129,7 +185,7 @@ export function DeadlinesPage(): React.ReactElement {
               Completion across followed courses
             </span>
             <span className="deadline-progress-card__meta tabular-nums">
-              {`${completedItems.length} of ${allItems.length} completed (${progressPercent}%)`}
+              {`${totalCompletedCount} of ${allItems.length} completed (${progressPercent}%)`}
             </span>
           </div>
           <div
@@ -152,18 +208,60 @@ export function DeadlinesPage(): React.ReactElement {
         </section>
       ) : null}
 
-      <div className="filter-tab-bar" style={{ maxWidth: '620px' }}>
-        <SegmentedControl<DeadlineFilter>
-          options={['all', 'week', 'overdue', 'completed']}
-          active={filter}
-          onChange={setFilter}
-          labelsMap={{
-            all: `${labels.deadlines.filterAll} (${activeItems.length})`,
-            week: `${labels.deadlines.filterWeek} (${weekCount})`,
-            overdue: `${labels.deadlines.filterOverdue} (${overdueCount})`,
-            completed: `${labels.deadlines.filterCompleted} (${completedItems.length})`,
-          }}
-        />
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+        }}
+      >
+        <div className="filter-tab-bar" style={{ maxWidth: '620px', flex: '1 1 320px' }}>
+          <SegmentedControl<DeadlineFilter>
+            options={['all', 'week', 'overdue', 'completed']}
+            active={filter}
+            onChange={setFilter}
+            labelsMap={{
+              all: `${labels.deadlines.filterAll} (${activeItems.length})`,
+              week: `${labels.deadlines.filterWeek} (${weekCount})`,
+              overdue: `${labels.deadlines.filterOverdue} (${overdueCount})`,
+              completed: `${labels.deadlines.filterCompleted} (${completedItems.length})`,
+            }}
+          />
+        </div>
+
+        {allItems.length > 0 ? (
+          <div className="action-row" style={{ marginTop: 0 }}>
+            {courseOptions.length > 1 ? (
+              <select
+                id="deadlines-course-filter"
+                name="deadlinesCourseFilter"
+                aria-label="Filter deadlines by course"
+                className="member-role-select"
+                value={courseFilter}
+                onChange={(e) => setCourseFilter(e.target.value)}
+              >
+                <option value="all">{`All courses (${courseOptions.length})`}</option>
+                {courseOptions.map((c) => (
+                  <option key={c.courseId} value={c.courseId}>
+                    {`${c.courseCode} - ${c.courseName}`}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+
+            <button
+              type="button"
+              className="btn btn-secondary btn-compact"
+              onClick={handleExportIcs}
+              disabled={items.length === 0 && activeItems.length === 0}
+            >
+              <IconDownload size={15} />
+              <span>Export calendar (.ics)</span>
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {items.length === 0 ? (

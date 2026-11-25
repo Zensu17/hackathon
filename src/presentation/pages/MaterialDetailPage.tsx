@@ -17,6 +17,7 @@ import {
   IconCloudDownload,
   IconLink,
   IconNote,
+  IconPrinter,
   IconRefresh,
   IconTrash,
 } from '../components/Icons';
@@ -205,14 +206,24 @@ export function MaterialDetailPage(): React.ReactElement {
           <IconArrowLeft size={15} />
           <span>{`${labels.materialDetail.backToCoursePrefix} ${course.code}`}</span>
         </Link>
-        {isRep ? (
-          <Link
-            to={`/manage?type=material&courseId=${course.id}&editId=${material.id}`}
+        <div className="action-row" style={{ marginTop: 0 }}>
+          <button
+            type="button"
             className="btn btn-secondary btn-compact"
+            onClick={() => window.print()}
           >
-            {labels.materialDetail.editMaterialCta}
-          </Link>
-        ) : null}
+            <IconPrinter size={15} />
+            <span>Print study sheet</span>
+          </button>
+          {isRep ? (
+            <Link
+              to={`/manage?type=material&courseId=${course.id}&editId=${material.id}`}
+              className="btn btn-secondary btn-compact"
+            >
+              {labels.materialDetail.editMaterialCta}
+            </Link>
+          ) : null}
+        </div>
       </div>
 
       {/* Editorial 2-Column Study Reader */}

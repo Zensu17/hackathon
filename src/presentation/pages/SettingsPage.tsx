@@ -34,6 +34,7 @@ import {
   setQuickGuideDismissed,
 } from '../components/QuickStartGuide';
 import { labels } from '../i18n/labels';
+import { triggerTextDownload } from '../utils/exportUtils';
 import { formatDateTime, getRoleLabel } from '../utils/formatters';
 
 export function SettingsPage(): React.ReactElement {
@@ -123,17 +124,11 @@ export function SettingsPage(): React.ReactElement {
     setIsExportingNotes(true);
     try {
       const exported = await container.exportUserNotesMarkdown(user.id);
-      const blob = new Blob([exported.markdown], {
-        type: 'text/markdown;charset=utf-8',
-      });
-      const blobUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = blobUrl;
-      anchor.download = exported.fileName;
-      anchor.click();
-      setTimeout(() => {
-        URL.revokeObjectURL(blobUrl);
-      }, 60_000);
+      triggerTextDownload(
+        exported.fileName,
+        exported.markdown,
+        'text/markdown;charset=utf-8',
+      );
       toast.success(
         `Exported ${exported.noteCount} note${exported.noteCount === 1 ? '' : 's'} and ${exported.completedDeadlineCount} completed deadline${exported.completedDeadlineCount === 1 ? '' : 's'}.`,
       );

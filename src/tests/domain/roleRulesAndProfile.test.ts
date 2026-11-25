@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { UpdateUserProfile } from '../../application/usecases';
+import { AdminUpdateUser, UpdateUserProfile } from '../../application/usecases';
 import {
   MANAGEMENT_ROLES,
   USER_ROLES,
@@ -134,18 +134,41 @@ describe('Role rules, role formatters, and UpdateUserProfile', () => {
       }),
     ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
 
+    // Reject invalid role on AdminUpdateUser
+    repos.users.set('admin-1', {
+      id: 'admin-1',
+      nim: '00A00001',
+      displayName: 'Campus Admin',
+      classId: null,
+      role: 'admin',
+      createdAt: '2026-11-04T08:00:00.000Z',
+      updatedAt: '2026-11-04T08:00:00.000Z',
+      deletedAt: null,
+    });
+    const adminUpdate = new AdminUpdateUser(repos.auth);
+
     await expect(
-      updateProfile.execute({
-        userId: user.id,
-        displayName: 'Valid Name',
+      adminUpdate.execute({
+        actorId: 'admin-1',
+        targetUserId: user.id,
         role: 'superadmin' as never,
       }),
     ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
   });
 
-  it('trims profile fields, persists valid avatar images, and clears avatarDataUrl when empty', async () => {
+  it('trims profile fields, preserves role on self-edit, lets Admin update role, and clears avatarDataUrl when empty', async () => {
     // Arrange
     const repos = createFakeRepositories();
+    repos.users.set('admin-1', {
+      id: 'admin-1',
+      nim: '00A00001',
+      displayName: 'Campus Admin',
+      classId: null,
+      role: 'admin',
+      createdAt: '2026-11-04T08:00:00.000Z',
+      updatedAt: '2026-11-04T08:00:00.000Z',
+      deletedAt: null,
+    });
     const user = await repos.auth.signUp({
       nim: '11S22002',
       password: 'password123',
@@ -153,9 +176,10 @@ describe('Role rules, role formatters, and UpdateUserProfile', () => {
       classCode: '',
     });
     const updateProfile = new UpdateUserProfile(repos.auth);
+    const adminUpdate = new AdminUpdateUser(repos.auth);
     const samplePng = 'data:image/png;base64,iVBORw0KGgo=';
 
-    // Act 1: Save trimmed profile + PNG avatar + role
+    // Act 1: Save trimmed profile + PNG avatar (role remains unchanged)
     const updated = await updateProfile.execute({
       userId: user.id,
       displayName: '  Albert Damian  ',
@@ -163,7 +187,6 @@ describe('Role rules, role formatters, and UpdateUserProfile', () => {
       bio: '  Studying offline in dorm.  ',
       avatarColor: '#1E3A8A',
       avatarDataUrl: samplePng,
-      role: 'lecturer',
     });
 
     // Assert 1
@@ -172,16 +195,24 @@ describe('Role rules, role formatters, and UpdateUserProfile', () => {
     expect(updated.bio).toBe('Studying offline in dorm.');
     expect(updated.avatarColor).toBe('#1E3A8A');
     expect(updated.avatarDataUrl).toBe(samplePng);
-    expect(updated.role).toBe('lecturer');
+    expect(updated.role).toBeNull();
 
-    // Act 2: Clear avatar with empty string
+    // Act 2: Admin assigns lecturer role
+    const promoted = await adminUpdate.execute({
+      actorId: 'admin-1',
+      targetUserId: user.id,
+      role: 'lecturer',
+    });
+    expect(promoted.role).toBe('lecturer');
+
+    // Act 3: Clear avatar with empty string
     const cleared = await updateProfile.execute({
       userId: user.id,
       displayName: 'Albert Damian',
       avatarDataUrl: '',
     });
 
-    // Assert 2
+    // Assert 3
     expect(cleared.avatarDataUrl).toBeNull();
   });
 });

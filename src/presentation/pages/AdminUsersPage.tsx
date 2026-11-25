@@ -13,6 +13,7 @@ import { Chip } from '../components/FigmaComponents';
 import {
   IconCheckCircle,
   IconCopy,
+  IconDownload,
   IconEye,
   IconEyeOff,
   IconPlus,
@@ -30,6 +31,7 @@ import {
 import { UserAvatar } from '../components/UserAvatar';
 import { useAuthSession } from '../hooks/useAuthSession';
 import { labels } from '../i18n/labels';
+import { buildUsersCsv, triggerTextDownload } from '../utils/exportUtils';
 import {
   formatDateTime,
   getRoleLabel,
@@ -188,6 +190,21 @@ export function AdminUsersPage(): React.ReactElement {
       );
     });
   }, [classById, classFilter, roleFilter, searchQuery, users]);
+
+  const handleExportCsv = (): void => {
+    if (filteredUsers.length === 0) {
+      toast.info('No matching users to export.');
+      return;
+    }
+    triggerTextDownload(
+      'litelearn-users.csv',
+      buildUsersCsv(filteredUsers, classById),
+      'text/csv;charset=utf-8',
+    );
+    toast.success(
+      `Exported ${filteredUsers.length} user${filteredUsers.length === 1 ? '' : 's'} to CSV.`,
+    );
+  };
 
   const openEditor = (target: User): void => {
     if (editingUserId === target.id) {
@@ -476,6 +493,15 @@ export function AdminUsersPage(): React.ReactElement {
             >
               <IconPlus size={16} />
               <span>{labels.adminUsers.createClassCta}</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handleExportCsv}
+              disabled={isLoading || filteredUsers.length === 0}
+            >
+              <IconDownload size={16} />
+              <span>Export CSV</span>
             </button>
             <button
               type="button"

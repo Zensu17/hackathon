@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { buildDeadlinesIcs, buildUsersCsv } from '../../presentation/utils/exportUtils';
 import {
   formatDateTime,
   formatRelativeDue,
@@ -189,5 +190,115 @@ describe('Presentation formatters and safe offline PDF opening', () => {
 
     // Assert
     expect(createdAnchor.download).toBe('Week01.PDF');
+  });
+
+  it('builds RFC 5545 calendar exports and skips invalid deadline timestamps in buildDeadlinesIcs', () => {
+    // Arrange
+    const now = new Date('2026-11-04T08:00:00.000Z');
+    const ics = buildDeadlinesIcs(
+      [
+        {
+          id: 'dl 1/alpha',
+          courseId: 'c1',
+          courseCode: 'CS101',
+          courseName: 'Algorithms; Basics',
+          weekId: 'w1',
+          title: 'Lab Report, Part 1',
+          description: 'Upload PDF\nInclude complexity proof',
+          dueAt: '2026-11-10T09:00:00.000Z',
+          isOverdue: false,
+          isDueSoon: true,
+          createdAt: '2026-11-01T00:00:00.000Z',
+          updatedAt: '2026-11-01T00:00:00.000Z',
+          deletedAt: null,
+        },
+        {
+          id: 'dl-bad',
+          courseId: 'c1',
+          courseCode: 'CS101',
+          courseName: 'Algorithms',
+          weekId: null,
+          title: 'Invalid Timestamp Item',
+          description: '',
+          dueAt: 'not-a-valid-timestamp',
+          isOverdue: false,
+          isDueSoon: false,
+          createdAt: '2026-11-01T00:00:00.000Z',
+          updatedAt: '2026-11-01T00:00:00.000Z',
+          deletedAt: null,
+        },
+      ],
+      now,
+    );
+
+    // Assert
+    expect(ics).toContain('BEGIN:VCALENDAR\r\nVERSION:2.0');
+    expect(ics).toContain('UID:dl-1-alpha@litelearn.local');
+    expect(ics).toContain('DTSTAMP:20261104T080000Z');
+    expect(ics).toContain('DTSTART:20261110T090000Z');
+    expect(ics).toContain('DTEND:20261110T093000Z');
+    expect(ics).toContain('SUMMARY:[CS101] Lab Report\\, Part 1');
+    expect(ics).toContain(
+      'DESCRIPTION:CS101 - Algorithms\\; Basics\\n\\nUpload PDF\\nInclude complexity proof',
+    );
+    expect(ics).not.toContain('dl-bad');
+    expect(ics.endsWith('END:VCALENDAR\r\n')).toBe(true);
+  });
+
+  it('builds RFC 4180 CSV user exports and neutralizes spreadsheet formula prefixes in buildUsersCsv', () => {
+    // Arrange
+    const classes = new Map([
+      [
+        'cls-1',
+        {
+          id: 'cls-1',
+          name: 'Informatics 22, Class A',
+          joinCode: 'DEL22A',
+          createdByUserId: 'u0',
+          createdAt: '2026-11-01T00:00:00.000Z',
+          updatedAt: '2026-11-01T00:00:00.000Z',
+          deletedAt: null,
+        },
+      ],
+    ]);
+
+    const csv = buildUsersCsv(
+      [
+        {
+          id: 'u1',
+          nim: '11S22001',
+          displayName: '=CMD("calc")',
+          classId: 'cls-1',
+          role: 'student',
+          studyProgram: '+Informatika',
+          createdAt: '2026-11-02T00:00:00.000Z',
+          updatedAt: '2026-11-02T00:00:00.000Z',
+          deletedAt: null,
+        },
+        {
+          id: 'u2',
+          nim: '01D10001',
+          displayName: '@Lecturer "Quoted"',
+          classId: null,
+          role: 'lecturer',
+          studyProgram: '-Faculty',
+          createdAt: '2026-11-03T00:00:00.000Z',
+          updatedAt: '2026-11-03T00:00:00.000Z',
+          deletedAt: '2026-11-04T00:00:00.000Z',
+        },
+      ],
+      classes,
+    );
+
+    const lines = csv.trimEnd().split('\r\n');
+    expect(lines[0]).toBe(
+      'NIM,Display Name,Role,Class,Join Code,Study Program,Status,Created At',
+    );
+    expect(lines[1]).toBe(
+      '11S22001,"\'=CMD(""calc"")",Student,"Informatics 22, Class A",DEL22A,\'+Informatika,Active,2026-11-02T00:00:00.000Z',
+    );
+    expect(lines[2]).toBe(
+      '01D10001,"\'@Lecturer ""Quoted""",Lecturer (Dosen),Unassigned,,\'-Faculty,Inactive,2026-11-03T00:00:00.000Z',
+    );
   });
 });
