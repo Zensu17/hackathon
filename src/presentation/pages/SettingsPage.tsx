@@ -2,7 +2,11 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { type ThemePreference, useAppContainer } from '../../app/di';
-import { canManageClassContent, formatByteSize } from '../../domain/rules';
+import {
+  canManageClassContent,
+  formatByteSize,
+  isAdminRole,
+} from '../../domain/rules';
 import {
   Chip,
   SegmentedControl,
@@ -13,9 +17,11 @@ import {
   IconCloudCheck,
   IconCloudDownload,
   IconLogout,
+  IconNote,
   IconRefresh,
   IconTrash,
   IconUser,
+  IconUsers,
 } from '../components/Icons';
 import { UserAvatar } from '../components/UserAvatar';
 import { useAuthSession } from '../hooks/useAuthSession';
@@ -51,6 +57,7 @@ export function SettingsPage(): React.ReactElement {
     totalBytes: number;
   }>({ fileCount: 0, totalBytes: 0 });
   const [isClearingPdfs, setIsClearingPdfs] = useState<boolean>(false);
+  const [isExportingNotes, setIsExportingNotes] = useState<boolean>(false);
   const [isSigningOut, setIsSigningOut] = useState<boolean>(false);
   const [isClearing, setIsClearing] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
@@ -106,6 +113,36 @@ export function SettingsPage(): React.ReactElement {
       toast.info('Downloaded PDFs cleared from this device.');
     } finally {
       setIsClearingPdfs(false);
+    }
+  };
+
+  const handleExportNotes = async (): Promise<void> => {
+    if (!user) {
+      return;
+    }
+    setIsExportingNotes(true);
+    try {
+      const exported = await container.exportUserNotesMarkdown(user.id);
+      const blob = new Blob([exported.markdown], {
+        type: 'text/markdown;charset=utf-8',
+      });
+      const blobUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = blobUrl;
+      anchor.download = exported.fileName;
+      anchor.click();
+      setTimeout(() => {
+        URL.revokeObjectURL(blobUrl);
+      }, 60_000);
+      toast.success(
+        `Exported ${exported.noteCount} note${exported.noteCount === 1 ? '' : 's'} and ${exported.completedDeadlineCount} completed deadline${exported.completedDeadlineCount === 1 ? '' : 's'}.`,
+      );
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Could not export study notes.',
+      );
+    } finally {
+      setIsExportingNotes(false);
     }
   };
 
@@ -180,10 +217,18 @@ export function SettingsPage(): React.ReactElement {
               </div>
             </div>
 
-            <Link to="/profile" className="btn btn-secondary btn-compact">
-              <IconUser size={15} />
-              <span>{labels.profile.heading}</span>
-            </Link>
+            <div className="action-row" style={{ marginTop: 0 }}>
+              <Link to="/profile" className="btn btn-secondary btn-compact">
+                <IconUser size={15} />
+                <span>{labels.profile.heading}</span>
+              </Link>
+              {isAdminRole(user.role) ? (
+                <Link to="/admin/users" className="btn btn-primary btn-compact">
+                  <IconUsers size={15} />
+                  <span>Manage users</span>
+                </Link>
+              ) : null}
+            </div>
           </div>
 
           {currentClass ? (
@@ -330,6 +375,26 @@ export function SettingsPage(): React.ReactElement {
                 {isClearingPdfs
                   ? labels.settings.clearingDownloadsCta
                   : labels.settings.clearDownloadsCta}
+              </span>
+            </button>
+          </div>
+
+          <div className="settings-item">
+            <div className="settings-item__info">
+              <p className="settings-item__title">Study notes backup</p>
+              <p className="settings-item__desc">
+                Download your private study notes and completed deadlines as a portable Markdown (.md) file.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary btn-compact"
+              disabled={isExportingNotes || !user}
+              onClick={() => void handleExportNotes()}
+            >
+              <IconNote size={14} />
+              <span>
+                {isExportingNotes ? 'Exporting...' : 'Export notes (.md)'}
               </span>
             </button>
           </div>

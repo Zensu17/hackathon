@@ -25,6 +25,9 @@ const MaterialDetailPage = lazy(
   () => import('../presentation/pages/MaterialDetailPage'),
 );
 const RepFormPage = lazy(() => import('../presentation/pages/RepFormPage'));
+const AdminUsersPage = lazy(
+  () => import('../presentation/pages/AdminUsersPage'),
+);
 const ProfilePage = lazy(() => import('../presentation/pages/ProfilePage'));
 const SettingsPage = lazy(() => import('../presentation/pages/SettingsPage'));
 
@@ -183,6 +186,14 @@ export function AppRoutes(): React.ReactElement {
           element={
             <LazyScreen>
               <RepFormPage />
+            </LazyScreen>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <LazyScreen>
+              <AdminUsersPage />
             </LazyScreen>
           }
         />

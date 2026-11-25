@@ -3,7 +3,11 @@ import { Link } from 'react-router';
 import { m } from 'motion/react';
 import { toast } from 'sonner';
 import { useAppContainer } from '../../app/di';
-import { canManageClassContent, formatByteSize } from '../../domain/rules';
+import {
+  canManageClassContent,
+  formatByteSize,
+  isAdminRole,
+} from '../../domain/rules';
 import {
   EmptyState,
   ErrorState,
@@ -31,6 +35,7 @@ import {
   IconPlus,
   IconRefresh,
   IconSearch,
+  IconUsers,
 } from '../components/Icons';
 import { useAuthSession } from '../hooks/useAuthSession';
 import { useCourses } from '../hooks/useCourses';
@@ -93,6 +98,7 @@ export function HomePage(): React.ReactElement {
   const currentClass = session?.currentClass ?? null;
   const userRole = session?.user.role ?? null;
   const isRep = canManageClassContent(userRole);
+  const isAdmin = isAdminRole(userRole);
   const roleLabel = getRoleLabel(userRole);
   const studyProgram = session?.user.studyProgram;
   const firstName = getGreetingName(
@@ -317,6 +323,12 @@ export function HomePage(): React.ReactElement {
                 <span>{labels.home.addDeadlineCta}</span>
               </Link>
             ) : null}
+            {isAdmin ? (
+              <Link to="/admin/users" className="masthead-cta">
+                <IconUsers size={16} />
+                <span>Manage users</span>
+              </Link>
+            ) : null}
           </div>
         </div>
 
@@ -356,6 +368,7 @@ export function HomePage(): React.ReactElement {
           cachedPdfCount={cachedPdfs}
           totalPdfCount={totalPdfs}
           isRep={Boolean(isRep)}
+          isAdmin={Boolean(isAdmin)}
           firstCourseId={displayCourses[0]?.id}
           onDismiss={() => {
             setQuickGuideDismissed(true);

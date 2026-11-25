@@ -7,6 +7,7 @@ import {
   IconChevronRight,
   IconCloudDownload,
   IconNote,
+  IconUsers,
 } from './Icons';
 
 const GUIDE_DISMISSED_KEY = 'litelearn_guide_dismissed';
@@ -43,6 +44,7 @@ export interface QuickStartGuideProps {
   cachedPdfCount: number;
   totalPdfCount: number;
   isRep: boolean;
+  isAdmin?: boolean;
   firstCourseId?: string;
   onDismiss: () => void;
 }
@@ -53,6 +55,7 @@ export function QuickStartGuide({
   cachedPdfCount,
   totalPdfCount,
   isRep,
+  isAdmin = false,
   firstCourseId,
   onDismiss,
 }: QuickStartGuideProps): React.ReactElement {
@@ -174,7 +177,27 @@ export function QuickStartGuide({
           </Link>
         </li>
 
-        {isRep ? (
+        {isAdmin ? (
+          <li className="quick-guide-step">
+            <div className="quick-guide-step__top">
+              <span className="quick-guide-step__icon" aria-hidden="true">
+                <IconUsers size={20} />
+              </span>
+              <div>
+                <h3 className="quick-guide-step__title">
+                  Assign user roles &amp; classes
+                </h3>
+                <p className="quick-guide-step__desc">
+                  New accounts start as Student. Open Admin Users to promote Lecturers, Teaching Assistants, Class Reps, or Admins.
+                </p>
+              </div>
+            </div>
+            <Link to="/admin/users" className="quick-guide-step__link">
+              <span>Open Admin Users</span>
+              <IconChevronRight size={16} />
+            </Link>
+          </li>
+        ) : isRep ? (
           <li className="quick-guide-step">
             <div className="quick-guide-step__top">
               <span className="quick-guide-step__icon" aria-hidden="true">

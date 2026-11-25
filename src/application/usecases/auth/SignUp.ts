@@ -3,7 +3,6 @@ import type { AuthRepository } from '../../../domain/repositories';
 import {
   isValidNim,
   isValidPassword,
-  isValidUserRole,
   normalizeNim,
 } from '../../../domain/rules';
 import type { SignUpInput } from '../../dto/AuthDto';
@@ -46,17 +45,12 @@ export class SignUp {
       throw new AppError('VALIDATION_ERROR', 'Class code is required.');
     }
 
-    if (input.role !== undefined && !isValidUserRole(input.role)) {
-      throw new AppError('VALIDATION_ERROR', 'Select a valid account role.');
-    }
-
     try {
       return await this.authRepository.signUp({
         nim,
         displayName,
         password,
         classCode,
-        ...(input.role !== undefined ? { role: input.role } : {}),
       });
     } catch (error) {
       if (isAppError(error)) {

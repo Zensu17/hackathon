@@ -1,5 +1,11 @@
 export type {
+  AdminCreateClassDto,
+  AdminCreateUserDto,
+  AdminResetPasswordDto,
+  AdminSetUserActiveDto,
+  AdminUpdateUserDto,
   AuthSessionDto,
+  ChangeOwnPasswordDto,
   ClassOnboardingResult,
   CreateClassInput,
   JoinClassInput,

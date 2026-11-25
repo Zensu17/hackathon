@@ -10,11 +10,17 @@ import type {
   Note,
   SyncQueueItem,
   User,
+  UserRole,
   Week,
 } from '../../../domain/entities';
 import type {
+  AdminCreateUserInput,
+  AdminResetPasswordInput,
+  AdminSetUserActiveInput,
+  AdminUpdateUserInput,
   AnnouncementRepository,
   AuthRepository,
+  ChangeOwnPasswordInput,
   ClassOnboardingResult,
   ClassRepository,
   CourseRepository,
@@ -85,7 +91,7 @@ export class FakeAuthRepository implements AuthRepository {
       nim: normalizedNim,
       displayName: input.displayName,
       classId: matchedClass?.id ?? null,
-      role: input.role ?? (matchedClass ? 'student' : null),
+      role: matchedClass ? 'student' : null,
       createdAt: now,
       updatedAt: now,
       deletedAt: null,
@@ -109,7 +115,7 @@ export class FakeAuthRepository implements AuthRepository {
 
     const user = this.users.get(record.userId);
     if (!user || user.deletedAt !== null) {
-      throw new AppError('AUTH_ERROR', 'Account is not active.');
+      throw new AppError('AUTH_ERROR', 'NIM or password is incorrect.');
     }
 
     this.currentUserId = user.id;
@@ -153,11 +159,209 @@ export class FakeAuthRepository implements AuthRepository {
       ...(input.avatarDataUrl !== undefined
         ? { avatarDataUrl: input.avatarDataUrl }
         : {}),
-      ...(input.role !== undefined ? { role: input.role } : {}),
       updatedAt: '2026-11-04T09:00:00.000Z',
     };
     this.users.set(updated.id, updated);
     return { ...updated };
+  }
+
+  private requireAdmin(actorId: string): User {
+    const actor = this.users.get(actorId);
+    if (!actor || actor.deletedAt !== null || actor.role !== 'admin') {
+      throw new AppError(
+        'FORBIDDEN_ROLE',
+        'Only an active Administrator can manage users and roles.',
+      );
+    }
+    return actor;
+  }
+
+  private countActiveAdmins(): number {
+    return Array.from(this.users.values()).filter(
+      (u) => u.deletedAt === null && u.role === 'admin',
+    ).length;
+  }
+
+  async listClassMembers(classId: string): Promise<User[]> {
+    return Array.from(this.users.values())
+      .filter((u) => u.deletedAt === null && u.classId === classId)
+      .map((u) => ({ ...u }));
+  }
+
+  async listAllUsers(actorId: string): Promise<User[]> {
+    this.requireAdmin(actorId);
+    return Array.from(this.users.values()).map((u) => ({ ...u }));
+  }
+
+  async listAllClasses(actorId: string): Promise<Class[]> {
+    this.requireAdmin(actorId);
+    return Array.from(this.classes.values())
+      .filter((c) => c.deletedAt === null)
+      .map((c) => ({ ...c }));
+  }
+
+  async adminCreateUser(input: AdminCreateUserInput): Promise<User> {
+    this.requireAdmin(input.actorId);
+    const normalizedNim = input.nim.trim().toUpperCase();
+    if (this.credentialsByNim.has(normalizedNim)) {
+      throw new AppError('DUPLICATE_NIM', 'This NIM is already registered.');
+    }
+    if (input.classId !== null) {
+      const cls = this.classes.get(input.classId);
+      if (!cls || cls.deletedAt !== null) {
+        throw new AppError('NOT_FOUND', 'Selected class was not found.');
+      }
+    }
+    const now = '2026-11-04T09:05:00.000Z';
+    const created: User = {
+      id: `user-${this.nextId++}`,
+      nim: normalizedNim,
+      displayName: input.displayName,
+      classId: input.classId,
+      role: input.role,
+      ...(input.studyProgram !== undefined
+        ? { studyProgram: input.studyProgram }
+        : {}),
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+    };
+    this.users.set(created.id, created);
+    this.credentialsByNim.set(normalizedNim, {
+      userId: created.id,
+      password: input.password,
+    });
+    return { ...created };
+  }
+
+  async adminUpdateUser(input: AdminUpdateUserInput): Promise<User> {
+    this.requireAdmin(input.actorId);
+    const existing = this.users.get(input.targetUserId);
+    if (!existing) {
+      throw new AppError('NOT_FOUND', 'Target user was not found.');
+    }
+    if (
+      existing.deletedAt === null &&
+      existing.role === 'admin' &&
+      input.role !== undefined &&
+      input.role !== 'admin' &&
+      this.countActiveAdmins() <= 1
+    ) {
+      throw new AppError(
+        'FORBIDDEN_ROLE',
+        'Cannot remove the Admin role from the last active Administrator.',
+      );
+    }
+    const updated: User = {
+      ...existing,
+      displayName: input.displayName ?? existing.displayName,
+      role: input.role ?? existing.role,
+      classId: input.classId !== undefined ? input.classId : existing.classId,
+      ...(input.studyProgram !== undefined
+        ? { studyProgram: input.studyProgram }
+        : {}),
+      ...(input.bio !== undefined ? { bio: input.bio } : {}),
+      updatedAt: '2026-11-04T09:10:00.000Z',
+    };
+    this.users.set(updated.id, updated);
+    return { ...updated };
+  }
+
+  async adminSetUserActive(input: AdminSetUserActiveInput): Promise<User> {
+    this.requireAdmin(input.actorId);
+    if (input.actorId === input.targetUserId && !input.active) {
+      throw new AppError(
+        'FORBIDDEN_ROLE',
+        'You cannot deactivate your own admin account.',
+      );
+    }
+    const existing = this.users.get(input.targetUserId);
+    if (!existing) {
+      throw new AppError('NOT_FOUND', 'Target user was not found.');
+    }
+    if (
+      !input.active &&
+      existing.deletedAt === null &&
+      existing.role === 'admin' &&
+      this.countActiveAdmins() <= 1
+    ) {
+      throw new AppError(
+        'FORBIDDEN_ROLE',
+        'Cannot deactivate the last active Administrator.',
+      );
+    }
+    const updated: User = {
+      ...existing,
+      deletedAt: input.active ? null : '2026-11-04T09:15:00.000Z',
+      updatedAt: '2026-11-04T09:15:00.000Z',
+    };
+    this.users.set(updated.id, updated);
+    return { ...updated };
+  }
+
+  async adminResetPassword(input: AdminResetPasswordInput): Promise<void> {
+    this.requireAdmin(input.actorId);
+    const existing = this.users.get(input.targetUserId);
+    if (!existing) {
+      throw new AppError('NOT_FOUND', 'Target user was not found.');
+    }
+    this.credentialsByNim.set(existing.nim, {
+      userId: existing.id,
+      password: input.newPassword,
+    });
+  }
+
+  async adminCreateClass(
+    actorId: string,
+    name: string,
+    joinCode: string,
+  ): Promise<Class> {
+    this.requireAdmin(actorId);
+    const normalizedCode = joinCode.trim().toUpperCase();
+    const collision = Array.from(this.classes.values()).some(
+      (c) => c.deletedAt === null && c.joinCode === normalizedCode,
+    );
+    if (collision) {
+      throw new AppError(
+        'DUPLICATE_JOIN_CODE',
+        'Join code is already assigned to another class.',
+      );
+    }
+    const now = '2026-11-04T09:20:00.000Z';
+    const created: Class = {
+      id: `admin-class-${this.nextId++}`,
+      name,
+      joinCode: normalizedCode,
+      createdByUserId: actorId,
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+    };
+    this.classes.set(created.id, created);
+    return { ...created };
+  }
+
+  async changeOwnPassword(input: ChangeOwnPasswordInput): Promise<void> {
+    const existing = this.users.get(input.userId);
+    if (!existing || existing.deletedAt !== null) {
+      throw new AppError('NOT_FOUND', 'User account not found.');
+    }
+    const cred = this.credentialsByNim.get(existing.nim);
+    if (!cred || cred.password !== input.currentPassword) {
+      throw new AppError('AUTH_ERROR', 'Current password is incorrect.');
+    }
+    this.credentialsByNim.set(existing.nim, {
+      userId: existing.id,
+      password: input.newPassword,
+    });
+  }
+
+  async updateMemberRole(
+    actorId: string,
+    targetUserId: string,
+    nextRole: UserRole,
+  ): Promise<User> {
+    return this.adminUpdateUser({ actorId, targetUserId, role: nextRole });
   }
 }
 

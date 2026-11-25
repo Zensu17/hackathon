@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router';
-import { canManageClassContent } from '../../domain/rules';
+import { canManageClassContent, isAdminRole } from '../../domain/rules';
 import { useAuthSession } from '../hooks/useAuthSession';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import { useTheme } from '../hooks/useTheme';
@@ -18,6 +18,7 @@ import {
   IconSearch,
   IconSettings,
   IconSun,
+  IconUsers,
   IconWifiOff,
 } from './Icons';
 import { NetworkStatus } from './FigmaComponents';
@@ -148,6 +149,7 @@ export function AppLayout(): React.ReactElement {
   const [isQuickSearchOpen, setIsQuickSearchOpen] = useState<boolean>(false);
 
   const isManager = canManageClassContent(session?.user.role);
+  const isAdmin = isAdminRole(session?.user.role);
   const currentClass = session?.currentClass ?? null;
   const roleLabel = getRoleLabel(session?.user.role);
   const displayName = session?.user.displayName ?? 'Member';
@@ -270,6 +272,21 @@ export function AppLayout(): React.ReactElement {
                 >
                   <IconNote size={19} />
                   <span>{labels.nav.manage}</span>
+                </NavLink>
+              </li>
+            ) : null}
+            {isAdmin ? (
+              <li>
+                <NavLink
+                  to="/admin/users"
+                  className={({ isActive }) =>
+                    isActive
+                      ? 'figma-sidenav__link figma-sidenav__link--active'
+                      : 'figma-sidenav__link'
+                  }
+                >
+                  <IconUsers size={19} />
+                  <span>{labels.nav.adminUsers}</span>
                 </NavLink>
               </li>
             ) : null}
@@ -509,6 +526,7 @@ export function AppLayout(): React.ReactElement {
         classId={session?.user.classId ?? null}
         userId={session?.user.id ?? null}
         isRep={Boolean(isManager)}
+        isAdmin={Boolean(isAdmin)}
       />
     </div>
   );

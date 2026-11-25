@@ -1,15 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { toast } from 'sonner';
-import type { UserRole } from '../../domain/entities';
-import { canManageClassContent, USER_ROLES } from '../../domain/rules';
+import { useAppContainer } from '../../app/di';
+import { canManageClassContent, isAdminRole } from '../../domain/rules';
 import { Chip } from '../components/FigmaComponents';
 import {
   IconArrowLeft,
   IconCamera,
   IconCheckCircle,
+  IconEye,
+  IconEyeOff,
+  IconShield,
   IconTrash,
   IconUser,
+  IconUsers,
 } from '../components/Icons';
 import { UserAvatar } from '../components/UserAvatar';
 import { useAuthSession } from '../hooks/useAuthSession';
@@ -74,6 +78,7 @@ async function resizeImageToDataUrl(file: File): Promise<string> {
 }
 
 export function ProfilePage(): React.ReactElement {
+  const container = useAppContainer();
   const { session, updateProfile, isLocalFallbackMode } = useAuthSession();
   const user = session?.user ?? null;
   const currentClass = session?.currentClass ?? null;
@@ -89,9 +94,16 @@ export function ProfilePage(): React.ReactElement {
   const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(
     user?.avatarDataUrl ?? null,
   );
-  const [role, setRole] = useState<UserRole>(user?.role ?? 'student');
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+
+  const [currentPassword, setCurrentPassword] = useState<string>('');
+  const [newPassword, setNewPassword] = useState<string>('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState<string>('');
+  const [showCurrentPw, setShowCurrentPw] = useState<boolean>(false);
+  const [showNewPw, setShowNewPw] = useState<boolean>(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [isChangingPassword, setIsChangingPassword] = useState<boolean>(false);
 
   useEffect(() => {
     document.title = `${labels.profile.heading} | ${labels.app.name}`;
@@ -106,7 +118,6 @@ export function ProfilePage(): React.ReactElement {
     setBio(user.bio ?? '');
     setAvatarColor(user.avatarColor ?? '#2563EB');
     setAvatarDataUrl(user.avatarDataUrl ?? null);
-    setRole(user.role ?? 'student');
   }, [user]);
 
   const handlePhotoChange = async (
@@ -154,7 +165,6 @@ export function ProfilePage(): React.ReactElement {
         bio: bio.trim(),
         avatarColor,
         avatarDataUrl,
-        ...(isLocalFallbackMode ? { role } : {}),
       });
       toast.success(labels.profile.savedToast);
     } catch (err) {
@@ -163,6 +173,55 @@ export function ProfilePage(): React.ReactElement {
       );
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handlePasswordSubmit = async (
+    event: React.FormEvent<HTMLFormElement>,
+  ): Promise<void> => {
+    event.preventDefault();
+    if (!user) {
+      return;
+    }
+    setPasswordError(null);
+
+    if (currentPassword.length === 0) {
+      setPasswordError('Enter your current password.');
+      return;
+    }
+    if (newPassword.length < 8) {
+      setPasswordError('New password must be at least 8 characters.');
+      return;
+    }
+    if (confirmNewPassword !== newPassword) {
+      setPasswordError('New passwords do not match.');
+      return;
+    }
+    if (newPassword === currentPassword) {
+      setPasswordError(
+        'Choose a new password different from your current password.',
+      );
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      await container.changeOwnPassword({
+        userId: user.id,
+        currentPassword,
+        newPassword,
+        confirmNewPassword,
+      });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      toast.success(labels.profile.passwordChangedToast);
+    } catch (err) {
+      setPasswordError(
+        err instanceof Error ? err.message : 'Could not update password.',
+      );
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -175,8 +234,9 @@ export function ProfilePage(): React.ReactElement {
   }
 
   const previewName = displayName.trim() || user.displayName;
-  const previewRole = isLocalFallbackMode ? role : (user.role ?? 'student');
-  const previewRoleLabel = getRoleLabel(previewRole);
+  const activeRole = user.role ?? 'student';
+  const activeRoleLabel = getRoleLabel(activeRole);
+  const isAdmin = isAdminRole(user.role);
 
   return (
     <div className="page-stack">
@@ -203,10 +263,10 @@ export function ProfilePage(): React.ReactElement {
           <div className="card-tab-bar" style={{ marginBottom: 0 }}>
             <span className="card-tab-code">{user.nim}</span>
             <Chip
-              type={canManageClassContent(previewRole) ? 'info' : 'neutral'}
+              type={canManageClassContent(activeRole) ? 'info' : 'neutral'}
               size="S"
               icon={<IconUser size={13} />}
-              label={previewRoleLabel}
+              label={activeRoleLabel}
             />
           </div>
 
@@ -236,206 +296,334 @@ export function ProfilePage(): React.ReactElement {
           </p>
 
           <p className="field-hint" style={{ margin: 0 }}>
-            {getRoleSummary(previewRole)}
+            {getRoleSummary(activeRole)}
           </p>
         </aside>
 
-        <section
-          className="index-card"
-          aria-labelledby="profile-form-heading"
-        >
-          <div className="card-tab-bar">
-            <span className="card-tab-code">IDENTITY</span>
-            <Chip
-              type="success"
-              size="S"
-              icon={<IconCheckCircle size={13} />}
-              label={isLocalFallbackMode ? 'Saved on device' : 'Synced profile'}
-            />
-          </div>
-
-          <h2 id="profile-form-heading" style={{ marginBottom: '16px' }}>
-            {labels.profile.formHeading}
-          </h2>
-
-          <form
-            className="form-stack"
-            noValidate
-            onSubmit={(e) => void handleSubmit(e)}
+        <div className="card-stack">
+          <section
+            className="index-card"
+            aria-labelledby="profile-form-heading"
           >
-            <div className="field-group">
-              <label htmlFor="profile-display-name" className="field-label">
-                {labels.profile.displayNameLabel}
-              </label>
-              <input
-                id="profile-display-name"
-                name="displayName"
-                type="text"
-                maxLength={80}
-                className="field-input"
-                placeholder={labels.profile.displayNamePlaceholder}
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                disabled={isSaving}
+            <div className="card-tab-bar">
+              <span className="card-tab-code">IDENTITY</span>
+              <Chip
+                type="success"
+                size="S"
+                icon={<IconCheckCircle size={13} />}
+                label={isLocalFallbackMode ? 'Saved on device' : 'Synced profile'}
               />
             </div>
 
-            <div className="field-group">
-              <label htmlFor="profile-study-program" className="field-label">
-                {labels.profile.studyProgramLabel}
-              </label>
-              <input
-                id="profile-study-program"
-                name="studyProgram"
-                type="text"
-                maxLength={80}
-                className="field-input"
-                placeholder={labels.profile.studyProgramPlaceholder}
-                value={studyProgram}
-                onChange={(e) => setStudyProgram(e.target.value)}
-                disabled={isSaving}
-              />
-            </div>
+            <h2 id="profile-form-heading" style={{ marginBottom: '16px' }}>
+              {labels.profile.formHeading}
+            </h2>
 
-            <div className="field-group">
-              <label htmlFor="profile-bio" className="field-label">
-                {labels.profile.bioLabel}
-              </label>
-              <textarea
-                id="profile-bio"
-                name="bio"
-                maxLength={240}
-                className="field-input"
-                placeholder={labels.profile.bioPlaceholder}
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
-                disabled={isSaving}
-              />
-              <div className="bio-counter-row">
-                <span>Visible on your profile card</span>
-                <span className="tabular-nums">{`${bio.length}/240`}</span>
-              </div>
-            </div>
-
-            <div className="field-group">
-              <span className="field-label">{labels.profile.avatarColorLabel}</span>
-              <div
-                className="avatar-swatch-row"
-                role="radiogroup"
-                aria-label={labels.profile.avatarColorLabel}
-              >
-                {AVATAR_COLOR_OPTIONS.map((swatch) => {
-                  const isActive =
-                    avatarColor.toUpperCase() === swatch.hex.toUpperCase();
-                  return (
-                    <button
-                      key={swatch.hex}
-                      type="button"
-                      role="radio"
-                      aria-checked={isActive}
-                      aria-label={swatch.name}
-                      title={swatch.name}
-                      className={
-                        isActive
-                          ? 'avatar-swatch avatar-swatch--active'
-                          : 'avatar-swatch'
-                      }
-                      style={{ backgroundColor: swatch.hex }}
-                      onClick={() => setAvatarColor(swatch.hex)}
-                      disabled={isSaving}
-                    >
-                      {isActive ? <IconCheckCircle size={16} /> : null}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="field-group">
-              <span className="field-label">{labels.profile.avatarPhotoLabel}</span>
-              <div className="avatar-upload-row">
+            <form
+              className="form-stack"
+              noValidate
+              onSubmit={(e) => void handleSubmit(e)}
+            >
+              <div className="field-group">
+                <label htmlFor="profile-display-name" className="field-label">
+                  {labels.profile.displayNameLabel}
+                </label>
                 <input
-                  ref={fileInputRef}
-                  id="profile-avatar-upload"
-                  name="avatarFile"
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  className="sr-only"
-                  onChange={(e) => void handlePhotoChange(e)}
-                />
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-compact"
-                  onClick={() => fileInputRef.current?.click()}
+                  id="profile-display-name"
+                  name="displayName"
+                  type="text"
+                  maxLength={80}
+                  className="field-input"
+                  placeholder={labels.profile.displayNamePlaceholder}
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
                   disabled={isSaving}
+                />
+              </div>
+
+              <div className="field-group">
+                <label htmlFor="profile-study-program" className="field-label">
+                  {labels.profile.studyProgramLabel}
+                </label>
+                <input
+                  id="profile-study-program"
+                  name="studyProgram"
+                  type="text"
+                  maxLength={80}
+                  className="field-input"
+                  placeholder={labels.profile.studyProgramPlaceholder}
+                  value={studyProgram}
+                  onChange={(e) => setStudyProgram(e.target.value)}
+                  disabled={isSaving}
+                />
+              </div>
+
+              <div className="field-group">
+                <label htmlFor="profile-bio" className="field-label">
+                  {labels.profile.bioLabel}
+                </label>
+                <textarea
+                  id="profile-bio"
+                  name="bio"
+                  maxLength={240}
+                  className="field-input"
+                  placeholder={labels.profile.bioPlaceholder}
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  disabled={isSaving}
+                />
+                <div className="bio-counter-row">
+                  <span>Visible on your profile card</span>
+                  <span className="tabular-nums">{`${bio.length}/240`}</span>
+                </div>
+              </div>
+
+              <div className="field-group">
+                <span className="field-label">
+                  {labels.profile.avatarColorLabel}
+                </span>
+                <div
+                  className="avatar-swatch-row"
+                  role="radiogroup"
+                  aria-label={labels.profile.avatarColorLabel}
                 >
-                  <IconCamera size={15} />
-                  <span>{labels.profile.uploadPhotoCta}</span>
-                </button>
-                {avatarDataUrl ? (
+                  {AVATAR_COLOR_OPTIONS.map((swatch) => {
+                    const isActive =
+                      avatarColor.toUpperCase() === swatch.hex.toUpperCase();
+                    return (
+                      <button
+                        key={swatch.hex}
+                        type="button"
+                        role="radio"
+                        aria-checked={isActive}
+                        aria-label={swatch.name}
+                        title={swatch.name}
+                        className={
+                          isActive
+                            ? 'avatar-swatch avatar-swatch--active'
+                            : 'avatar-swatch'
+                        }
+                        style={{ backgroundColor: swatch.hex }}
+                        onClick={() => setAvatarColor(swatch.hex)}
+                        disabled={isSaving}
+                      >
+                        {isActive ? <IconCheckCircle size={16} /> : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="field-group">
+                <span className="field-label">
+                  {labels.profile.avatarPhotoLabel}
+                </span>
+                <div className="avatar-upload-row">
+                  <input
+                    ref={fileInputRef}
+                    id="profile-avatar-upload"
+                    name="avatarFile"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="sr-only"
+                    onChange={(e) => void handlePhotoChange(e)}
+                  />
                   <button
                     type="button"
-                    className="btn btn-danger-outline btn-compact"
-                    onClick={() => setAvatarDataUrl(null)}
+                    className="btn btn-secondary btn-compact"
+                    onClick={() => fileInputRef.current?.click()}
                     disabled={isSaving}
                   >
-                    <IconTrash size={15} />
-                    <span>{labels.profile.removePhotoCta}</span>
+                    <IconCamera size={15} />
+                    <span>{labels.profile.uploadPhotoCta}</span>
                   </button>
+                  {avatarDataUrl ? (
+                    <button
+                      type="button"
+                      className="btn btn-danger-outline btn-compact"
+                      onClick={() => setAvatarDataUrl(null)}
+                      disabled={isSaving}
+                    >
+                      <IconTrash size={15} />
+                      <span>{labels.profile.removePhotoCta}</span>
+                    </button>
+                  ) : null}
+                </div>
+                <p className="field-hint">{labels.profile.photoHint}</p>
+              </div>
+
+              <div className="profile-role-readonly">
+                <div className="profile-role-readonly__head">
+                  <span className="field-label" style={{ marginBottom: 0 }}>
+                    {labels.profile.roleLabel}
+                  </span>
+                  <Chip
+                    type={canManageClassContent(activeRole) ? 'info' : 'neutral'}
+                    size="S"
+                    icon={<IconShield size={13} />}
+                    label={activeRoleLabel}
+                  />
+                </div>
+                <p className="field-hint" style={{ margin: 0 }}>
+                  {labels.profile.roleManagedHint}
+                </p>
+                {isAdmin ? (
+                  <div style={{ marginTop: '4px' }}>
+                    <Link
+                      to="/admin/users"
+                      className="btn btn-secondary btn-compact"
+                    >
+                      <IconUsers size={15} />
+                      <span>Open Admin Users</span>
+                    </Link>
+                  </div>
                 ) : null}
               </div>
-              <p className="field-hint">{labels.profile.photoHint}</p>
-            </div>
 
-            <div className="field-group">
-              <label htmlFor="profile-role-select" className="field-label">
-                {labels.profile.roleLabel}
-              </label>
-              {isLocalFallbackMode ? (
-                <>
-                  <select
-                    id="profile-role-select"
-                    name="role"
-                    className="field-input"
-                    value={role}
-                    onChange={(e) => setRole(e.target.value as UserRole)}
-                    disabled={isSaving}
-                  >
-                    {USER_ROLES.map((candidate) => (
-                      <option key={candidate} value={candidate}>
-                        {getRoleLabel(candidate)}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="field-hint">{labels.profile.roleLocalHint}</p>
-                </>
-              ) : (
-                <p className="field-hint" style={{ marginTop: 0 }}>
-                  {`${getRoleLabel(user.role)}. ${labels.profile.roleRemoteHint}`}
-                </p>
-              )}
-            </div>
+              {formError ? (
+                <div className="field-error" role="alert">
+                  {formError}
+                </div>
+              ) : null}
 
-            {formError ? (
-              <div className="field-error" role="alert">
-                {formError}
+              <div className="action-row">
+                <button
+                  type="submit"
+                  className="figma-btn figma-btn--primary figma-btn--size-m"
+                  disabled={isSaving}
+                >
+                  {isSaving ? labels.profile.savingCta : labels.profile.saveCta}
+                </button>
+                <Link to="/" className="btn btn-secondary">
+                  {labels.repForm.returnHomeCta}
+                </Link>
               </div>
-            ) : null}
+            </form>
+          </section>
 
-            <div className="action-row">
-              <button
-                type="submit"
-                className="figma-btn figma-btn--primary figma-btn--size-m"
-                disabled={isSaving}
-              >
-                {isSaving ? labels.profile.savingCta : labels.profile.saveCta}
-              </button>
-              <Link to="/" className="btn btn-secondary">
-                {labels.repForm.returnHomeCta}
-              </Link>
+          <section
+            className="index-card"
+            aria-labelledby="profile-password-heading"
+          >
+            <div className="card-tab-bar">
+              <span className="card-tab-code">SECURITY</span>
             </div>
-          </form>
-        </section>
+            <h2 id="profile-password-heading" style={{ marginBottom: '6px' }}>
+              {labels.profile.passwordSectionHeading}
+            </h2>
+            <p className="meta-text" style={{ marginBottom: '16px' }}>
+              Update your account password. Requires at least 8 characters.
+            </p>
+
+            <form
+              className="form-stack"
+              noValidate
+              onSubmit={(e) => void handlePasswordSubmit(e)}
+            >
+              <div className="field-group">
+                <label htmlFor="profile-current-password" className="field-label">
+                  {labels.profile.currentPasswordLabel}
+                </label>
+                <div className="figma-field__control">
+                  <input
+                    id="profile-current-password"
+                    name="currentPassword"
+                    type={showCurrentPw ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    className="figma-field__input"
+                    placeholder="Enter your current password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    disabled={isChangingPassword}
+                  />
+                  <button
+                    type="button"
+                    className="figma-field__action"
+                    onClick={() => setShowCurrentPw((prev) => !prev)}
+                    aria-label={
+                      showCurrentPw
+                        ? labels.auth.hidePasswordAria
+                        : labels.auth.showPasswordAria
+                    }
+                  >
+                    {showCurrentPw ? <IconEyeOff size={18} /> : <IconEye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="admin-inline-form-grid">
+                <div className="field-group">
+                  <label htmlFor="profile-new-password" className="field-label">
+                    {labels.profile.newPasswordLabel}
+                  </label>
+                  <div className="figma-field__control">
+                    <input
+                      id="profile-new-password"
+                      name="newPassword"
+                      type={showNewPw ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      className="figma-field__input"
+                      placeholder={labels.auth.passwordPlaceholder}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      disabled={isChangingPassword}
+                    />
+                    <button
+                      type="button"
+                      className="figma-field__action"
+                      onClick={() => setShowNewPw((prev) => !prev)}
+                      aria-label={
+                        showNewPw
+                          ? labels.auth.hidePasswordAria
+                          : labels.auth.showPasswordAria
+                      }
+                    >
+                      {showNewPw ? <IconEyeOff size={18} /> : <IconEye size={18} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="field-group">
+                  <label
+                    htmlFor="profile-confirm-new-password"
+                    className="field-label"
+                  >
+                    {labels.profile.confirmNewPasswordLabel}
+                  </label>
+                  <input
+                    id="profile-confirm-new-password"
+                    name="confirmNewPassword"
+                    type={showNewPw ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    className="field-input"
+                    placeholder="Re-enter new password"
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    disabled={isChangingPassword}
+                  />
+                </div>
+              </div>
+
+              {passwordError ? (
+                <div className="field-error" role="alert">
+                  {passwordError}
+                </div>
+              ) : null}
+
+              <div className="action-row" style={{ marginTop: 0 }}>
+                <button
+                  type="submit"
+                  className="btn btn-secondary"
+                  disabled={isChangingPassword}
+                >
+                  {isChangingPassword
+                    ? labels.profile.changingPasswordCta
+                    : labels.profile.changePasswordCta}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
       </div>
     </div>
   );

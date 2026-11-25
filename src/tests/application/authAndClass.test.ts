@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { AppError } from '../../application/errors/AppError';
 import {
+  AdminCreateClass,
+  AdminCreateUser,
+  AdminResetPassword,
+  AdminSetUserActive,
+  AdminUpdateUser,
+  ChangeOwnPassword,
   CreateClass,
   GetCurrentUser,
   JoinClass,
@@ -383,60 +389,171 @@ describe('Auth and class onboarding use cases', () => {
     expect(joined.currentClass.joinCode).toBe('IF-2026');
   });
 
-  it('supports signing up with lecturer/admin roles and customizing user profiles via UpdateUserProfile', async () => {
+  it('always registers new users as student and delegates role and account administration to Admin use cases', async () => {
     const repos = createFakeRepositories();
     const createClass = new CreateClass(repos.classes);
     const signUp = new SignUp(repos.auth);
+    const signIn = new SignIn(repos.auth);
     const updateProfile = new UpdateUserProfile(repos.auth);
+    const adminCreateUser = new AdminCreateUser(repos.auth);
+    const adminUpdateUser = new AdminUpdateUser(repos.auth);
+    const adminSetUserActive = new AdminSetUserActive(repos.auth);
+    const adminResetPassword = new AdminResetPassword(repos.auth);
+    const adminCreateClass = new AdminCreateClass(repos.auth);
+    const changeOwnPassword = new ChangeOwnPassword(repos.auth);
 
     repos.users.set('setup-admin', {
       id: 'setup-admin',
       nim: '00A00001',
-      displayName: 'Setup Admin',
+      displayName: 'Academic Admin',
       classId: null,
       role: null,
       createdAt: '2026-11-04T08:00:00.000Z',
       updatedAt: '2026-11-04T08:00:00.000Z',
       deletedAt: null,
     });
-    await createClass.execute({
+    const classResult = await createClass.execute({
       userId: 'setup-admin',
       name: 'Class A',
       joinCode: 'CLASSA',
     });
+    // Promote setup-admin to Admin
+    const adminUser = { ...classResult.user, role: 'admin' as const };
+    repos.users.set(adminUser.id, adminUser);
 
-    const lecturer = await signUp.execute({
-      nim: '01D10001',
-      displayName: 'Dr. Hendra Situmorang',
+    // Self-registration always assigns student role
+    const student = await signUp.execute({
+      nim: '11S25010',
+      displayName: 'New Student',
       password: 'password123',
       confirmPassword: 'password123',
       classCode: 'CLASSA',
-      role: 'lecturer',
     });
-    expect(lecturer.role).toBe('lecturer');
+    expect(student.role).toBe('student');
 
+    // User can customize their own profile details without altering role
     await expect(
       updateProfile.execute({
-        userId: lecturer.id,
-        displayName: 'Dr. Hendra S.',
+        userId: student.id,
+        displayName: 'New Student Updated',
         avatarColor: 'not-a-hex',
       }),
     ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
 
-    const updated = await updateProfile.execute({
-      userId: lecturer.id,
-      displayName: 'Dr. Hendra Situmorang',
-      studyProgram: 'Faculty of Informatics',
-      bio: 'Algorithms and Data Structures coordinator',
+    const customized = await updateProfile.execute({
+      userId: student.id,
+      displayName: 'New Student Updated',
+      studyProgram: 'S1 Informatika',
+      bio: 'Algorithms student',
       avatarColor: '#0F766E',
       avatarDataUrl: 'data:image/png;base64,iVBORw0KGgo=',
-      role: 'admin',
     });
+    expect(customized.studyProgram).toBe('S1 Informatika');
+    expect(customized.bio).toBe('Algorithms student');
+    expect(customized.role).toBe('student');
 
-    expect(updated.studyProgram).toBe('Faculty of Informatics');
-    expect(updated.bio).toBe('Algorithms and Data Structures coordinator');
-    expect(updated.avatarColor).toBe('#0F766E');
-    expect(updated.avatarDataUrl).toBe('data:image/png;base64,iVBORw0KGgo=');
-    expect(updated.role).toBe('admin');
+    // Non-admin cannot invoke admin user creation or role management
+    await expect(
+      adminUpdateUser.execute({
+        actorId: student.id,
+        targetUserId: student.id,
+        role: 'admin',
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN_ROLE' });
+
+    // Admin creates a new class and a lecturer account directly
+    const secondClass = await adminCreateClass.execute({
+      actorId: adminUser.id,
+      name: 'Class B',
+      joinCode: 'CLASSB',
+    });
+    expect(secondClass.joinCode).toBe('CLASSB');
+    expect(repos.users.get(adminUser.id)?.role).toBe('admin');
+
+    const lecturer = await adminCreateUser.execute({
+      actorId: adminUser.id,
+      nim: '01D10002',
+      displayName: 'Dr. Togar Simanjuntak',
+      password: 'password123',
+      role: 'lecturer',
+      classId: secondClass.id,
+      studyProgram: 'Faculty of Informatics',
+    });
+    expect(lecturer.role).toBe('lecturer');
+    expect(lecturer.classId).toBe(secondClass.id);
+
+    // Admin promotes student to assistant and reassigns class
+    const promoted = await adminUpdateUser.execute({
+      actorId: adminUser.id,
+      targetUserId: student.id,
+      role: 'assistant',
+      classId: secondClass.id,
+    });
+    expect(promoted.role).toBe('assistant');
+    expect(promoted.classId).toBe(secondClass.id);
+
+    // Last-admin protection prevents demoting or self-deactivating the sole Admin
+    await expect(
+      adminUpdateUser.execute({
+        actorId: adminUser.id,
+        targetUserId: adminUser.id,
+        role: 'student',
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN_ROLE' });
+
+    await expect(
+      adminSetUserActive.execute({
+        actorId: adminUser.id,
+        targetUserId: adminUser.id,
+        active: false,
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN_ROLE' });
+
+    // Admin resets lecturer password & user updates own password
+    await adminResetPassword.execute({
+      actorId: adminUser.id,
+      targetUserId: lecturer.id,
+      newPassword: 'newpassword1',
+    });
+    const signedLecturer = await signIn.execute({
+      nim: '01D10002',
+      password: 'newpassword1',
+    });
+    expect(signedLecturer.id).toBe(lecturer.id);
+
+    await expect(
+      changeOwnPassword.execute({
+        userId: lecturer.id,
+        currentPassword: 'wrongpassword',
+        newPassword: 'finalpassword2',
+      }),
+    ).rejects.toMatchObject({ code: 'AUTH_ERROR' });
+
+    await changeOwnPassword.execute({
+      userId: lecturer.id,
+      currentPassword: 'newpassword1',
+      newPassword: 'finalpassword2',
+      confirmNewPassword: 'finalpassword2',
+    });
+    await signIn.execute({ nim: '01D10002', password: 'finalpassword2' });
+
+    // Admin can deactivate and restore another user
+    const deactivated = await adminSetUserActive.execute({
+      actorId: adminUser.id,
+      targetUserId: lecturer.id,
+      active: false,
+    });
+    expect(deactivated.deletedAt).not.toBeNull();
+    await expect(
+      signIn.execute({ nim: '01D10002', password: 'finalpassword2' }),
+    ).rejects.toMatchObject({ code: 'AUTH_ERROR' });
+
+    const restored = await adminSetUserActive.execute({
+      actorId: adminUser.id,
+      targetUserId: lecturer.id,
+      active: true,
+    });
+    expect(restored.deletedAt).toBeNull();
+    await signIn.execute({ nim: '01D10002', password: 'finalpassword2' });
   });
 });

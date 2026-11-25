@@ -1,3 +1,4 @@
+import type { Class } from '../entities/Class';
 import type { User, UserRole } from '../entities/User';
 
 export interface SignUpCredentials {
@@ -5,7 +6,6 @@ export interface SignUpCredentials {
   displayName: string;
   password: string;
   classCode: string;
-  role?: UserRole;
 }
 
 export interface SignInCredentials {
@@ -24,7 +24,44 @@ export interface UpdateProfileRecordInput {
   bio?: string;
   avatarColor?: string;
   avatarDataUrl?: string | null;
+}
+
+export interface AdminCreateUserInput {
+  actorId: string;
+  nim: string;
+  displayName: string;
+  password: string;
+  role: UserRole;
+  classId: string | null;
+  studyProgram?: string;
+}
+
+export interface AdminUpdateUserInput {
+  actorId: string;
+  targetUserId: string;
+  displayName?: string;
   role?: UserRole;
+  classId?: string | null;
+  studyProgram?: string;
+  bio?: string;
+}
+
+export interface AdminSetUserActiveInput {
+  actorId: string;
+  targetUserId: string;
+  active: boolean;
+}
+
+export interface AdminResetPasswordInput {
+  actorId: string;
+  targetUserId: string;
+  newPassword: string;
+}
+
+export interface ChangeOwnPasswordInput {
+  userId: string;
+  currentPassword: string;
+  newPassword: string;
 }
 
 export interface AuthRepository {
@@ -33,4 +70,13 @@ export interface AuthRepository {
   signOut(options?: SignOutOptions): Promise<void>;
   getCurrentUser(): Promise<User | null>;
   updateProfile(input: UpdateProfileRecordInput): Promise<User>;
+  listClassMembers?(classId: string): Promise<User[]>;
+  listAllUsers?(actorId: string): Promise<User[]>;
+  listAllClasses?(actorId: string): Promise<Class[]>;
+  adminCreateUser?(input: AdminCreateUserInput): Promise<User>;
+  adminUpdateUser?(input: AdminUpdateUserInput): Promise<User>;
+  adminSetUserActive?(input: AdminSetUserActiveInput): Promise<User>;
+  adminResetPassword?(input: AdminResetPasswordInput): Promise<void>;
+  adminCreateClass?(actorId: string, name: string, joinCode: string): Promise<Class>;
+  changeOwnPassword?(input: ChangeOwnPasswordInput): Promise<void>;
 }

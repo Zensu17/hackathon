@@ -19,6 +19,7 @@ export const labels = {
     home: 'Home',
     courses: 'Courses',
     manage: 'Manage',
+    adminUsers: 'Users',
     settings: 'Settings',
     switchToDark: 'Dark mode',
     switchToLight: 'Light mode',
@@ -52,7 +53,9 @@ export const labels = {
       'Enter your 8-character ID: 2 digits, 1 letter, and 5 digits (e.g. 11S22001).',
     roleLabel: 'Account role',
     roleHint:
-      'Students follow courses and take private notes. Class Reps, Lecturers, Assistants, and Admins publish updates and deadlines.',
+      'Every new registration starts with the Student role. An Administrator assigns Class Rep, Lecturer, Assistant, or Admin roles later.',
+    studentDefaultNotice:
+      'New accounts start with the Student role. An Administrator can promote your account to Class Representative, Lecturer (Dosen), Teaching Assistant, or Admin after registration.',
     displayNameLabel: 'Full name',
     displayNamePlaceholder: 'Your full name',
     passwordLabel: 'Password',
@@ -385,7 +388,7 @@ export const labels = {
   profile: {
     heading: 'Customize profile',
     intro:
-      'Set your display name, study program, short bio, role, and avatar style.',
+      'Set your display name, study program, short bio, avatar style, and account password.',
     previewHeading: 'Profile preview',
     formHeading: 'Personal details',
     displayNameLabel: 'Display name',
@@ -400,14 +403,37 @@ export const labels = {
     removePhotoCta: 'Remove photo',
     photoHint:
       'Resized automatically to 160x160 pixels on your device so IndexedDB storage stays compact.',
-    roleLabel: 'Workspace role',
-    roleLocalHint:
-      'In local mode, you can switch roles here to preview Student, Class Rep, Lecturer, Teaching Assistant, or Admin views.',
-    roleRemoteHint:
-      'Role assignments are managed by your class administrator in online mode.',
+    roleLabel: 'Assigned workspace role',
+    roleManagedHint:
+      'Account roles (Student, Class Rep, Lecturer, Assistant, Admin) are assigned by an Administrator.',
+    passwordSectionHeading: 'Password & security',
+    currentPasswordLabel: 'Current password',
+    newPasswordLabel: 'New password',
+    confirmNewPasswordLabel: 'Confirm new password',
+    changePasswordCta: 'Update password',
+    changingPasswordCta: 'Updating password...',
+    passwordChangedToast: 'Account password updated.',
     saveCta: 'Save profile changes',
     savingCta: 'Saving profile...',
     savedToast: 'Profile updated.',
+  },
+  adminUsers: {
+    heading: 'User & role management',
+    intro:
+      'Review every registered user across classes, assign official campus roles, manage class placement, and control account status.',
+    forbiddenTitle: 'Administrator access required',
+    forbiddenBody:
+      'Only an active Administrator can view the full user directory, create user accounts, or change workspace roles.',
+    addUserCta: 'Add user',
+    createClassCta: 'New class',
+    searchPlaceholder: 'Search by name, NIM, program, or class...',
+    allClassesOption: 'All classes',
+    unassignedClassOption: 'Unassigned',
+    saveUserCta: 'Save changes',
+    savingUserCta: 'Saving...',
+    resetPasswordCta: 'Reset password',
+    deactivateCta: 'Deactivate account',
+    restoreCta: 'Restore account',
   },
   settings: {
     heading: 'Settings',
