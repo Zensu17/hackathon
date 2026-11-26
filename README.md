@@ -52,21 +52,22 @@ npm run preview    # Verify offline reload in DevTools > Application > Service W
 
 1. Copy `.env.example` to `.env` and fill `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (leave both blank to run in Local Demo Mode using IndexedDB only).
 2. In Supabase Dashboard (**Authentication -> Providers -> Email**), turn **Confirm email** OFF (NIM auth maps to `<nim>@nim.litelearn.local`).
-3. Run all six migrations in order inside the Supabase SQL Editor:
+3. Run all seven migrations in order inside the Supabase SQL Editor:
    - `supabase/migrations/001_initial_schema.sql`
    - `supabase/migrations/002_nim_auth.sql`
    - `supabase/migrations/003_sync_and_rls_hardening.sql`
    - `supabase/migrations/004_security_and_sync_fixes.sql`
    - `supabase/migrations/005_roles_and_profile_customization.sql`
    - `supabase/migrations/006_admin_user_management.sql`
+   - `supabase/migrations/007_coordinator_class_creation_gate.sql`
 4. Verify connectivity and migrations with `npm run db:check`, and see [docs/SUPABASE-POSTGRES-SETUP.md](docs/SUPABASE-POSTGRES-SETUP.md) for the full Indonesian guide (including bootstrapping the first Class Rep and join code).
 5. Deploy the static `dist/` build to Vercel (`vercel.json` is preconfigured for SPA rewrites and PWA cache headers).
 
 ## Known Limitations & Final Day Security Mitigation
 
-- **Implemented auth & offline sync protections:** `handle_new_auth_user()` derives NIM authoritatively from the auth identifier, enforces the IT Del NIM regex (`^[0-9]{2}[A-Z][0-9]{5}$`), and ignores spoofed client metadata; `check_class_join_code()` validates class join codes before account creation; self-registration is strictly `student`-only; Admin RPCs allow rapid account deactivation or reassignment if a NIM is squatted; `LiteLearnSyncService` calls `ensureFreshSession()` before pushing queued edits after prolonged offline periods and never drops `syncQueue` items on `401` or network failures; and `openOfflinePdfBlob()` includes an automatic `<a download>` fallback alongside `window.open()` for standalone PWA / iOS Safari compatibility.
+- **Implemented auth & offline sync protections:** `handle_new_auth_user()` derives NIM authoritatively from the auth identifier, enforces the IT Del NIM regex (`^[0-9]{2}[A-Z][0-9]{5}$`), and ignores spoofed client metadata; `check_class_join_code()` validates class join codes before account creation; self-registration is strictly `student`-only; `create_class_as_rep()` (`007_coordinator_class_creation_gate.sql`) restricts class creation to approved coordinators (`coordinator_allowlist` or Admin/Rep/Lecturer roles); Admin RPCs allow rapid account deactivation or reassignment if a NIM is squatted; `LiteLearnSyncService` calls `ensureFreshSession()` before pushing queued edits after prolonged offline periods and never drops `syncQueue` items on `401` or network failures; and `openOfflinePdfBlob()` includes an automatic `<a download>` fallback alongside `window.open()` for standalone PWA / iOS Safari compatibility.
 - **Current pilot limits:** A NIM is not secret, so the class join code serves as the primary registration gate (no email-based password reset; passwords are reset by an Admin during the pilot). Physical testing so far is on Android Chrome; iOS Safari 7-day non-PWA storage eviction requires guiding iOS users to Add to Home Screen.
-- **Planned Final Day mitigation (Section 5.4):** Class Access Control UI (verified coordinator class creation, one-tap join-code rotation/expiry, member caps, and optional NIM roster allow-listing enforced by Postgres RLS) plus top pilot usability fixes; `"What changed"` offline digest & visual Storage Manager (`navigator.storage.persist()` and quota-full handling); and bulk weekly paste-import with co-editor invites backed by entity-level optimistic concurrency.
+- **Pre-Final Day polish (7–15 Dec) & Final Day plan (Section 5.4):** Basic storage view, minimal paste-import, button-clip UI polish, and pilot fixes ship in 7–15 Dec; Final Day focuses on **co-editor invites** (committed) and **Class Access Control UI with join-code rotation/expiry & member caps** (committed), plus a `"What changed"` Home digest as an optional stretch goal.
 
 ## Material AI Assistance
 

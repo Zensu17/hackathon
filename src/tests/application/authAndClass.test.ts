@@ -556,4 +556,51 @@ describe('Auth and class onboarding use cases', () => {
     expect(restored.deletedAt).toBeNull();
     await signIn.execute({ nim: '01D10002', password: 'finalpassword2' });
   });
+
+  it('blocks ordinary student accounts from creating classes unless allowlisted as coordinator', async () => {
+    const repos = createFakeRepositories();
+    const createClass = new CreateClass(repos.classes);
+    const signUp = new SignUp(repos.auth);
+
+    repos.users.set('setup-admin', {
+      id: 'setup-admin',
+      nim: '00A00001',
+      displayName: 'Academic Admin',
+      classId: null,
+      role: 'admin',
+      createdAt: '2026-11-04T08:00:00.000Z',
+      updatedAt: '2026-11-04T08:00:00.000Z',
+      deletedAt: null,
+    });
+    await createClass.execute({
+      userId: 'setup-admin',
+      name: 'Class A',
+      joinCode: 'CLASSA',
+    });
+
+    const student = await signUp.execute({
+      nim: '11S25077',
+      displayName: 'Regular Student',
+      password: 'password123',
+      confirmPassword: 'password123',
+      classCode: 'CLASSA',
+    });
+
+    await expect(
+      createClass.execute({
+        userId: student.id,
+        name: 'Unauthorized Class',
+        joinCode: 'UNAUTH',
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN_ROLE' });
+
+    repos.classes.coordinatorAllowlist.add(student.nim.toUpperCase());
+    const allowed = await createClass.execute({
+      userId: student.id,
+      name: 'Approved Section',
+      joinCode: 'APPR01',
+    });
+    expect(allowed.currentClass.joinCode).toBe('APPR01');
+    expect(allowed.user.role).toBe('rep');
+  });
 });

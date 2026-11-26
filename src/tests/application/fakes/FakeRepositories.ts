@@ -368,6 +368,7 @@ export class FakeAuthRepository implements AuthRepository {
 export class FakeClassRepository implements ClassRepository {
   readonly classes = new Map<string, Class>();
   readonly users: Map<string, User>;
+  readonly coordinatorAllowlist = new Set<string>();
   private nextId = 1;
 
   constructor(sharedUsers: Map<string, User>) {
@@ -418,6 +419,16 @@ export class FakeClassRepository implements ClassRepository {
     const user = this.users.get(userId);
     if (!user || user.deletedAt !== null) {
       throw new AppError('NOT_FOUND', 'User account not found.');
+    }
+
+    if (
+      user.role === 'student' &&
+      !this.coordinatorAllowlist.has(user.nim.toUpperCase())
+    ) {
+      throw new AppError(
+        'FORBIDDEN_ROLE',
+        'Only approved coordinators can create classes.',
+      );
     }
 
     const normalizedCode = input.joinCode.trim().toUpperCase();

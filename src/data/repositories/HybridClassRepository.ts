@@ -146,6 +146,13 @@ export class HybridClassRepository implements ClassRepository {
           throw new AppError('NOT_FOUND', 'User account not found.');
         }
 
+        if (userRow.role === 'student') {
+          throw new AppError(
+            'FORBIDDEN_ROLE',
+            'Only approved coordinators can create classes.',
+          );
+        }
+
         const existingRows = await this.db.classes
           .where('joinCode')
           .equals(normalizedCode)
