@@ -247,6 +247,7 @@
 
 .figma-bottom-nav__host {
   position: relative;
+  overflow: hidden;
   width: 100%;
   max-width: var(--content-max-width);
   margin: 0 auto;
@@ -462,18 +463,29 @@
   .figma-sidenav__nav {
     flex: 1;
     margin: 18px 0;
+    overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .figma-sidenav__nav::-webkit-scrollbar {
+    display: none;
   }
 
   .figma-nav-indicator-host {
     position: relative;
+    overflow: hidden;
+    border-radius: 10px;
   }
 
   .figma-sidenav__indicator {
     position: absolute;
     top: 0;
     left: 0;
+    box-sizing: border-box;
+    max-width: 100%;
     border-radius: 10px;
     background-color: color-mix(in srgb, var(--color-primary) 13%, var(--color-surface));
     border: 1px solid color-mix(in srgb, var(--color-primary) 28%, transparent);

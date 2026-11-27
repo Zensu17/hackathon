@@ -92,7 +92,7 @@ function collectFiles(
   return results;
 }
 
-describe('WCAG 2.x contrast, Antislop copy hygiene, and shell semantics', () => {
+describe('WCAG 2.x contrast, copy hygiene, and shell semantics', () => {
   const tokensPath = path.join(srcRoot, 'presentation', 'styles', 'tokens.css');
   const tokensCss = fs.readFileSync(tokensPath, 'utf8');
   const lightTokens = extractThemeTokens(tokensCss, ':root[data-theme="light"]');

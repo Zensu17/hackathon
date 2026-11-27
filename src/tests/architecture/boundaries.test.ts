@@ -252,7 +252,7 @@ function collectFiles(dirPath: string, extensions: readonly string[]): string[] 
   return results;
 }
 
-describe('Clean Architecture boundaries and Antislop R-02 copy hygiene', () => {
+describe('Clean Architecture boundaries and copy hygiene', () => {
   it('enforces pure inward-only imports and zero browser globals in src/domain', () => {
     const files = collectFiles(path.join(srcRoot, 'domain'), ['.ts', '.tsx']);
     const violations = files.flatMap((file) =>

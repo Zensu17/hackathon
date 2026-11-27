@@ -9,3 +9,20 @@ coverage/
 *.tsbuildinfo
 .DS_Store
 Thumbs.db
+
+# Local editor, AI tooling, and scratch artifacts
+.impeccable/
+.planning/
+anti-slop/
+tasks/
+.claude/
+.cursor/
+.gemini/
+.agents/
+.windsurf/
+.vscode/
+.idea/
+.vercel/
+CLAUDE.md
+GEMINI.md
+AGENTS.md
