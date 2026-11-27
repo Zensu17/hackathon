@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
+import { useSlidingIndicator } from '../hooks/useSlidingIndicator';
 import {
   IconAlertCircle,
   IconCalendarCheck,
@@ -292,8 +293,20 @@ export function SegmentedControl<T extends string>({
   onChange,
   labelsMap,
 }: SegmentedControlProps<T>): React.ReactElement {
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const { indicatorStyle } = useSlidingIndicator(
+    listRef,
+    '.figma-segmented__btn--active',
+    [active, options.length],
+  );
+
   return (
-    <div className="figma-segmented" role="tablist">
+    <div ref={listRef} className="figma-segmented" role="tablist">
+      <span
+        className="figma-segmented__indicator"
+        style={indicatorStyle}
+        aria-hidden="true"
+      />
       {options.map((opt) => {
         const isActive = opt === active;
         const displayLabel = labelsMap ? labelsMap[opt] ?? opt : opt;
@@ -306,9 +319,6 @@ export function SegmentedControl<T extends string>({
             className={`figma-segmented__btn ${isActive ? 'figma-segmented__btn--active' : ''}`}
             onClick={() => onChange(opt)}
           >
-            {isActive ? (
-              <span className="figma-segmented__pill" aria-hidden="true" />
-            ) : null}
             <span className="figma-segmented__label">{displayLabel}</span>
           </button>
         );
@@ -451,7 +461,7 @@ export function CourseCard({
                     ? 'figma-course-card__meter-fill figma-course-card__meter-fill--ready'
                     : 'figma-course-card__meter-fill'
                 }
-                style={{ width: `${cachePercent}%` }}
+                style={{ transform: `scaleX(${cachePercent / 100})` }}
               />
             </div>
           ) : null}
@@ -718,9 +728,18 @@ export function WeekSection({
           <IconChevronDown size={18} />
         </span>
       </button>
-      {expanded ? (
-        <div className="figma-week-section__body">{children}</div>
-      ) : null}
+      <div
+        className={
+          expanded
+            ? 'collapsible-panel collapsible-panel--open'
+            : 'collapsible-panel'
+        }
+        aria-hidden={!expanded}
+      >
+        <div className="collapsible-panel__inner">
+          <div className="figma-week-section__body">{children}</div>
+        </div>
+      </div>
     </section>
   );
 }

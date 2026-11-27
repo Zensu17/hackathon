@@ -179,6 +179,16 @@ export function QuickSearchModal({
   }, [query, result]);
 
   useEffect(() => {
+    if (!isOpen || !dialogRef.current) {
+      return;
+    }
+    const activeEl = dialogRef.current.querySelector<HTMLElement>(
+      '[aria-selected="true"]',
+    );
+    activeEl?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [activeIndex, isOpen]);
+
+  useEffect(() => {
     if (isOpen) {
       if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
         previousFocusRef.current = document.activeElement;

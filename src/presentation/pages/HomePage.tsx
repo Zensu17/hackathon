@@ -360,20 +360,31 @@ export function HomePage(): React.ReactElement {
         ) : null}
       </header>
 
-      {!isLoading && !error && !guideHidden ? (
-        <QuickStartGuide
-          followedCount={followedCount}
-          activeDeadlineCount={activeItems.length}
-          cachedPdfCount={cachedPdfs}
-          totalPdfCount={totalPdfs}
-          isRep={Boolean(isRep)}
-          isAdmin={Boolean(isAdmin)}
-          firstCourseId={displayCourses[0]?.id}
-          onDismiss={() => {
-            setQuickGuideDismissed(true);
-            setGuideHidden(true);
-          }}
-        />
+      {!isLoading && !error ? (
+        <div
+          className={
+            !guideHidden
+              ? 'collapsible-panel collapsible-panel--open'
+              : 'collapsible-panel'
+          }
+          aria-hidden={guideHidden}
+        >
+          <div className="collapsible-panel__inner">
+            <QuickStartGuide
+              followedCount={followedCount}
+              activeDeadlineCount={activeItems.length}
+              cachedPdfCount={cachedPdfs}
+              totalPdfCount={totalPdfs}
+              isRep={Boolean(isRep)}
+              isAdmin={Boolean(isAdmin)}
+              firstCourseId={displayCourses[0]?.id}
+              onDismiss={() => {
+                setQuickGuideDismissed(true);
+                setGuideHidden(true);
+              }}
+            />
+          </div>
+        </div>
       ) : null}
 
       {isLoading ? <LoadingState message={labels.home.loading} /> : null}
@@ -736,7 +747,10 @@ export function HomePage(): React.ReactElement {
                                   ? 'offline-meter__fill offline-meter__fill--complete'
                                   : 'offline-meter__fill'
                               }
-                              style={{ width: `${percent}%` }}
+                              style={{
+                                width: '100%',
+                                transform: `scaleX(${percent / 100})`,
+                              }}
                             />
                           </div>
                         </div>

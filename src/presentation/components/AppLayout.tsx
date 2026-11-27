@@ -1,13 +1,15 @@
-import React, { useEffect, useState } from 'react';
-import { Link, NavLink, Outlet, useNavigate } from 'react-router';
+import React, { useEffect, useRef, useState } from 'react';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { canManageClassContent, isAdminRole } from '../../domain/rules';
 import { useAuthSession } from '../hooks/useAuthSession';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
+import { useSlidingIndicator } from '../hooks/useSlidingIndicator';
 import { useTheme } from '../hooks/useTheme';
 import { useSyncStatus } from '../hooks/useSyncStatus';
 import { labels } from '../i18n/labels';
 import {
   BrandMark,
+  IconArrowUp,
   IconBook,
   IconCalendarCheck,
   IconHome,
@@ -25,7 +27,17 @@ import { NetworkStatus } from './FigmaComponents';
 import { QuickSearchModal } from './QuickSearchModal';
 import { UserAvatar } from './UserAvatar';
 import { formatDateTime, getRoleLabel } from '../utils/formatters';
+import { prefetchRoute } from '../utils/routePrefetch';
 import './AppLayout.css';
+
+interface NavEntry {
+  to: string;
+  end?: boolean;
+  label: string;
+  icon: React.ReactNode;
+  mobileIcon: React.ReactNode;
+  showInBottomNav: boolean;
+}
 
 function ThemeQuickSwitch({ compact = false }: { compact?: boolean }): React.ReactElement {
   const { theme, toggleTheme } = useTheme();
@@ -44,7 +56,11 @@ function ThemeQuickSwitch({ compact = false }: { compact?: boolean }): React.Rea
           : labels.nav.themeToggleAriaToDark
       }
     >
-      <span className="theme-btn__icon" aria-hidden="true">
+      <span
+        key={theme}
+        className="theme-btn__icon theme-btn__icon--animate"
+        aria-hidden="true"
+      >
         {isDark ? <IconSun size={16} /> : <IconMoon size={16} />}
       </span>
       <span>
@@ -146,13 +162,120 @@ export function AppLayout(): React.ReactElement {
     retry,
   } = useSyncStatus();
   const navigate = useNavigate();
+  const location = useLocation();
+  const sideNavHostRef = useRef<HTMLDivElement | null>(null);
+  const bottomNavHostRef = useRef<HTMLDivElement | null>(null);
+  const progressBarRef = useRef<HTMLDivElement | null>(null);
   const [isQuickSearchOpen, setIsQuickSearchOpen] = useState<boolean>(false);
+  const [showScrollTop, setShowScrollTop] = useState<boolean>(false);
 
   const isManager = canManageClassContent(session?.user.role);
   const isAdmin = isAdminRole(session?.user.role);
   const currentClass = session?.currentClass ?? null;
   const roleLabel = getRoleLabel(session?.user.role);
   const displayName = session?.user.displayName ?? 'Member';
+
+  const { indicatorStyle: sideIndicatorStyle } = useSlidingIndicator(
+    sideNavHostRef,
+    '.figma-sidenav__link--active',
+    [location.pathname, isManager, isAdmin],
+  );
+  const { indicatorStyle: bottomIndicatorStyle } = useSlidingIndicator(
+    bottomNavHostRef,
+    '.figma-bottom-nav__link--active',
+    [location.pathname, isManager],
+  );
+
+  useEffect(() => {
+    let rafId = 0;
+
+    const updateScrollMetrics = (): void => {
+      rafId = 0;
+      const scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
+      const maxScroll = Math.max(
+        0,
+        document.documentElement.scrollHeight - window.innerHeight,
+      );
+      const ratio = maxScroll > 0 ? Math.min(1, Math.max(0, scrollTop / maxScroll)) : 0;
+
+      if (progressBarRef.current) {
+        progressBarRef.current.style.transform = `scaleX(${ratio})`;
+        progressBarRef.current.style.opacity = maxScroll > 160 ? '1' : '0';
+      }
+      setShowScrollTop(scrollTop > 420);
+    };
+
+    const onScrollOrResize = (): void => {
+      if (rafId === 0) {
+        rafId = window.requestAnimationFrame(updateScrollMetrics);
+      }
+    };
+
+    updateScrollMetrics();
+    window.addEventListener('scroll', onScrollOrResize, { passive: true });
+    window.addEventListener('resize', onScrollOrResize, { passive: true });
+    return () => {
+      if (rafId !== 0) {
+        window.cancelAnimationFrame(rafId);
+      }
+      window.removeEventListener('scroll', onScrollOrResize);
+      window.removeEventListener('resize', onScrollOrResize);
+    };
+  }, [location.pathname]);
+
+  const navItems: NavEntry[] = [
+    {
+      to: '/',
+      end: true,
+      label: labels.nav.home,
+      icon: <IconHome size={19} />,
+      mobileIcon: <IconHome size={20} />,
+      showInBottomNav: true,
+    },
+    {
+      to: '/courses',
+      label: labels.nav.courses,
+      icon: <IconBook size={19} />,
+      mobileIcon: <IconBook size={20} />,
+      showInBottomNav: true,
+    },
+    {
+      to: '/deadlines',
+      label: 'Deadlines',
+      icon: <IconCalendarCheck size={19} />,
+      mobileIcon: <IconCalendarCheck size={20} />,
+      showInBottomNav: true,
+    },
+    ...(isManager
+      ? [
+          {
+            to: '/manage',
+            label: labels.nav.manage,
+            icon: <IconNote size={19} />,
+            mobileIcon: <IconNote size={20} />,
+            showInBottomNav: true,
+          },
+        ]
+      : []),
+    ...(isAdmin
+      ? [
+          {
+            to: '/admin/users',
+            label: labels.nav.adminUsers,
+            icon: <IconUsers size={19} />,
+            mobileIcon: <IconUsers size={20} />,
+            showInBottomNav: false,
+          },
+        ]
+      : []),
+    {
+      to: '/settings',
+      label: labels.nav.settings,
+      icon: <IconSettings size={19} />,
+      mobileIcon: <IconSettings size={20} />,
+      showInBottomNav: true,
+    },
+  ];
 
   useEffect(() => {
     const handleGlobalKeyDown = (event: KeyboardEvent): void => {
@@ -219,91 +342,33 @@ export function AppLayout(): React.ReactElement {
 
         <nav className="figma-sidenav__nav">
           <p className="figma-sidenav__nav-label">WORKSPACE</p>
-          <ul className="figma-sidenav__list">
-            <li>
-              <NavLink
-                to="/"
-                end
-                className={({ isActive }) =>
-                  isActive
-                    ? 'figma-sidenav__link figma-sidenav__link--active'
-                    : 'figma-sidenav__link'
-                }
-              >
-                <IconHome size={19} />
-                <span>{labels.nav.home}</span>
-              </NavLink>
-            </li>
-            <li>
-              <NavLink
-                to="/courses"
-                className={({ isActive }) =>
-                  isActive
-                    ? 'figma-sidenav__link figma-sidenav__link--active'
-                    : 'figma-sidenav__link'
-                }
-              >
-                <IconBook size={19} />
-                <span>{labels.nav.courses}</span>
-              </NavLink>
-            </li>
-            <li>
-              <NavLink
-                to="/deadlines"
-                className={({ isActive }) =>
-                  isActive
-                    ? 'figma-sidenav__link figma-sidenav__link--active'
-                    : 'figma-sidenav__link'
-                }
-              >
-                <IconCalendarCheck size={19} />
-                <span>Deadlines</span>
-              </NavLink>
-            </li>
-            {isManager ? (
-              <li>
-                <NavLink
-                  to="/manage"
-                  className={({ isActive }) =>
-                    isActive
-                      ? 'figma-sidenav__link figma-sidenav__link--active'
-                      : 'figma-sidenav__link'
-                  }
-                >
-                  <IconNote size={19} />
-                  <span>{labels.nav.manage}</span>
-                </NavLink>
-              </li>
-            ) : null}
-            {isAdmin ? (
-              <li>
-                <NavLink
-                  to="/admin/users"
-                  className={({ isActive }) =>
-                    isActive
-                      ? 'figma-sidenav__link figma-sidenav__link--active'
-                      : 'figma-sidenav__link'
-                  }
-                >
-                  <IconUsers size={19} />
-                  <span>{labels.nav.adminUsers}</span>
-                </NavLink>
-              </li>
-            ) : null}
-            <li>
-              <NavLink
-                to="/settings"
-                className={({ isActive }) =>
-                  isActive
-                    ? 'figma-sidenav__link figma-sidenav__link--active'
-                    : 'figma-sidenav__link'
-                }
-              >
-                <IconSettings size={19} />
-                <span>{labels.nav.settings}</span>
-              </NavLink>
-            </li>
-          </ul>
+          <div ref={sideNavHostRef} className="figma-nav-indicator-host">
+            <span
+              className="figma-sidenav__indicator"
+              style={sideIndicatorStyle}
+              aria-hidden="true"
+            />
+            <ul className="figma-sidenav__list">
+              {navItems.map((item) => (
+                <li key={item.to}>
+                  <NavLink
+                    to={item.to}
+                    end={item.end}
+                    onPointerEnter={() => prefetchRoute(item.to)}
+                    onFocus={() => prefetchRoute(item.to)}
+                    className={({ isActive }) =>
+                      isActive
+                        ? 'figma-sidenav__link figma-sidenav__link--active'
+                        : 'figma-sidenav__link'
+                    }
+                  >
+                    {item.icon}
+                    <span>{item.label}</span>
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </div>
         </nav>
 
         <div className="figma-sidenav__footer">
@@ -312,6 +377,8 @@ export function AppLayout(): React.ReactElement {
             className="figma-sidenav__profile"
             aria-label="Customize profile"
             title="Open profile customization"
+            onPointerEnter={() => prefetchRoute('/profile')}
+            onFocus={() => prefetchRoute('/profile')}
           >
             <UserAvatar
               displayName={displayName}
@@ -341,6 +408,12 @@ export function AppLayout(): React.ReactElement {
 
       {/* Main Study Workspace Area */}
       <div className="app-workspace">
+        <div
+          ref={progressBarRef}
+          className="scroll-progress-bar"
+          aria-hidden="true"
+        />
+
         {/* Mobile / Tablet Top Header */}
         <header className="app-header">
           <div className="app-header__inner">
@@ -373,6 +446,8 @@ export function AppLayout(): React.ReactElement {
                 className="mobile-profile-btn"
                 aria-label="Customize profile"
                 title="Customize profile"
+                onPointerEnter={() => prefetchRoute('/profile')}
+                onFocus={() => prefetchRoute('/profile')}
               >
                 <UserAvatar
                   displayName={displayName}
@@ -429,83 +504,68 @@ export function AppLayout(): React.ReactElement {
                 </button>
               </div>
             ) : null}
-            <Outlet />
+            <div key={location.pathname} className="route-stage">
+              <Outlet />
+            </div>
           </div>
         </main>
 
         {/* Mobile Bottom Navigation (< 1024px) */}
         <nav className="figma-bottom-nav" aria-label={labels.nav.ariaLabel}>
-          <ul className="figma-bottom-nav__list">
-            <li className="figma-bottom-nav__item">
-              <NavLink
-                to="/"
-                end
-                className={({ isActive }) =>
-                  isActive
-                    ? 'figma-bottom-nav__link figma-bottom-nav__link--active'
-                    : 'figma-bottom-nav__link'
-                }
-              >
-                <IconHome size={20} />
-                <span>{labels.nav.home}</span>
-              </NavLink>
-            </li>
-            <li className="figma-bottom-nav__item">
-              <NavLink
-                to="/courses"
-                className={({ isActive }) =>
-                  isActive
-                    ? 'figma-bottom-nav__link figma-bottom-nav__link--active'
-                    : 'figma-bottom-nav__link'
-                }
-              >
-                <IconBook size={20} />
-                <span>{labels.nav.courses}</span>
-              </NavLink>
-            </li>
-            <li className="figma-bottom-nav__item">
-              <NavLink
-                to="/deadlines"
-                className={({ isActive }) =>
-                  isActive
-                    ? 'figma-bottom-nav__link figma-bottom-nav__link--active'
-                    : 'figma-bottom-nav__link'
-                }
-              >
-                <IconCalendarCheck size={20} />
-                <span>Deadlines</span>
-              </NavLink>
-            </li>
-            {isManager ? (
-              <li className="figma-bottom-nav__item">
-                <NavLink
-                  to="/manage"
-                  className={({ isActive }) =>
-                    isActive
-                      ? 'figma-bottom-nav__link figma-bottom-nav__link--active'
-                      : 'figma-bottom-nav__link'
-                  }
-                >
-                  <IconNote size={20} />
-                  <span>{labels.nav.manage}</span>
-                </NavLink>
-              </li>
-            ) : null}
-            <li className="figma-bottom-nav__item">
-              <NavLink
-                to="/settings"
-                className={({ isActive }) =>
-                  isActive
-                    ? 'figma-bottom-nav__link figma-bottom-nav__link--active'
-                    : 'figma-bottom-nav__link'
-                }
-              >
-                <IconSettings size={20} />
-                <span>{labels.nav.settings}</span>
-              </NavLink>
-            </li>
-          </ul>
+          <div ref={bottomNavHostRef} className="figma-bottom-nav__host">
+            <span
+              className="figma-bottom-nav__indicator"
+              style={bottomIndicatorStyle}
+              aria-hidden="true"
+            />
+            <ul className="figma-bottom-nav__list">
+              {navItems
+                .filter((item) => item.showInBottomNav)
+                .map((item) => (
+                  <li key={item.to} className="figma-bottom-nav__item">
+                    <NavLink
+                      to={item.to}
+                      end={item.end}
+                      onPointerEnter={() => prefetchRoute(item.to)}
+                      onFocus={() => prefetchRoute(item.to)}
+                      className={({ isActive }) =>
+                        isActive
+                          ? 'figma-bottom-nav__link figma-bottom-nav__link--active'
+                          : 'figma-bottom-nav__link'
+                      }
+                    >
+                      {item.mobileIcon}
+                      <span>{item.label}</span>
+                    </NavLink>
+                  </li>
+                ))}
+            </ul>
+          </div>
         </nav>
+
+        <button
+          type="button"
+          className={
+            showScrollTop
+              ? 'scroll-top-fab scroll-top-fab--visible'
+              : 'scroll-top-fab'
+          }
+          aria-label="Scroll back to top"
+          aria-hidden={!showScrollTop}
+          tabIndex={showScrollTop ? 0 : -1}
+          onClick={() => {
+            const reduce =
+              typeof window !== 'undefined' &&
+              window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            window.scrollTo({
+              top: 0,
+              behavior: reduce ? 'auto' : 'smooth',
+            });
+          }}
+        >
+          <IconArrowUp size={16} />
+          <span>Top</span>
+        </button>
 
         {/* Global Footer */}
         <footer className="app-footer">

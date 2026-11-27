@@ -91,7 +91,9 @@ export function AuthSplitShell({
           </ul>
         </section>
 
-        <div className="auth-panel">{children}</div>
+        <div key={mode} className="auth-panel auth-panel--animated">
+          {children}
+        </div>
       </div>
     </OnboardingLayout>
   );

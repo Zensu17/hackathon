@@ -64,7 +64,9 @@
 
 /* Header (Mobile & Tablet + Onboarding) */
 .app-header {
-  background-color: var(--color-surface);
+  background-color: color-mix(in srgb, var(--color-surface) 84%, transparent);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
   border-bottom: 1px solid var(--color-border);
   box-shadow: var(--shadow-chrome);
   padding: 10px var(--space-4);
@@ -127,6 +129,36 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+@keyframes theme-icon-pop {
+  from {
+    opacity: 0;
+    transform: rotate(-20deg) scale(0.86);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+.theme-btn__icon--animate {
+  animation: theme-icon-pop 200ms var(--ease-out);
+}
+
+@keyframes route-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.route-stage {
+  animation: route-enter 220ms var(--ease-out);
 }
 
 /* Main Content Viewport */
@@ -206,15 +238,25 @@
   z-index: 100;
   min-height: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px));
   padding: 6px var(--space-2) calc(6px + env(safe-area-inset-bottom, 0px));
-  background-color: var(--color-surface);
+  background-color: color-mix(in srgb, var(--color-surface) 86%, transparent);
+  backdrop-filter: blur(18px) saturate(165%);
+  -webkit-backdrop-filter: blur(18px) saturate(165%);
   border-top: 1px solid var(--color-border);
   box-shadow: 0 -4px 16px var(--color-shadow-1);
 }
 
-.figma-bottom-nav__list {
+.figma-bottom-nav__host {
+  position: relative;
   width: 100%;
   max-width: var(--content-max-width);
   margin: 0 auto;
+}
+
+.figma-bottom-nav__list {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  margin: 0;
   padding: 0;
   list-style: none;
   display: flex;
@@ -228,6 +270,17 @@
   flex: 1;
   display: flex;
   justify-content: center;
+}
+
+.figma-bottom-nav__indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 10px;
+  background-color: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-primary) 26%, transparent);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .figma-bottom-nav__link {
@@ -246,13 +299,15 @@
   font-size: 12px;
   font-weight: 600;
   text-decoration: none;
-  transition: color 150ms var(--ease-out), background-color 150ms var(--ease-out), border-color 150ms var(--ease-out);
+  transition: color 150ms var(--ease-out), transform 140ms var(--ease-out);
+}
+
+.figma-bottom-nav__link:active {
+  transform: scale(0.96);
 }
 
 .figma-bottom-nav__link--active {
   color: var(--color-primary);
-  background-color: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
-  border-color: color-mix(in srgb, var(--color-primary) 26%, transparent);
 }
 
 /* Offline status strip */
@@ -348,10 +403,17 @@
   text-decoration: none;
   border: 1px solid var(--color-border);
   background-color: var(--color-surface-2);
+  transition: border-color 150ms var(--ease-out), transform 140ms var(--ease-out);
 }
 
-.mobile-profile-btn:hover {
-  border-color: var(--color-primary);
+.mobile-profile-btn:active {
+  transform: scale(0.96);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .mobile-profile-btn:hover {
+    border-color: var(--color-primary);
+  }
 }
 
 /* Laptop Viewport (>= 1024px) */
@@ -401,6 +463,22 @@
     flex: 1;
     margin: 18px 0;
     overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .figma-nav-indicator-host {
+    position: relative;
+  }
+
+  .figma-sidenav__indicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    border-radius: 10px;
+    background-color: color-mix(in srgb, var(--color-primary) 13%, var(--color-surface));
+    border: 1px solid color-mix(in srgb, var(--color-primary) 28%, transparent);
+    pointer-events: none;
+    z-index: 0;
   }
 
   .figma-sidenav__nav-label {
@@ -413,6 +491,8 @@
   }
 
   .figma-sidenav__list {
+    position: relative;
+    z-index: 1;
     list-style: none;
     padding: 0;
     margin: 0;
@@ -436,20 +516,22 @@
     min-height: 44px;
     transition:
       background-color 150ms var(--ease-out),
-      border-color 150ms var(--ease-out),
-      color 150ms var(--ease-out);
+      color 150ms var(--ease-out),
+      transform 140ms var(--ease-out);
+  }
+
+  .figma-sidenav__link:active {
+    transform: scale(0.97);
   }
 
   @media (hover: hover) and (pointer: fine) {
-    .figma-sidenav__link:hover {
+    .figma-sidenav__link:not(.figma-sidenav__link--active):hover {
       background-color: var(--color-surface-2);
       color: var(--color-text);
     }
   }
 
   .figma-sidenav__link--active {
-    background-color: color-mix(in srgb, var(--color-primary) 13%, var(--color-surface));
-    border-color: color-mix(in srgb, var(--color-primary) 28%, transparent);
     color: var(--color-primary);
   }
 
@@ -472,14 +554,23 @@
     border: 1px solid var(--color-border);
     color: var(--color-text);
     text-decoration: none;
-    transition: border-color 150ms var(--ease-out), background-color 150ms var(--ease-out);
+    transition:
+      border-color 150ms var(--ease-out),
+      background-color 150ms var(--ease-out),
+      transform 140ms var(--ease-out);
   }
 
-  .figma-sidenav__profile:hover {
-    border-color: var(--color-primary);
-    background-color: var(--color-input-bg);
-    color: var(--color-text);
-    text-decoration: none;
+  .figma-sidenav__profile:active {
+    transform: scale(0.98);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .figma-sidenav__profile:hover {
+      border-color: var(--color-primary);
+      background-color: var(--color-input-bg);
+      color: var(--color-text);
+      text-decoration: none;
+    }
   }
 
   .figma-sidenav__user-info {
@@ -562,12 +653,22 @@
   font-family: var(--font-sans);
   font-size: 13.5px;
   font-weight: 600;
-  transition: border-color 150ms var(--ease-out), color 150ms var(--ease-out), background-color 150ms var(--ease-out);
+  transition:
+    border-color 150ms var(--ease-out),
+    color 150ms var(--ease-out),
+    background-color 150ms var(--ease-out),
+    transform 140ms var(--ease-out);
 }
 
-.figma-sidenav__search-btn:hover {
-  border-color: var(--color-primary);
-  color: var(--color-text);
+.figma-sidenav__search-btn:active {
+  transform: scale(0.98);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .figma-sidenav__search-btn:hover {
+    border-color: var(--color-primary);
+    color: var(--color-text);
+  }
 }
 
 .figma-sidenav__search-left {
@@ -603,11 +704,11 @@
 @keyframes quick-search-pop {
   from {
     opacity: 0;
-    transform: translateY(-8px) scale(0.98);
+    transform: scale(0.985);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: scale(1);
   }
 }
 
@@ -619,8 +720,10 @@
   align-items: flex-start;
   justify-content: center;
   padding: clamp(20px, 8vh, 72px) 16px 24px;
-  background-color: rgba(11, 16, 28, 0.64);
-  animation: quick-search-fade 160ms var(--ease-out);
+  background-color: rgba(11, 16, 28, 0.56);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: quick-search-fade 120ms var(--ease-out);
 }
 
 .quick-search-dialog {
@@ -635,7 +738,7 @@
   color: var(--color-text);
   box-shadow: var(--shadow-2);
   overflow: hidden;
-  animation: quick-search-pop 180ms var(--ease-out);
+  animation: quick-search-pop 120ms var(--ease-out);
 }
 
 .quick-search-dialog__header {
@@ -678,6 +781,7 @@
 .quick-search-dialog__body {
   flex: 1;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 10px;
 }
 
@@ -719,7 +823,14 @@
   color: var(--color-text);
   text-align: left;
   font-family: var(--font-sans);
-  transition: background-color 120ms var(--ease-out), border-color 120ms var(--ease-out);
+  transition:
+    background-color 120ms var(--ease-out),
+    border-color 120ms var(--ease-out),
+    transform 120ms var(--ease-out);
+}
+
+.quick-search-item:active {
+  transform: scale(0.99);
 }
 
 .quick-search-item--active {
@@ -799,5 +910,93 @@
 @media (max-width: 767px), (hover: none) {
   .quick-search-dialog__kbd-hint {
     display: none;
+  }
+}
+
+/* Reading Scroll Progress Indicator & Scroll-to-Top Pill */
+.scroll-progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2.5px;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+  transform-origin: 0% 50%;
+  transform: scaleX(0);
+  opacity: 0;
+  transition: opacity 180ms var(--ease-out);
+  z-index: 180;
+  pointer-events: none;
+}
+
+.scroll-top-fab {
+  position: fixed;
+  right: 18px;
+  bottom: calc(var(--mobile-nav-height) + 18px + env(safe-area-inset-bottom, 0px));
+  z-index: 95;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background-color: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: var(--shadow-2);
+  opacity: 0;
+  transform: translateY(12px) scale(0.95);
+  pointer-events: none;
+  transition:
+    opacity 180ms var(--ease-out),
+    transform 180ms var(--ease-out),
+    border-color 150ms var(--ease-out),
+    background-color 150ms var(--ease-out);
+}
+
+.scroll-top-fab--visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.scroll-top-fab--visible:active {
+  transform: scale(0.95);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .scroll-top-fab--visible:hover {
+    border-color: var(--color-primary);
+    background-color: var(--color-surface);
+    transform: translateY(-2px);
+  }
+}
+
+@media (min-width: 1024px) {
+  .scroll-top-fab {
+    right: 24px;
+    bottom: 24px;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .app-header,
+  .figma-bottom-nav,
+  .scroll-top-fab {
+    background-color: var(--color-surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .quick-search-backdrop {
+    background-color: rgba(11, 16, 28, 0.78);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 }

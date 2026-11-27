@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router';
 import { Toaster } from 'sonner';
 import { AppLayout, OnboardingLayout } from '../presentation/components/AppLayout';
@@ -10,25 +10,45 @@ import {
 } from '../presentation/hooks/useAuthSession';
 import { ThemeProvider, useTheme } from '../presentation/hooks/useTheme';
 import { labels } from '../presentation/i18n/labels';
+import {
+  loadAdminUsersPage,
+  loadCourseDetailPage,
+  loadCoursesPage,
+  loadDeadlinesPage,
+  loadHomePage,
+  loadJoinClassPage,
+  loadLoginPage,
+  loadMaterialDetailPage,
+  loadProfilePage,
+  loadRegisterPage,
+  loadRepFormPage,
+  loadSettingsPage,
+} from '../presentation/utils/routePrefetch';
 
-const LoginPage = lazy(() => import('../presentation/pages/LoginPage'));
-const RegisterPage = lazy(() => import('../presentation/pages/RegisterPage'));
-const JoinClassPage = lazy(() => import('../presentation/pages/JoinClassPage'));
-const HomePage = lazy(() => import('../presentation/pages/HomePage'));
-const CoursesPage = lazy(() => import('../presentation/pages/CoursesPage'));
-const DeadlinesPage = lazy(() => import('../presentation/pages/DeadlinesPage'));
-const CourseDetailPage = lazy(
-  () => import('../presentation/pages/CourseDetailPage'),
-);
-const MaterialDetailPage = lazy(
-  () => import('../presentation/pages/MaterialDetailPage'),
-);
-const RepFormPage = lazy(() => import('../presentation/pages/RepFormPage'));
-const AdminUsersPage = lazy(
-  () => import('../presentation/pages/AdminUsersPage'),
-);
-const ProfilePage = lazy(() => import('../presentation/pages/ProfilePage'));
-const SettingsPage = lazy(() => import('../presentation/pages/SettingsPage'));
+const LoginPage = lazy(loadLoginPage);
+const RegisterPage = lazy(loadRegisterPage);
+const JoinClassPage = lazy(loadJoinClassPage);
+const HomePage = lazy(loadHomePage);
+const CoursesPage = lazy(loadCoursesPage);
+const DeadlinesPage = lazy(loadDeadlinesPage);
+const CourseDetailPage = lazy(loadCourseDetailPage);
+const MaterialDetailPage = lazy(loadMaterialDetailPage);
+const RepFormPage = lazy(loadRepFormPage);
+const AdminUsersPage = lazy(loadAdminUsersPage);
+const ProfilePage = lazy(loadProfilePage);
+const SettingsPage = lazy(loadSettingsPage);
+
+function RouteScrollReset(): null {
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!location.hash) {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    }
+  }, [location.pathname, location.hash]);
+
+  return null;
+}
 
 function WorkspaceBootScreen(): React.ReactElement {
   return (
@@ -244,6 +264,7 @@ export function AppRouter(): React.ReactElement {
       <AppErrorBoundary>
         <AuthSessionProvider>
           <BrowserRouter>
+            <RouteScrollReset />
             <AppRoutes />
           </BrowserRouter>
           <AppToaster />

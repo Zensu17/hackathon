@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router';
+import { IconRefresh } from './Icons';
 import { labels } from '../i18n/labels';
 
 export interface LoadingStateProps {
@@ -16,14 +17,32 @@ export function LoadingState({ message }: LoadingStateProps): React.ReactElement
           gap: 'var(--space-2)',
         }}
       >
-        <span
-          className="status-indicator-dot"
-          style={{ backgroundColor: 'var(--color-primary)' }}
-          aria-hidden="true"
+        <IconRefresh
+          size={16}
+          className="anim-spin"
+          style={{ color: 'var(--color-primary)', flexShrink: 0 }}
         />
         <p className="state-card__body" style={{ margin: 0 }}>
           {message}
         </p>
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+          marginTop: '14px',
+        }}
+        aria-hidden="true"
+      >
+        <div
+          className="figma-skeleton figma-skeleton--line"
+          style={{ width: '82%', height: '12px' }}
+        />
+        <div
+          className="figma-skeleton figma-skeleton--line"
+          style={{ width: '54%', height: '12px' }}
+        />
       </div>
     </div>
   );

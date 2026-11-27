@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { toast } from 'sonner';
 import { useAppContainer } from '../../app/di';
+import { useSlidingIndicator } from '../hooks/useSlidingIndicator';
 import type { Class, User, UserRole } from '../../domain/entities';
 import {
   canManageClassContent,
@@ -55,6 +56,7 @@ export function AdminUsersPage(): React.ReactElement {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
   const [classFilter, setClassFilter] = useState<string>('all');
+  const filterPillsRef = useRef<HTMLDivElement | null>(null);
 
   const [showAddUserForm, setShowAddUserForm] = useState<boolean>(false);
   const [newNim, setNewNim] = useState<string>('');
@@ -160,6 +162,12 @@ export function AdminUsersPage(): React.ReactElement {
       inactive: users.filter((u) => u.deletedAt !== null).length,
     };
   }, [users]);
+
+  const { indicatorStyle: rolePillStyle } = useSlidingIndicator(
+    filterPillsRef,
+    '.admin-filter-pill--active',
+    [roleFilter, filterCounts.inactive],
+  );
 
   const filteredUsers = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -554,8 +562,16 @@ export function AdminUsersPage(): React.ReactElement {
       ) : null}
 
       {/* Create User Form */}
-      {showAddUserForm ? (
-        <section className="index-card" aria-labelledby="admin-add-user-heading">
+      <div
+        className={
+          showAddUserForm
+            ? 'collapsible-panel collapsible-panel--open'
+            : 'collapsible-panel'
+        }
+        aria-hidden={!showAddUserForm}
+      >
+        <div className="collapsible-panel__inner">
+          <section className="index-card" aria-labelledby="admin-add-user-heading">
           <div className="card-tab-bar">
             <span className="card-tab-code">NEW USER</span>
             <button
@@ -716,12 +732,21 @@ export function AdminUsersPage(): React.ReactElement {
               In online mode, new users register on the sign-up screen as Student first. Once they register, promote them to Lecturer, Teaching Assistant, Class Representative, or Admin in the directory below.
             </p>
           )}
-        </section>
-      ) : null}
+          </section>
+        </div>
+      </div>
 
       {/* Create Class Form */}
-      {showCreateClassForm ? (
-        <section className="index-card" aria-labelledby="admin-create-class-heading">
+      <div
+        className={
+          showCreateClassForm
+            ? 'collapsible-panel collapsible-panel--open'
+            : 'collapsible-panel'
+        }
+        aria-hidden={!showCreateClassForm}
+      >
+        <div className="collapsible-panel__inner">
+          <section className="index-card" aria-labelledby="admin-create-class-heading">
           <div className="card-tab-bar">
             <span className="card-tab-code">NEW CLASS</span>
             <button
@@ -788,8 +813,9 @@ export function AdminUsersPage(): React.ReactElement {
               </button>
             </div>
           </form>
-        </section>
-      ) : null}
+          </section>
+        </div>
+      </div>
 
       {/* Class Join Codes Bar */}
       {!isLoading && !loadError && classes.length > 0 ? (
@@ -869,7 +895,17 @@ export function AdminUsersPage(): React.ReactElement {
           </select>
         </div>
 
-        <div className="admin-filter-pills" role="tablist" aria-label="Filter users by role">
+        <div
+          ref={filterPillsRef}
+          className="admin-filter-pills"
+          role="tablist"
+          aria-label="Filter users by role"
+        >
+          <span
+            className="admin-filter-pill__indicator"
+            style={rolePillStyle}
+            aria-hidden="true"
+          />
           {(
             [
               ['all', `All active (${filterCounts.all})`],
@@ -882,22 +918,25 @@ export function AdminUsersPage(): React.ReactElement {
                 ? ([['inactive', `Inactive (${filterCounts.inactive})`]] as const)
                 : []),
             ] as ReadonlyArray<[RoleFilter, string]>
-          ).map(([key, labelText]) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={roleFilter === key}
-              className={
-                roleFilter === key
-                  ? 'admin-filter-pill admin-filter-pill--active'
-                  : 'admin-filter-pill'
-              }
-              onClick={() => setRoleFilter(key)}
-            >
-              {labelText}
-            </button>
-          ))}
+          ).map(([key, labelText]) => {
+            const isSelected = roleFilter === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={isSelected}
+                className={
+                  isSelected
+                    ? 'admin-filter-pill admin-filter-pill--active'
+                    : 'admin-filter-pill'
+                }
+                onClick={() => setRoleFilter(key)}
+              >
+                <span className="admin-filter-pill__label">{labelText}</span>
+              </button>
+            );
+          })}
         </div>
       </section>
 

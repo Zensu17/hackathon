@@ -202,7 +202,10 @@ export function DeadlinesPage(): React.ReactElement {
                   ? 'offline-meter__fill offline-meter__fill--complete'
                   : 'offline-meter__fill'
               }
-              style={{ width: `${progressPercent}%` }}
+              style={{
+                width: '100%',
+                transform: `scaleX(${progressPercent / 100})`,
+              }}
             />
           </div>
         </section>
